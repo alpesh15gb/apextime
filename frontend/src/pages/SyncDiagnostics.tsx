@@ -255,7 +255,7 @@ export const SyncDiagnostics = () => {
                 <p className="text-sm text-gray-500">Last Sync</p>
                 <p className="text-lg font-medium">
                   {syncStatus.lastSync?.createdAt
-                    ? new Date(syncStatus.lastSync.createdAt).toLocaleString()
+                    ? syncStatus.lastSync.createdAt.replace('T', ' ').substring(0, 19)
                     : 'Never'}
                 </p>
               </div>
@@ -391,7 +391,7 @@ export const SyncDiagnostics = () => {
         {preview && (
           <div>
             <p className="text-sm text-gray-500 mb-2">
-              Last sync time: {preview.lastSyncTime ? new Date(preview.lastSyncTime).toLocaleString() : 'N/A'}
+              Last sync time: {preview.lastSyncTime ? preview.lastSyncTime.replace('T', ' ').substring(0, 19) : 'N/A'}
             </p>
             <p className="text-sm text-gray-500 mb-4">
               Logs found since last sync: {preview.logsFound ?? 0}
@@ -412,7 +412,7 @@ export const SyncDiagnostics = () => {
                       <tr key={log.DeviceLogId} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-2 px-4 font-mono">{log.DeviceLogId}</td>
                         <td className="py-2 px-4">{log.UserId}</td>
-                        <td className="py-2 px-4">{log.LogDate ? new Date(log.LogDate).toLocaleString() : 'N/A'}</td>
+                        <td className="py-2 px-4">{log.LogDate ? log.LogDate.replace('T', ' ').substring(0, 19) : 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>
