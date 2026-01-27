@@ -195,6 +195,17 @@ export const SyncDiagnostics = () => {
               </div>
             )}
 
+            {/* Sync Stats Summary */}
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-600 font-medium mb-2">How Sync Works:</p>
+              <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                <li>Queries ALL DeviceLogs partition tables automatically</li>
+                <li>Auto-creates employees if they don't exist (named "Employee {UserId}")</li>
+                <li>Matches logs to employees by UserId from biometric device</li>
+                <li>Calculates First IN / Last OUT attendance</li>
+              </ul>
+            </div>
+
             <div className="flex space-x-3">
               <button
                 onClick={fetchSyncStatus}

@@ -23,9 +23,13 @@ interface ProcessedAttendance {
   status: string;
 }
 
+// Cache for created employees to avoid repeated lookups
+const employeeCache = new Map<string, string>(); // deviceUserId -> employeeId
+
 export async function startLogSync(): Promise<void> {
   const syncStartTime = new Date();
   let recordsSynced = 0;
+  let employeesCreated = 0;
   let status = 'success';
   let message = '';
 
@@ -43,24 +47,24 @@ export async function startLogSync(): Promise<void> {
     // Get SQL Server connection
     const pool = await getSqlPool();
 
-    // Get current date for monthly table calculation
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    // Discover all DeviceLogs tables
+    const tablesResult = await pool.request().query(`
+      SELECT TABLE_NAME
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_TYPE = 'BASE TABLE'
+      AND TABLE_NAME LIKE 'DeviceLogs%'
+      ORDER BY TABLE_NAME
+    `);
 
-    // Try to get logs from multiple possible table names
+    const tablesToTry = tablesResult.recordset.map((row: any) => row.TABLE_NAME);
+    logger.info(`Found ${tablesToTry.length} DeviceLogs tables to query`);
+
+    // Try to get logs from all discovered tables
     let allLogs: RawLog[] = [];
-
-    // Tables to try (main table and monthly partitions)
-    const tablesToTry = [
-      'DeviceLogs',
-      `DeviceLogs_${currentMonth}_${currentYear}`,
-      `DeviceLogs_${currentMonth - 1}_${currentYear}`, // Previous month
-    ];
 
     for (const tableName of tablesToTry) {
       try {
-        logger.info(`Trying to query table: ${tableName}`);
+        logger.info(`Querying table: ${tableName}`);
         const result = await pool.request()
           .input('lastSyncTime', sql.DateTime, lastSyncTime)
           .query<RawLog>(`
@@ -93,6 +97,19 @@ export async function startLogSync(): Promise<void> {
       message = 'No new logs found';
       logger.info(message);
     } else {
+      // Pre-fetch all existing employees with deviceUserId
+      const existingEmployees = await prisma.employee.findMany({
+        where: { deviceUserId: { not: null } },
+        select: { id: true, deviceUserId: true }
+      });
+
+      for (const emp of existingEmployees) {
+        if (emp.deviceUserId) {
+          employeeCache.set(emp.deviceUserId, emp.id);
+        }
+      }
+      logger.info(`Loaded ${employeeCache.size} employees into cache`);
+
       // Store raw device logs (with error handling for each)
       let storedCount = 0;
       for (const log of uniqueLogs.values()) {
@@ -116,6 +133,30 @@ export async function startLogSync(): Promise<void> {
         }
       }
       logger.info(`Stored ${storedCount} raw logs`);
+
+      // Auto-create employees if they don't exist
+      const uniqueUserIds = new Set<string>();
+      for (const log of uniqueLogs.values()) {
+        uniqueUserIds.add(log.UserId.toString());
+      }
+
+      for (const userId of uniqueUserIds) {
+        if (!employeeCache.has(userId)) {
+          try {
+            const newEmployee = await createEmployeeFromDeviceLog(userId);
+            if (newEmployee) {
+              employeeCache.set(userId, newEmployee.id);
+              employeesCreated++;
+            }
+          } catch (error) {
+            logger.error(`Failed to create employee for userId ${userId}:`, error);
+          }
+        }
+      }
+
+      if (employeesCreated > 0) {
+        logger.info(`Created ${employeesCreated} new employees`);
+      }
 
       // Process attendance
       const processedAttendance = await processAttendanceLogs(Array.from(uniqueLogs.values()));
@@ -166,13 +207,8 @@ export async function startLogSync(): Promise<void> {
       let markedCount = 0;
       for (const log of uniqueLogs.values()) {
         try {
-          // Only mark as processed if we found a matching employee and created attendance
-          const employee = await prisma.employee.findFirst({
-            where: { deviceUserId: log.UserId.toString() },
-            select: { id: true }
-          });
-
-          if (employee) {
+          const employeeId = employeeCache.get(log.UserId.toString());
+          if (employeeId) {
             await prisma.rawDeviceLog.updateMany({
               where: { id: log.DeviceLogId.toString() },
               data: { isProcessed: true },
@@ -186,9 +222,12 @@ export async function startLogSync(): Promise<void> {
       logger.info(`Marked ${markedCount} logs as processed`);
 
       if (recordsSynced === 0 && storedCount > 0) {
-        message = `Stored ${storedCount} logs but no attendance records created. Check employee Device User ID mappings.`;
+        message = `Stored ${storedCount} logs but no attendance records created. Check employee creation.`;
       } else {
         message = `Successfully synced ${recordsSynced} attendance records from ${uniqueLogs.size} device logs`;
+        if (employeesCreated > 0) {
+          message += ` (${employeesCreated} new employees created)`;
+        }
       }
       logger.info(message);
       console.log(`[${new Date().toISOString()}] ${message}`);
@@ -209,6 +248,46 @@ export async function startLogSync(): Promise<void> {
         message,
       },
     });
+
+    // Clear cache
+    employeeCache.clear();
+  }
+}
+
+async function createEmployeeFromDeviceLog(deviceUserId: string) {
+  try {
+    // Generate employee code from deviceUserId (ensure it's unique)
+    const employeeCode = `EMP${deviceUserId.toString().padStart(4, '0')}`;
+
+    // Check if employee code already exists
+    const existing = await prisma.employee.findUnique({
+      where: { employeeCode }
+    });
+
+    if (existing) {
+      // Update existing employee with deviceUserId
+      return await prisma.employee.update({
+        where: { id: existing.id },
+        data: { deviceUserId: deviceUserId.toString() }
+      });
+    }
+
+    // Create new employee
+    const employee = await prisma.employee.create({
+      data: {
+        employeeCode,
+        firstName: `Employee`,
+        lastName: `${deviceUserId}`,
+        deviceUserId: deviceUserId.toString(),
+        isActive: true,
+      }
+    });
+
+    logger.info(`Created new employee: ${employeeCode} with deviceUserId: ${deviceUserId}`);
+    return employee;
+  } catch (error) {
+    logger.error(`Failed to create employee for deviceUserId ${deviceUserId}:`, error);
+    return null;
   }
 }
 
@@ -227,14 +306,22 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
   const processedResults: ProcessedAttendance[] = [];
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
-    // Find employee by device user ID
-    const employee = await prisma.employee.findFirst({
-      where: { deviceUserId },
+    // Get employee from cache
+    const employeeId = employeeCache.get(deviceUserId);
+
+    if (!employeeId) {
+      logger.warn(`No employee found for device user ID: ${deviceUserId}`);
+      continue;
+    }
+
+    // Get full employee details including shift
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
       include: { shift: true },
     });
 
     if (!employee) {
-      logger.warn(`No employee found for device user ID: ${deviceUserId}`);
+      logger.warn(`Employee not found in database for ID: ${employeeId}`);
       continue;
     }
 
