@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users } from 'lucide-react';
+import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users, RotateCcw, DatabaseBackup } from 'lucide-react';
 import { syncAPI } from '../services/api';
 
 interface TableInfo {
@@ -93,6 +93,33 @@ export const SyncDiagnostics = () => {
       console.error('Failed to trigger sync:', error);
     } finally {
       setLoading((prev) => ({ ...prev, trigger: false }));
+    }
+  };
+
+  const triggerFullSync = async () => {
+    if (!confirm('Full Sync will process ALL historical data from 2020 onwards. This may take several minutes. Continue?')) {
+      return;
+    }
+    try {
+      setLoading((prev) => ({ ...prev, trigger: true }));
+      await syncAPI.trigger(true); // fullSync = true
+      await fetchSyncStatus();
+    } catch (error) {
+      console.error('Failed to trigger full sync:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, trigger: false }));
+    }
+  };
+
+  const resetSync = async () => {
+    if (!confirm('Reset sync status? This will clear the last sync time so next sync processes all data.')) {
+      return;
+    }
+    try {
+      await syncAPI.reset();
+      await fetchSyncStatus();
+    } catch (error) {
+      console.error('Failed to reset sync:', error);
     }
   };
 
@@ -269,7 +296,7 @@ export const SyncDiagnostics = () => {
               </ul>
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={fetchSyncStatus}
                 disabled={loading.sync}
@@ -285,6 +312,22 @@ export const SyncDiagnostics = () => {
               >
                 <Play className="w-4 h-4" />
                 <span>{loading.trigger ? 'Syncing...' : 'Trigger Sync Now'}</span>
+              </button>
+              <button
+                onClick={triggerFullSync}
+                disabled={loading.trigger}
+                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+              >
+                <DatabaseBackup className="w-4 h-4" />
+                <span>{loading.trigger ? 'Syncing...' : 'Full Sync (All Data)'}</span>
+              </button>
+              <button
+                onClick={resetSync}
+                disabled={loading.trigger}
+                className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Reset Sync</span>
               </button>
             </div>
           </div>

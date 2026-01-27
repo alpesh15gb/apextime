@@ -11,12 +11,26 @@ router.use(authenticate);
 // Trigger manual sync
 router.post('/trigger', async (req, res) => {
   try {
-    logger.info('Manual sync triggered');
-    await startLogSync();
+    const { fullSync = false } = req.body;
+    logger.info(`Manual sync triggered (fullSync: ${fullSync})`);
+    await startLogSync(fullSync as boolean);
     res.json({ message: 'Sync completed successfully' });
   } catch (error) {
     logger.error('Manual sync failed:', error);
     res.status(500).json({ error: 'Sync failed', details: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+// Reset sync status (delete last sync record to sync from beginning)
+router.post('/reset', async (req, res) => {
+  try {
+    logger.info('Sync reset requested');
+    // Delete all sync status records
+    await prisma.syncStatus.deleteMany({});
+    res.json({ message: 'Sync status reset. Next sync will process all historical data.' });
+  } catch (error) {
+    logger.error('Sync reset failed:', error);
+    res.status(500).json({ error: 'Reset failed' });
   }
 });
 

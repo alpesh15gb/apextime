@@ -26,7 +26,7 @@ interface ProcessedAttendance {
 // Cache for created employees to avoid repeated lookups
 const employeeCache = new Map<string, string>(); // deviceUserId -> employeeId
 
-export async function startLogSync(): Promise<void> {
+export async function startLogSync(fullSync: boolean = false): Promise<void> {
   const syncStartTime = new Date();
   let recordsSynced = 0;
   let employeesCreated = 0;
@@ -34,15 +34,22 @@ export async function startLogSync(): Promise<void> {
   let message = '';
 
   try {
-    logger.info('Starting log sync from SQL Server...');
-    console.log(`[${new Date().toISOString()}] Starting log sync...`);
+    logger.info(`Starting log sync from SQL Server... (fullSync: ${fullSync})`);
+    console.log(`[${new Date().toISOString()}] Starting log sync... (fullSync: ${fullSync})`);
 
     // Get last sync time
-    const lastSync = await prisma.syncStatus.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    let lastSyncTime: Date;
 
-    const lastSyncTime = lastSync?.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (fullSync) {
+      // Full sync: go back to 2020-01-01 to capture all historical data
+      lastSyncTime = new Date('2020-01-01');
+      logger.info('Full sync mode: processing all historical data from 2020-01-01');
+    } else {
+      const lastSync = await prisma.syncStatus.findFirst({
+        orderBy: { createdAt: 'desc' },
+      });
+      lastSyncTime = lastSync?.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000);
+    }
 
     // Get SQL Server connection
     const pool = await getSqlPool();

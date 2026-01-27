@@ -166,7 +166,8 @@ export const devicesAPI = {
 
 // Sync API
 export const syncAPI = {
-  trigger: () => api.post('/sync/trigger'),
+  trigger: (fullSync?: boolean) => api.post('/sync/trigger', { fullSync }),
+  reset: () => api.post('/sync/reset'),
   testConnection: () => api.get('/sync/test-connection'),
   getStatus: () => api.get('/sync/status'),
   preview: (limit?: number, table?: string) => api.get('/sync/preview', { params: { limit, table } }),
