@@ -163,17 +163,35 @@ router.get('/discover-tables', async (req, res) => {
 // Get unmatched user IDs from recent logs
 router.get('/unmatched-users', async (req, res) => {
   try {
-    const { table = 'DeviceLogs', limit = '100' } = req.query;
     const pool = await getSqlPool();
 
-    // Get recent unique user IDs from logs
-    const result = await pool.request().query(`
-      SELECT DISTINCT TOP ${parseInt(limit as string)} UserId
-      FROM ${table}
-      ORDER BY UserId
+    // Discover all DeviceLogs tables
+    const tablesResult = await pool.request().query(`
+      SELECT TABLE_NAME
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_TYPE = 'BASE TABLE'
+      AND TABLE_NAME LIKE 'DeviceLogs%'
+      ORDER BY TABLE_NAME
     `);
 
-    const userIds = result.recordset.map((r: any) => r.UserId.toString());
+    // Get unique user IDs from all tables
+    const allUserIds = new Set<string>();
+
+    for (const row of tablesResult.recordset) {
+      try {
+        const result = await pool.request().query(`
+          SELECT DISTINCT UserId
+          FROM ${row.TABLE_NAME}
+        `);
+        for (const record of result.recordset) {
+          allUserIds.add(record.UserId.toString());
+        }
+      } catch (e) {
+        logger.warn(`Failed to query ${row.TABLE_NAME} for user IDs`);
+      }
+    }
+
+    const userIds = Array.from(allUserIds).sort();
 
     // Check which ones have matching employees
     const employees = await prisma.employee.findMany({

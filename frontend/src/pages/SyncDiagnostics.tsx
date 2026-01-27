@@ -289,7 +289,7 @@ export const SyncDiagnostics = () => {
               Logs found since last sync: {preview.logsFound}
             </p>
 
-            {preview.logs.length > 0 ? (
+            {preview.logs && preview.logs.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -342,22 +342,22 @@ export const SyncDiagnostics = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gray-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-gray-500">Total Unique Users</p>
-                <p className="text-2xl font-bold">{unmatchedUsers.totalUniqueUsers}</p>
+                <p className="text-2xl font-bold">{unmatchedUsers.totalUniqueUsers || 0}</p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-green-600">Matched</p>
-                <p className="text-2xl font-bold text-green-600">{unmatchedUsers.matchedCount}</p>
+                <p className="text-2xl font-bold text-green-600">{unmatchedUsers.matchedCount || 0}</p>
               </div>
               <div className="bg-red-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-red-600">Unmatched</p>
-                <p className="text-2xl font-bold text-red-600">{unmatchedUsers.unmatchedCount}</p>
+                <p className="text-2xl font-bold text-red-600">{unmatchedUsers.unmatchedCount || 0}</p>
               </div>
             </div>
 
-            {unmatchedUsers.unmatchedUserIds.length > 0 && (
+            {unmatchedUsers.unmatchedUserIds && unmatchedUsers.unmatchedUserIds.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">
-                  Unmatched Device User IDs (need to be configured on employees):
+                  Unmatched Device User IDs (will be auto-created during sync):
                 </p>
                 <div className="bg-gray-100 p-3 rounded-lg">
                   <code className="text-sm">
@@ -367,7 +367,7 @@ export const SyncDiagnostics = () => {
               </div>
             )}
 
-            {unmatchedUsers.matchedEmployees.length > 0 && (
+            {unmatchedUsers.matchedEmployees && unmatchedUsers.matchedEmployees.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Matched Employees:</p>
                 <div className="overflow-x-auto">
