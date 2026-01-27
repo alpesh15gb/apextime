@@ -206,4 +206,127 @@ router.post('/manual', async (req, res) => {
   }
 });
 
+// Get monthly attendance report (matrix format like the paper)
+router.get('/monthly-report', async (req, res) => {
+  try {
+    const { month, year, departmentId, branchId } = req.query;
+
+    const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
+    const targetYear = parseInt(year as string) || new Date().getFullYear();
+
+    const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+    const endOfMonth = new Date(targetYear, targetMonth, 0);
+    const daysInMonth = endOfMonth.getDate();
+
+    // Build employee filter
+    const employeeWhere: any = { isActive: true };
+    if (departmentId) employeeWhere.departmentId = departmentId as string;
+    if (branchId) employeeWhere.branchId = branchId as string;
+
+    // Get all active employees
+    const employees = await prisma.employee.findMany({
+      where: employeeWhere,
+      include: {
+        department: true,
+        shift: true,
+      },
+      orderBy: { firstName: 'asc' },
+    });
+
+    // Get all attendance logs for the month
+    const logs = await prisma.attendanceLog.findMany({
+      where: {
+        date: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+        employeeId: {
+          in: employees.map(e => e.id),
+        },
+      },
+    });
+
+    // Group logs by employee and date
+    const logsByEmployee = new Map();
+    for (const log of logs) {
+      const dateKey = log.date.getDate();
+      if (!logsByEmployee.has(log.employeeId)) {
+        logsByEmployee.set(log.employeeId, new Map());
+      }
+      logsByEmployee.get(log.employeeId).set(dateKey, log);
+    }
+
+    // Build report data
+    const reportData = employees.map(employee => {
+      const employeeLogs = logsByEmployee.get(employee.id) || new Map();
+      const dailyData = [];
+      let totalWorkingHours = 0;
+      let presentDays = 0;
+      let lateDays = 0;
+      let absentDays = 0;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const log = employeeLogs.get(day);
+        const date = new Date(targetYear, targetMonth - 1, day);
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+        if (log) {
+          totalWorkingHours += log.workingHours || 0;
+          if (log.status === 'present') presentDays++;
+          if (log.lateArrival > 0) lateDays++;
+
+          dailyData.push({
+            day,
+            firstIn: log.firstIn,
+            lastOut: log.lastOut,
+            workingHours: log.workingHours,
+            lateArrival: log.lateArrival,
+            earlyDeparture: log.earlyDeparture,
+            status: log.status,
+            isWeekend,
+          });
+        } else {
+          if (!isWeekend) absentDays++;
+          dailyData.push({
+            day,
+            firstIn: null,
+            lastOut: null,
+            workingHours: null,
+            lateArrival: 0,
+            earlyDeparture: 0,
+            status: isWeekend ? 'weekend' : 'absent',
+            isWeekend,
+          });
+        }
+      }
+
+      return {
+        employee: {
+          id: employee.id,
+          name: `${employee.firstName} ${employee.lastName}`,
+          employeeCode: employee.employeeCode,
+          department: employee.department?.name || 'N/A',
+        },
+        dailyData,
+        summary: {
+          presentDays,
+          absentDays,
+          lateDays,
+          totalWorkingHours: Math.round(totalWorkingHours * 100) / 100,
+        },
+      };
+    });
+
+    res.json({
+      month: targetMonth,
+      year: targetYear,
+      daysInMonth,
+      reportData,
+    });
+  } catch (error) {
+    console.error('Get monthly report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

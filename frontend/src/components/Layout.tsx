@@ -9,6 +9,7 @@ import {
   Clock,
   Calendar,
   FileText,
+  FileSpreadsheet,
   LogOut,
   Menu,
   X,
@@ -32,6 +33,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/employees', icon: Users, label: 'Employees' },
     { path: '/attendance', icon: Clock, label: 'Attendance' },
+    { path: '/monthly-report', icon: FileSpreadsheet, label: 'Monthly Report' },
     { path: '/reports', icon: FileText, label: 'Reports' },
     { path: '/sync-diagnostics', icon: RefreshCw, label: 'Sync Diagnostics' },
   ];

@@ -124,6 +124,8 @@ export const attendanceAPI = {
     api.get('/attendance/today/all'),
   createManual: (data: any) =>
     api.post('/attendance/manual', data),
+  getMonthlyReport: (params?: Record<string, string>) =>
+    api.get('/attendance/monthly-report', { params }),
 };
 
 // Dashboard API
