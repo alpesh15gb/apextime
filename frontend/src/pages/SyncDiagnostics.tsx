@@ -54,6 +54,12 @@ interface SqlDeviceUser {
   IsActive: boolean;
 }
 
+interface SqlTableInfo {
+  name: string;
+  columns: Array<{ COLUMN_NAME: string; DATA_TYPE: string }>;
+  error?: string;
+}
+
 export const SyncDiagnostics = () => {
   const [connectionStatus, setConnectionStatus] = useState<{status: string; deviceLogsCount?: number; error?: string} | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatusData | null>(null);
@@ -72,6 +78,11 @@ export const SyncDiagnostics = () => {
   const [syncNamesResult, setSyncNamesResult] = useState<{ updated: number; failed: number } | null>(null);
   const [sqlDeviceUsers, setSqlDeviceUsers] = useState<{ count: number; users: SqlDeviceUser[] } | null>(null);
   const [loadingSqlUsers, setLoadingSqlUsers] = useState(false);
+  const [allTables, setAllTables] = useState<{ totalTables: number; tables: SqlTableInfo[] } | null>(null);
+  const [loadingAllTables, setLoadingAllTables] = useState(false);
+  const [selectedTable, setSelectedTable] = useState('');
+  const [tableQueryResult, setTableQueryResult] = useState<{ table: string; rowCount: number; data: any[] } | null>(null);
+  const [loadingTableQuery, setLoadingTableQuery] = useState(false);
 
   const testConnection = async () => {
     try {
@@ -221,6 +232,40 @@ export const SyncDiagnostics = () => {
       setSqlDeviceUsers({ count: 0, users: [] });
     } finally {
       setLoadingSqlUsers(false);
+    }
+  };
+
+  const discoverAllTables = async () => {
+    try {
+      setLoadingAllTables(true);
+      const response = await syncAPI.discoverAllTables();
+      setAllTables({
+        totalTables: response.data?.totalTables || 0,
+        tables: response.data?.tables || [],
+      });
+    } catch (error) {
+      console.error('Failed to discover tables:', error);
+      setAllTables({ totalTables: 0, tables: [] });
+    } finally {
+      setLoadingAllTables(false);
+    }
+  };
+
+  const queryTable = async () => {
+    if (!selectedTable) return;
+    try {
+      setLoadingTableQuery(true);
+      const response = await syncAPI.queryTable(selectedTable, 10);
+      setTableQueryResult({
+        table: response.data?.table || selectedTable,
+        rowCount: response.data?.rowCount || 0,
+        data: response.data?.data || [],
+      });
+    } catch (error) {
+      console.error('Failed to query table:', error);
+      setTableQueryResult({ table: selectedTable, rowCount: 0, data: [] });
+    } finally {
+      setLoadingTableQuery(false);
     }
   };
 
@@ -622,11 +667,151 @@ export const SyncDiagnostics = () => {
                 </table>
               </div>
             ) : (
-              <p className="text-gray-500">No users found in SQL Server DeviceUsers table</p>
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <p className="text-yellow-800 font-medium">No users found in DeviceUsers table</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  This is unusual. Employee names might be stored in a different table. Use the "Discover All Tables" section below to find the employee master data.
+                </p>
+              </div>
             )}
           </div>
         ) : (
           <p className="text-gray-500">Click "Load from SQL" to view DeviceUsers from SQL Server</p>
+        )}
+      </div>
+
+      {/* Discover All Tables */}
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center">
+            <List className="w-5 h-5 mr-2" />
+            Discover All SQL Server Tables
+          </h2>
+          <button
+            onClick={discoverAllTables}
+            disabled={loadingAllTables}
+            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingAllTables ? 'animate-spin' : ''}`} />
+            <span>Discover Tables</span>
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Find all tables in the SQL Server database to locate employee master data (names, departments, designations)
+        </p>
+
+        {allTables ? (
+          <div>
+            <p className="text-sm text-gray-500 mb-2">
+              Total tables found: <strong>{allTables.totalTables}</strong>
+            </p>
+            {allTables.tables.length > 0 ? (
+              <div className="overflow-x-auto max-h-96">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-2 px-4">Table Name</th>
+                      <th className="text-left py-2 px-4">Columns</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allTables.tables.map((table) => (
+                      <tr key={table.name} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-4 font-mono font-medium">{table.name}</td>
+                        <td className="py-2 px-4">
+                          {table.error ? (
+                            <span className="text-red-500">{table.error}</span>
+                          ) : (
+                            <span className="text-xs">
+                              {table.columns.map((c) => c.COLUMN_NAME).join(', ')}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500">No tables found</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500">Click "Discover Tables" to see all tables in SQL Server</p>
+        )}
+      </div>
+
+      {/* Query Specific Table */}
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <Eye className="w-5 h-5 mr-2" />
+          Query Table Data
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Preview data from any table to find employee information
+        </p>
+
+        <div className="flex gap-3 mb-4">
+          <input
+            type="text"
+            value={selectedTable}
+            onChange={(e) => setSelectedTable(e.target.value)}
+            placeholder="Enter table name (e.g., Employees, Users)"
+            className="flex-1 px-3 py-2 border rounded-lg"
+          />
+          <button
+            onClick={queryTable}
+            disabled={loadingTableQuery || !selectedTable}
+            className="btn-primary flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            {loadingTableQuery ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Querying...</span>
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4" />
+                <span>Query</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {tableQueryResult && (
+          <div>
+            <p className="text-sm text-gray-500 mb-2">
+              Table: <strong>{tableQueryResult.table}</strong> | Rows: {tableQueryResult.rowCount}
+            </p>
+            {tableQueryResult.data.length > 0 ? (
+              <div className="overflow-x-auto max-h-96">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b bg-gray-50">
+                      {Object.keys(tableQueryResult.data[0]).map((key) => (
+                        <th key={key} className="text-left py-2 px-4">{key}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableQueryResult.data.map((row, idx) => (
+                      <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+                        {Object.values(row).map((val: any, i) => (
+                          <td key={i} className="py-2 px-4">
+                            {val === null ? <span className="text-gray-400 italic">null</span> :
+                             typeof val === 'object' ? JSON.stringify(val).substring(0, 50) :
+                             String(val).substring(0, 50)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500">No data in table</p>
+            )}
+          </div>
         )}
       </div>
 

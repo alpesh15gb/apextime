@@ -187,6 +187,7 @@ export const syncAPI = {
   syncNames: () => api.post('/sync/sync-names'),
   discoverAllTables: () => api.get('/sync/discover-all-tables'),
   getSqlDeviceUsers: () => api.get('/sync/sql-device-users'),
+  queryTable: (tableName: string, limit?: number) => api.get(`/sync/query-table/${tableName}`, { params: { limit } }),
 };
 
 export default api;
