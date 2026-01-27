@@ -164,4 +164,12 @@ export const devicesAPI = {
     api.post('/devices/sync-users'),
 };
 
+// Sync API
+export const syncAPI = {
+  trigger: () => api.post('/sync/trigger'),
+  testConnection: () => api.get('/sync/test-connection'),
+  getStatus: () => api.get('/sync/status'),
+  preview: (limit?: number) => api.get('/sync/preview', { params: { limit } }),
+};
+
 export default api;

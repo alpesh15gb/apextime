@@ -12,6 +12,7 @@ import { Locations } from './pages/Locations';
 import { Branches } from './pages/Branches';
 import { Attendance } from './pages/Attendance';
 import { Reports } from './pages/Reports';
+import { SyncDiagnostics } from './pages/SyncDiagnostics';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
                     <Route path="/branches" element={<Branches />} />
                     <Route path="/attendance" element={<Attendance />} />
                     <Route path="/reports" element={<Reports />} />
+<Route path="/sync-diagnostics" element={<SyncDiagnostics />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

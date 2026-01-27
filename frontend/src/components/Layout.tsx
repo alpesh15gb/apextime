@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -32,6 +33,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { path: '/employees', icon: Users, label: 'Employees' },
     { path: '/attendance', icon: Clock, label: 'Attendance' },
     { path: '/reports', icon: FileText, label: 'Reports' },
+    { path: '/sync-diagnostics', icon: RefreshCw, label: 'Sync Diagnostics' },
   ];
 
   const masterDataItems = [
