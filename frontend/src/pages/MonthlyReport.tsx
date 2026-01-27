@@ -177,9 +177,9 @@ export const MonthlyReport = () => {
   const days = Array.from({ length: report?.daysInMonth || 31 }, (_, i) => i + 1);
 
   return (
-    <div>
+    <div className="print:m-0 print:p-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 print:hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 print:hidden print:mb-0">
         <h1 className="text-2xl font-bold text-gray-800">Monthly Attendance Report</h1>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -230,9 +230,9 @@ export const MonthlyReport = () => {
           <p>No attendance data found for this month</p>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-6 print:block">
           {/* Left Panel - Holidays */}
-          <div className="w-full lg:w-48 print:hidden">
+          <div className="w-full lg:w-48 print:hidden print:m-0 print:p-0">
             <div className="bg-white rounded-lg shadow p-4 sticky top-4">
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
@@ -290,7 +290,7 @@ export const MonthlyReport = () => {
           </div>
 
           {/* Report Table */}
-          <div ref={printRef} className="flex-1 bg-white rounded-lg shadow overflow-hidden print:shadow-none">
+          <div ref={printRef} className="flex-1 bg-white rounded-lg shadow overflow-hidden print:shadow-none print:w-full print:m-0 print:p-0">
             {/* Print Header */}
             <div className="p-4 border-b print:p-2">
               <div className="text-center">
@@ -306,10 +306,10 @@ export const MonthlyReport = () => {
               <table className="w-full text-[10px] print:text-[8px]">
                 <thead>
                   <tr className="bg-gray-50 border-b">
-                    <th className="text-left py-2 px-1 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[120px] print:static">
+                    <th className="text-left py-2 px-1 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[120px] print:static print:min-w-[80px] print:text-[7px]">
                       Employee
                     </th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px]">Code</th>
+                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[30px] print:text-[7px]">Code</th>
                     {days.map((day) => {
                       const date = new Date(year, month - 1, day);
                       const isSunday = date.getDay() === 0;
@@ -317,7 +317,7 @@ export const MonthlyReport = () => {
                       return (
                         <th
                           key={day}
-                          className={`text-center py-1 px-[2px] font-semibold min-w-[24px] print:min-w-[20px] ${
+                          className={`text-center py-1 px-[2px] font-semibold min-w-[24px] print:min-w-[16px] print:px-[1px] print:text-[6px] ${
                             isSunday ? 'bg-gray-200' : isHoliday ? 'bg-blue-100' : ''
                           }`}
                         >
@@ -328,11 +328,11 @@ export const MonthlyReport = () => {
                         </th>
                       );
                     })}
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px]">P</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px]">A</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px]">L</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[50px]">WO</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[50px]">Hrs</th>
+                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">P</th>
+                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">A</th>
+                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">L</th>
+                    <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">WO</th>
+                    <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">Hrs</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -348,7 +348,7 @@ export const MonthlyReport = () => {
                       {row.dailyData.map((data) => (
                         <td
                           key={data.day}
-                          className={`py-1 px-[2px] text-center border-r border-gray-100 min-w-[24px] h-8 ${getCellClass(data)}`}
+                          className={`py-1 px-[2px] text-center border-r border-gray-100 min-w-[24px] h-8 print:min-w-[16px] print:px-[1px] print:h-6 ${getCellClass(data)}`}
                         >
                           {getCellContent(data)}
                         </td>
@@ -408,9 +408,13 @@ export const MonthlyReport = () => {
         @media print {
           @page {
             size: landscape;
-            margin: 5mm;
+            margin: 3mm;
           }
-          body {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
@@ -427,26 +431,79 @@ export const MonthlyReport = () => {
             display: block !important;
           }
           .print\\:p-2 {
-            padding: 0.5rem !important;
+            padding: 0.25rem !important;
           }
           .print\\:text-lg {
-            font-size: 1.125rem !important;
+            font-size: 1rem !important;
           }
           .print\\:text-sm {
-            font-size: 0.875rem !important;
+            font-size: 0.75rem !important;
           }
           .print\\:text\\[8px\\] {
-            font-size: 8px !important;
+            font-size: 7px !important;
           }
           .print\\:min-w\\[20px\\] {
-            min-width: 20px !important;
+            min-width: 18px !important;
+          }
+          .print\\:w-full {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: none !important;
+          }
+          .print\\:m-0 {
+            margin: 0 !important;
+          }
+          .print\\:mb-0 {
+            margin-bottom: 0 !important;
+          }
+          .print\\:p-0 {
+            padding: 0 !important;
+          }
+          * {
+            box-sizing: border-box !important;
           }
           table {
             width: 100% !important;
+            max-width: 100% !important;
             table-layout: fixed;
+            border-collapse: collapse;
           }
           th, td {
-            padding: 1px 2px !important;
+            padding: 1px !important;
+            font-size: 7px !important;
+          }
+          th:first-child {
+            width: 100px !important;
+          }
+          th:nth-child(2) {
+            width: 35px !important;
+          }
+          th:last-child, th:nth-last-child(2), th:nth-last-child(3), th:nth-last-child(4), th:nth-last-child(5) {
+            width: 30px !important;
+          }
+          th {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .overflow-x-auto {
+            overflow: visible !important;
+          }
+          .rounded-lg {
+            border-radius: 0 !important;
+          }
+          .shadow {
+            box-shadow: none !important;
+          }
+          .gap-6 {
+            gap: 0 !important;
+          }
+          .flex-col, .lg\\:flex-row {
+            flex-direction: column !important;
           }
         }
       `}</style>
