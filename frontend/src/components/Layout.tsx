@@ -51,7 +51,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside
-        className={`bg-gray-900 text-white transition-all duration-300 fixed h-full z-20 ${
+        className={`bg-gray-900 text-white transition-all duration-300 fixed h-full z-20 print:hidden ${
           sidebarOpen ? 'w-64' : 'w-16'
         }`}
       >
