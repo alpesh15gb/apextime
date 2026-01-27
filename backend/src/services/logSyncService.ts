@@ -1,4 +1,5 @@
 import { getSqlPool, prisma } from '../config/database';
+import sql from 'mssql';
 import logger from '../config/logger';
 import { startOfDay, endOfDay } from 'date-fns';
 
@@ -49,24 +50,28 @@ export async function startLogSync(): Promise<void> {
     const currentYear = now.getFullYear();
 
     // Query DeviceLogs (master table)
-    const deviceLogsResult = await pool.request().query<RawLog>(`
-      SELECT DeviceLogId, DeviceId, UserId, LogDate
-      FROM DeviceLogs
-      WHERE LogDate > @lastSyncTime
-      ORDER BY LogDate ASC
-    `, { lastSyncTime });
+    const deviceLogsResult = await pool.request()
+      .input('lastSyncTime', sql.DateTime, lastSyncTime)
+      .query<RawLog>(`
+        SELECT DeviceLogId, DeviceId, UserId, LogDate
+        FROM DeviceLogs
+        WHERE LogDate > @lastSyncTime
+        ORDER BY LogDate ASC
+      `);
 
     // Query monthly partitioned table
     const monthlyTableName = `DeviceLogs_${currentMonth}_${currentYear}`;
     let monthlyLogsResult: { recordset: RawLog[] } = { recordset: [] };
 
     try {
-      monthlyLogsResult = await pool.request().query<RawLog>(`
-        SELECT DeviceLogId, DeviceId, UserId, LogDate
-        FROM ${monthlyTableName}
-        WHERE LogDate > @lastSyncTime
-        ORDER BY LogDate ASC
-      `, { lastSyncTime });
+      monthlyLogsResult = await pool.request()
+        .input('lastSyncTime', sql.DateTime, lastSyncTime)
+        .query<RawLog>(`
+          SELECT DeviceLogId, DeviceId, UserId, LogDate
+          FROM ${monthlyTableName}
+          WHERE LogDate > @lastSyncTime
+          ORDER BY LogDate ASC
+        `);
     } catch (error) {
       logger.warn(`Monthly table ${monthlyTableName} may not exist or is not accessible`);
     }
