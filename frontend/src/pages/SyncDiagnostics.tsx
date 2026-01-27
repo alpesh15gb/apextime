@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye } from 'lucide-react';
+import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users } from 'lucide-react';
 import { syncAPI } from '../services/api';
 
 export const SyncDiagnostics = () => {
   const [connectionStatus, setConnectionStatus] = useState<any>(null);
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [preview, setPreview] = useState<any>(null);
+  const [discoveredTables, setDiscoveredTables] = useState<any[]>([]);
+  const [unmatchedUsers, setUnmatchedUsers] = useState<any>(null);
   const [loading, setLoading] = useState({
     connection: false,
     sync: false,
     trigger: false,
     preview: false,
+    tables: false,
+    unmatched: false,
   });
 
   const testConnection = async () => {
@@ -61,9 +65,35 @@ export const SyncDiagnostics = () => {
     }
   };
 
+  const discoverTables = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, tables: true }));
+      const response = await syncAPI.discoverTables();
+      setDiscoveredTables(response.data.tables || []);
+    } catch (error) {
+      console.error('Failed to discover tables:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, tables: false }));
+    }
+  };
+
+  const fetchUnmatchedUsers = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, unmatched: true }));
+      const response = await syncAPI.getUnmatchedUsers();
+      setUnmatchedUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch unmatched users:', error);
+    } finally {
+      setLoading((prev) => ({ ...prev, unmatched: false }));
+    }
+  };
+
   useEffect(() => {
     testConnection();
     fetchSyncStatus();
+    discoverTables();
+    fetchUnmatchedUsers();
   }, []);
 
   return (
@@ -191,8 +221,42 @@ export const SyncDiagnostics = () => {
         )}
       </div>
 
+      {/* Discovered Tables */}
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <List className="w-5 h-5 mr-2" />
+          Discovered DeviceLogs Tables
+        </h2>
+        {discoveredTables.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Table Name</th>
+                  <th className="text-left py-2">Row Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {discoveredTables.map((table: any) => (
+                  <tr key={table.name} className="border-b border-gray-100">
+                    <td className="py-2 font-mono">{table.name}</td>
+                    <td className="py-2">
+                      {table.rowCount !== null ? table.rowCount : <span className="text-red-500">Error</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500">
+            {loading.tables ? 'Discovering tables...' : 'No DeviceLogs tables found'}
+          </p>
+        )}
+      </div>
+
       {/* Preview Logs */}
-      <div className="card">
+      <div className="card mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <Eye className="w-5 h-5 mr-2" />
           Preview Logs from SQL Server
@@ -240,6 +304,101 @@ export const SyncDiagnostics = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* Unmatched Users */}
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <Users className="w-5 h-5 mr-2" />
+          Device User ID Mapping
+        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-500">
+            Shows which device user IDs from SQL Server have matching employees
+          </p>
+          <button
+            onClick={fetchUnmatchedUsers}
+            disabled={loading.unmatched}
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading.unmatched ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        {unmatchedUsers ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gray-50 p-4 rounded-lg text-center">
+                <p className="text-sm text-gray-500">Total Unique Users</p>
+                <p className="text-2xl font-bold">{unmatchedUsers.totalUniqueUsers}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg text-center">
+                <p className="text-sm text-green-600">Matched</p>
+                <p className="text-2xl font-bold text-green-600">{unmatchedUsers.matchedCount}</p>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg text-center">
+                <p className="text-sm text-red-600">Unmatched</p>
+                <p className="text-2xl font-bold text-red-600">{unmatchedUsers.unmatchedCount}</p>
+              </div>
+            </div>
+
+            {unmatchedUsers.unmatchedUserIds.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Unmatched Device User IDs (need to be configured on employees):
+                </p>
+                <div className="bg-gray-100 p-3 rounded-lg">
+                  <code className="text-sm">
+                    {unmatchedUsers.unmatchedUserIds.join(', ')}
+                  </code>
+                </div>
+              </div>
+            )}
+
+            {unmatchedUsers.matchedEmployees.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Matched Employees:</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Device User ID</th>
+                        <th className="text-left py-2">Employee Name</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unmatchedUsers.matchedEmployees.map((emp: any) => (
+                        <tr key={emp.id} className="border-b border-gray-100">
+                          <td className="py-2 font-mono">{emp.deviceUserId}</td>
+                          <td className="py-2">
+                            {emp.firstName} {emp.lastName}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500">Loading user mapping status...</p>
+        )}
+      </div>
+
+      {/* Instructions */}
+      <div className="card mb-6 bg-yellow-50 border border-yellow-200">
+        <h2 className="text-lg font-semibold mb-2 flex items-center text-yellow-800">
+          <AlertCircle className="w-5 h-5 mr-2" />
+          Setup Instructions
+        </h2>
+        <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
+          <li>Each employee needs a <strong>Device User ID</strong> to match biometric logs</li>
+          <li>Edit employees and set their Device User ID to match the UserId from the biometric device</li>
+          <li>If DeviceLogs table is empty, data may be in monthly partition tables (e.g., DeviceLogs_1_2026)</li>
+          <li>Contact your biometric device administrator to get the UserId mappings</li>
+        </ul>
       </div>
     </div>
   );

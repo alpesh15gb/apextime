@@ -160,4 +160,50 @@ router.get('/discover-tables', async (req, res) => {
   }
 });
 
+// Get unmatched user IDs from recent logs
+router.get('/unmatched-users', async (req, res) => {
+  try {
+    const { table = 'DeviceLogs', limit = '100' } = req.query;
+    const pool = await getSqlPool();
+
+    // Get recent unique user IDs from logs
+    const result = await pool.request().query(`
+      SELECT DISTINCT TOP ${parseInt(limit as string)} UserId
+      FROM ${table}
+      ORDER BY UserId
+    `);
+
+    const userIds = result.recordset.map((r: any) => r.UserId.toString());
+
+    // Check which ones have matching employees
+    const employees = await prisma.employee.findMany({
+      where: {
+        deviceUserId: {
+          in: userIds
+        }
+      },
+      select: {
+        id: true,
+        deviceUserId: true,
+        firstName: true,
+        lastName: true
+      }
+    });
+
+    const matchedUserIds = new Set(employees.map(e => e.deviceUserId));
+    const unmatchedUserIds = userIds.filter((id: string) => !matchedUserIds.has(id));
+
+    res.json({
+      totalUniqueUsers: userIds.length,
+      matchedCount: matchedUserIds.size,
+      unmatchedCount: unmatchedUserIds.length,
+      unmatchedUserIds,
+      matchedEmployees: employees
+    });
+  } catch (error) {
+    logger.error('Get unmatched users failed:', error);
+    res.status(500).json({ error: 'Failed to get unmatched users' });
+  }
+});
+
 export default router;

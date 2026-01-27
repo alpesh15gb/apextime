@@ -169,7 +169,9 @@ export const syncAPI = {
   trigger: () => api.post('/sync/trigger'),
   testConnection: () => api.get('/sync/test-connection'),
   getStatus: () => api.get('/sync/status'),
-  preview: (limit?: number) => api.get('/sync/preview', { params: { limit } }),
+  preview: (limit?: number, table?: string) => api.get('/sync/preview', { params: { limit, table } }),
+  discoverTables: () => api.get('/sync/discover-tables'),
+  getUnmatchedUsers: (table?: string) => api.get('/sync/unmatched-users', { params: { table } }),
 };
 
 export default api;

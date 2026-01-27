@@ -101,9 +101,7 @@ export async function startLogSync(): Promise<void> {
             where: {
               id: log.DeviceLogId.toString(),
             },
-            update: {
-              isProcessed: false,
-            },
+            update: {},
             create: {
               id: log.DeviceLogId.toString(),
               deviceId: log.DeviceId.toString(),
@@ -164,24 +162,34 @@ export async function startLogSync(): Promise<void> {
         }
       }
 
-      // Mark raw logs as processed (safely)
+      // Mark raw logs as processed for employees that exist
+      let markedCount = 0;
       for (const log of uniqueLogs.values()) {
         try {
-          const exists = await prisma.rawDeviceLog.findUnique({
-            where: { id: log.DeviceLogId.toString() },
+          // Only mark as processed if we found a matching employee and created attendance
+          const employee = await prisma.employee.findFirst({
+            where: { deviceUserId: log.UserId.toString() },
+            select: { id: true }
           });
-          if (exists) {
-            await prisma.rawDeviceLog.update({
+
+          if (employee) {
+            await prisma.rawDeviceLog.updateMany({
               where: { id: log.DeviceLogId.toString() },
               data: { isProcessed: true },
             });
+            markedCount++;
           }
         } catch (error) {
           logger.warn(`Failed to mark log ${log.DeviceLogId} as processed:`, error);
         }
       }
+      logger.info(`Marked ${markedCount} logs as processed`);
 
-      message = `Successfully synced ${recordsSynced} attendance records from ${uniqueLogs.size} logs`;
+      if (recordsSynced === 0 && storedCount > 0) {
+        message = `Stored ${storedCount} logs but no attendance records created. Check employee Device User ID mappings.`;
+      } else {
+        message = `Successfully synced ${recordsSynced} attendance records from ${uniqueLogs.size} device logs`;
+      }
       logger.info(message);
       console.log(`[${new Date().toISOString()}] ${message}`);
     }
