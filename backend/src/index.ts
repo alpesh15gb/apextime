@@ -19,6 +19,7 @@ import locationRoutes from './routes/locations';
 import branchRoutes from './routes/branches';
 import deviceRoutes from './routes/devices';
 import dashboardRoutes from './routes/dashboard';
+import syncRoutes from './routes/sync';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/sync', syncRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
