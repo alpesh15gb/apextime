@@ -1,7 +1,6 @@
 import { getSqlPool, prisma } from '../config/database';
 import sql from 'mssql';
 import logger from '../config/logger';
-import { startOfDay, endOfDay } from 'date-fns';
 
 interface RawLog {
   DeviceLogId: number;
@@ -39,7 +38,7 @@ export async function startLogSync(): Promise<void> {
       orderBy: { createdAt: 'desc' },
     });
 
-    const lastSyncTime = lastSync?.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000); // Default to 24 hours ago
+    const lastSyncTime = lastSync?.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Get SQL Server connection
     const pool = await getSqlPool();
@@ -49,123 +48,143 @@ export async function startLogSync(): Promise<void> {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    // Query DeviceLogs (master table)
-    const deviceLogsResult = await pool.request()
-      .input('lastSyncTime', sql.DateTime, lastSyncTime)
-      .query<RawLog>(`
-        SELECT DeviceLogId, DeviceId, UserId, LogDate
-        FROM DeviceLogs
-        WHERE LogDate > @lastSyncTime
-        ORDER BY LogDate ASC
-      `);
+    // Try to get logs from multiple possible table names
+    let allLogs: RawLog[] = [];
 
-    // Query monthly partitioned table
-    const monthlyTableName = `DeviceLogs_${currentMonth}_${currentYear}`;
-    let monthlyLogsResult: { recordset: RawLog[] } = { recordset: [] };
+    // Tables to try (main table and monthly partitions)
+    const tablesToTry = [
+      'DeviceLogs',
+      `DeviceLogs_${currentMonth}_${currentYear}`,
+      `DeviceLogs_${currentMonth - 1}_${currentYear}`, // Previous month
+    ];
 
-    try {
-      monthlyLogsResult = await pool.request()
-        .input('lastSyncTime', sql.DateTime, lastSyncTime)
-        .query<RawLog>(`
-          SELECT DeviceLogId, DeviceId, UserId, LogDate
-          FROM ${monthlyTableName}
-          WHERE LogDate > @lastSyncTime
-          ORDER BY LogDate ASC
-        `);
-    } catch (error) {
-      logger.warn(`Monthly table ${monthlyTableName} may not exist or is not accessible`);
+    for (const tableName of tablesToTry) {
+      try {
+        logger.info(`Trying to query table: ${tableName}`);
+        const result = await pool.request()
+          .input('lastSyncTime', sql.DateTime, lastSyncTime)
+          .query<RawLog>(`
+            SELECT DeviceLogId, DeviceId, UserId, LogDate
+            FROM ${tableName}
+            WHERE LogDate > @lastSyncTime
+            ORDER BY LogDate ASC
+          `);
+
+        logger.info(`Found ${result.recordset.length} logs in ${tableName}`);
+        allLogs = [...allLogs, ...result.recordset];
+      } catch (error: any) {
+        logger.warn(`Table ${tableName} not accessible: ${error.message}`);
+      }
     }
 
-    // Combine and deduplicate logs
-    const allLogs = [...deviceLogsResult.recordset, ...monthlyLogsResult.recordset];
+    // Deduplicate logs
     const uniqueLogs = new Map<string, RawLog>();
-
     for (const log of allLogs) {
-      const key = `${log.UserId}_${log.LogDate.getTime()}`;
+      const key = `${log.DeviceLogId}`;
       if (!uniqueLogs.has(key)) {
         uniqueLogs.set(key, log);
       }
     }
 
-    logger.info(`Found ${uniqueLogs.size} new logs to process`);
+    logger.info(`Total unique logs to process: ${uniqueLogs.size}`);
     console.log(`Found ${uniqueLogs.size} new logs to process`);
 
-    // Store raw device logs
-    for (const log of uniqueLogs.values()) {
-      try {
-        await prisma.rawDeviceLog.upsert({
-          where: {
-            id: log.DeviceLogId.toString(),
-          },
-          update: {},
-          create: {
-            id: log.DeviceLogId.toString(),
-            deviceId: log.DeviceId.toString(),
-            userId: log.UserId.toString(),
-            punchTime: log.LogDate,
-          },
-        });
-      } catch (error) {
-        logger.warn(`Failed to store raw log ${log.DeviceLogId}:`, error);
+    if (uniqueLogs.size === 0) {
+      message = 'No new logs found';
+      logger.info(message);
+    } else {
+      // Store raw device logs (with error handling for each)
+      let storedCount = 0;
+      for (const log of uniqueLogs.values()) {
+        try {
+          await prisma.rawDeviceLog.upsert({
+            where: {
+              id: log.DeviceLogId.toString(),
+            },
+            update: {
+              isProcessed: false,
+            },
+            create: {
+              id: log.DeviceLogId.toString(),
+              deviceId: log.DeviceId.toString(),
+              userId: log.UserId.toString(),
+              punchTime: log.LogDate,
+              isProcessed: false,
+            },
+          });
+          storedCount++;
+        } catch (error) {
+          logger.warn(`Failed to store raw log ${log.DeviceLogId}:`, error);
+        }
       }
-    }
+      logger.info(`Stored ${storedCount} raw logs`);
 
-    // Process attendance by grouping punches by employee and date
-    const processedAttendance = await processAttendanceLogs(Array.from(uniqueLogs.values()));
+      // Process attendance
+      const processedAttendance = await processAttendanceLogs(Array.from(uniqueLogs.values()));
 
-    // Save processed attendance
-    for (const attendance of processedAttendance) {
-      try {
-        await prisma.attendanceLog.upsert({
-          where: {
-            employeeId_date: {
+      // Save processed attendance
+      for (const attendance of processedAttendance) {
+        try {
+          await prisma.attendanceLog.upsert({
+            where: {
+              employeeId_date: {
+                employeeId: attendance.employeeId,
+                date: attendance.date,
+              },
+            },
+            update: {
+              firstIn: attendance.firstIn,
+              lastOut: attendance.lastOut,
+              workingHours: attendance.workingHours,
+              totalPunches: attendance.totalPunches,
+              shiftStart: attendance.shiftStart,
+              shiftEnd: attendance.shiftEnd,
+              lateArrival: attendance.lateArrival,
+              earlyDeparture: attendance.earlyDeparture,
+              status: attendance.status,
+            },
+            create: {
               employeeId: attendance.employeeId,
               date: attendance.date,
+              firstIn: attendance.firstIn,
+              lastOut: attendance.lastOut,
+              workingHours: attendance.workingHours,
+              totalPunches: attendance.totalPunches,
+              shiftStart: attendance.shiftStart,
+              shiftEnd: attendance.shiftEnd,
+              lateArrival: attendance.lateArrival,
+              earlyDeparture: attendance.earlyDeparture,
+              status: attendance.status,
             },
-          },
-          update: {
-            firstIn: attendance.firstIn,
-            lastOut: attendance.lastOut,
-            workingHours: attendance.workingHours,
-            totalPunches: attendance.totalPunches,
-            shiftStart: attendance.shiftStart,
-            shiftEnd: attendance.shiftEnd,
-            lateArrival: attendance.lateArrival,
-            earlyDeparture: attendance.earlyDeparture,
-            status: attendance.status,
-          },
-          create: {
-            employeeId: attendance.employeeId,
-            date: attendance.date,
-            firstIn: attendance.firstIn,
-            lastOut: attendance.lastOut,
-            workingHours: attendance.workingHours,
-            totalPunches: attendance.totalPunches,
-            shiftStart: attendance.shiftStart,
-            shiftEnd: attendance.shiftEnd,
-            lateArrival: attendance.lateArrival,
-            earlyDeparture: attendance.earlyDeparture,
-            status: attendance.status,
-          },
-        });
+          });
 
-        recordsSynced++;
-      } catch (error) {
-        logger.error(`Failed to save attendance for ${attendance.employeeId}:`, error);
+          recordsSynced++;
+        } catch (error) {
+          logger.error(`Failed to save attendance for ${attendance.employeeId}:`, error);
+        }
       }
-    }
 
-    // Mark raw logs as processed
-    for (const log of uniqueLogs.values()) {
-      await prisma.rawDeviceLog.update({
-        where: { id: log.DeviceLogId.toString() },
-        data: { isProcessed: true },
-      });
-    }
+      // Mark raw logs as processed (safely)
+      for (const log of uniqueLogs.values()) {
+        try {
+          const exists = await prisma.rawDeviceLog.findUnique({
+            where: { id: log.DeviceLogId.toString() },
+          });
+          if (exists) {
+            await prisma.rawDeviceLog.update({
+              where: { id: log.DeviceLogId.toString() },
+              data: { isProcessed: true },
+            });
+          }
+        } catch (error) {
+          logger.warn(`Failed to mark log ${log.DeviceLogId} as processed:`, error);
+        }
+      }
 
-    message = `Successfully synced ${recordsSynced} attendance records`;
-    logger.info(message);
-    console.log(`[${new Date().toISOString()}] ${message}`);
+      message = `Successfully synced ${recordsSynced} attendance records from ${uniqueLogs.size} logs`;
+      logger.info(message);
+      console.log(`[${new Date().toISOString()}] ${message}`);
+    }
 
   } catch (error) {
     status = 'failed';

@@ -84,7 +84,7 @@ router.get('/status', async (req, res) => {
 // Preview logs from SQL Server (without syncing)
 router.get('/preview', async (req, res) => {
   try {
-    const { limit = '10' } = req.query;
+    const { limit = '10', table = 'DeviceLogs' } = req.query;
     const pool = await getSqlPool();
 
     // Get last sync time
@@ -94,25 +94,69 @@ router.get('/preview', async (req, res) => {
 
     const lastSyncTime = lastSync?.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Get recent logs
+    // Get recent logs from specified table
     const result = await pool.request()
       .input('lastSyncTime', lastSyncTime)
       .query(`
         SELECT TOP ${parseInt(limit as string)}
           DeviceLogId, DeviceId, UserId, LogDate
-        FROM DeviceLogs
+        FROM ${table}
         WHERE LogDate > @lastSyncTime
         ORDER BY LogDate DESC
       `);
 
     res.json({
       lastSyncTime,
+      table,
       logsFound: result.recordset.length,
       logs: result.recordset
     });
   } catch (error) {
     logger.error('Preview logs failed:', error);
     res.status(500).json({ error: 'Failed to preview logs' });
+  }
+});
+
+// Discover available tables
+router.get('/discover-tables', async (req, res) => {
+  try {
+    const pool = await getSqlPool();
+
+    // Get all tables matching DeviceLogs pattern
+    const result = await pool.request().query(`
+      SELECT TABLE_NAME
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_TYPE = 'BASE TABLE'
+      AND TABLE_NAME LIKE 'DeviceLogs%'
+      ORDER BY TABLE_NAME
+    `);
+
+    // Get row counts for each table
+    const tablesWithCounts = [];
+    for (const row of result.recordset) {
+      try {
+        const countResult = await pool.request().query(`
+          SELECT COUNT(*) as count FROM ${row.TABLE_NAME}
+        `);
+        tablesWithCounts.push({
+          name: row.TABLE_NAME,
+          rowCount: countResult.recordset[0].count
+        });
+      } catch (e) {
+        tablesWithCounts.push({
+          name: row.TABLE_NAME,
+          rowCount: null,
+          error: 'Failed to query'
+        });
+      }
+    }
+
+    res.json({
+      tables: tablesWithCounts
+    });
+  } catch (error) {
+    logger.error('Discover tables failed:', error);
+    res.status(500).json({ error: 'Failed to discover tables' });
   }
 });
 
