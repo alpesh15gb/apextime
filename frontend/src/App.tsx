@@ -14,6 +14,7 @@ import { Attendance } from './pages/Attendance';
 import { Reports } from './pages/Reports';
 import { MonthlyReport } from './pages/MonthlyReport';
 import { SyncDiagnostics } from './pages/SyncDiagnostics';
+import { Holidays } from './pages/Holidays';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
                     <Route path="/attendance" element={<Attendance />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/monthly-report" element={<MonthlyReport />} />
+                    <Route path="/holidays" element={<Holidays />} />
                     <Route path="/sync-diagnostics" element={<SyncDiagnostics />} />
                   </Routes>
                 </Layout>

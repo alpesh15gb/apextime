@@ -246,6 +246,44 @@ router.get('/monthly-report', async (req, res) => {
       },
     });
 
+    // Get holidays for the month
+    const holidays = await prisma.holiday.findMany({
+      where: {
+        date: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+    });
+
+    // Get recurring holidays
+    const recurringHolidays = await prisma.holiday.findMany({
+      where: {
+        isRecurring: true,
+      },
+    });
+
+    // Create a set of holiday dates (day numbers)
+    const holidayDays = new Set<number>();
+    const holidayNames = new Map<number, string>();
+
+    holidays.forEach(h => {
+      const d = new Date(h.date);
+      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
+        holidayDays.add(d.getDate());
+        holidayNames.set(d.getDate(), h.name);
+      }
+    });
+
+    // Add recurring holidays
+    recurringHolidays.forEach(h => {
+      const d = new Date(h.date);
+      if (d.getMonth() + 1 === targetMonth) {
+        holidayDays.add(d.getDate());
+        holidayNames.set(d.getDate(), h.name + (h.isRecurring ? ' (R)' : ''));
+      }
+    });
+
     // Group logs by employee and date
     const logsByEmployee = new Map();
     for (const log of logs) {
@@ -264,16 +302,20 @@ router.get('/monthly-report', async (req, res) => {
       let presentDays = 0;
       let lateDays = 0;
       let absentDays = 0;
+      let workedOnOffDay = 0;
 
       for (let day = 1; day <= daysInMonth; day++) {
         const log = employeeLogs.get(day);
         const date = new Date(targetYear, targetMonth - 1, day);
-        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const isSunday = date.getDay() === 0;
+        const isHoliday = holidayDays.has(day);
+        const isOffDay = isSunday || isHoliday;
 
         if (log) {
           totalWorkingHours += log.workingHours || 0;
           if (log.status === 'present') presentDays++;
           if (log.lateArrival > 0) lateDays++;
+          if (isOffDay) workedOnOffDay++;
 
           dailyData.push({
             day,
@@ -283,10 +325,13 @@ router.get('/monthly-report', async (req, res) => {
             lateArrival: log.lateArrival,
             earlyDeparture: log.earlyDeparture,
             status: log.status,
-            isWeekend,
+            isSunday,
+            isHoliday,
+            isOffDay,
+            holidayName: holidayNames.get(day),
           });
         } else {
-          if (!isWeekend) absentDays++;
+          if (!isOffDay) absentDays++;
           dailyData.push({
             day,
             firstIn: null,
@@ -294,8 +339,11 @@ router.get('/monthly-report', async (req, res) => {
             workingHours: null,
             lateArrival: 0,
             earlyDeparture: 0,
-            status: isWeekend ? 'weekend' : 'absent',
-            isWeekend,
+            status: isOffDay ? 'off' : 'absent',
+            isSunday,
+            isHoliday,
+            isOffDay,
+            holidayName: holidayNames.get(day),
           });
         }
       }
@@ -312,15 +360,44 @@ router.get('/monthly-report', async (req, res) => {
           presentDays,
           absentDays,
           lateDays,
+          workedOnOffDay,
           totalWorkingHours: Math.round(totalWorkingHours * 100) / 100,
         },
       };
     });
 
+    // Format holidays for response
+    const formattedHolidays: Array<{day: number, name: string, isRecurring: boolean}> = [];
+
+    holidays.forEach(h => {
+      const d = new Date(h.date);
+      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
+        formattedHolidays.push({
+          day: d.getDate(),
+          name: h.name,
+          isRecurring: h.isRecurring,
+        });
+      }
+    });
+
+    recurringHolidays.forEach(h => {
+      const d = new Date(h.date);
+      if (d.getMonth() + 1 === targetMonth) {
+        formattedHolidays.push({
+          day: d.getDate(),
+          name: h.name,
+          isRecurring: h.isRecurring,
+        });
+      }
+    });
+
+    formattedHolidays.sort((a, b) => a.day - b.day);
+
     res.json({
       month: targetMonth,
       year: targetYear,
       daysInMonth,
+      holidays: formattedHolidays,
       reportData,
     });
   } catch (error) {

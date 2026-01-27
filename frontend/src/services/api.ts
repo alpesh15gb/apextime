@@ -58,6 +58,15 @@ export const employeesAPI = {
     api.delete(`/employees/${id}`),
 };
 
+// Holidays API
+export const holidaysAPI = {
+  getAll: (year?: number) => api.get('/holidays', { params: year ? { year } : undefined }),
+  getMonthly: (month: number, year: number) => api.get('/holidays/monthly', { params: { month, year } }),
+  create: (data: any) => api.post('/holidays', data),
+  update: (id: string, data: any) => api.put(`/holidays/${id}`, data),
+  delete: (id: string) => api.delete(`/holidays/${id}`),
+};
+
 // Departments API
 export const departmentsAPI = {
   getAll: (params?: Record<string, string>) =>

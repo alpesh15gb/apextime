@@ -15,6 +15,7 @@ import {
   X,
   ChevronDown,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -43,6 +44,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { path: '/branches', icon: Building2, label: 'Branches' },
     { path: '/departments', icon: Briefcase, label: 'Departments' },
     { path: '/shifts', icon: Calendar, label: 'Shifts' },
+    { path: '/holidays', icon: Sparkles, label: 'Holidays' },
   ];
 
   return (
