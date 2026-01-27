@@ -45,6 +45,15 @@ interface PreviewData {
   }>;
 }
 
+interface SqlDeviceUser {
+  DeviceId: number;
+  UserId: string;
+  Name: string;
+  UserName: string;
+  CardNumber: string;
+  IsActive: boolean;
+}
+
 export const SyncDiagnostics = () => {
   const [connectionStatus, setConnectionStatus] = useState<{status: string; deviceLogsCount?: number; error?: string} | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatusData | null>(null);
@@ -61,6 +70,8 @@ export const SyncDiagnostics = () => {
     syncNames: false,
   });
   const [syncNamesResult, setSyncNamesResult] = useState<{ updated: number; failed: number } | null>(null);
+  const [sqlDeviceUsers, setSqlDeviceUsers] = useState<{ count: number; users: SqlDeviceUser[] } | null>(null);
+  const [loadingSqlUsers, setLoadingSqlUsers] = useState(false);
 
   const testConnection = async () => {
     try {
@@ -194,6 +205,22 @@ export const SyncDiagnostics = () => {
       alert('Failed to sync employee names. Check console for details.');
     } finally {
       setLoading((prev) => ({ ...prev, syncNames: false }));
+    }
+  };
+
+  const fetchSqlDeviceUsers = async () => {
+    try {
+      setLoadingSqlUsers(true);
+      const response = await syncAPI.getSqlDeviceUsers();
+      setSqlDeviceUsers({
+        count: response.data?.count || 0,
+        users: response.data?.users || [],
+      });
+    } catch (error) {
+      console.error('Failed to fetch SQL device users:', error);
+      setSqlDeviceUsers({ count: 0, users: [] });
+    } finally {
+      setLoadingSqlUsers(false);
     }
   };
 
@@ -543,6 +570,63 @@ export const SyncDiagnostics = () => {
           </div>
         ) : (
           <p className="text-gray-500">Loading user mapping status...</p>
+        )}
+      </div>
+
+      {/* SQL Server Device Users */}
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center">
+            <Database className="w-5 h-5 mr-2" />
+            SQL Server Device Users
+          </h2>
+          <button
+            onClick={fetchSqlDeviceUsers}
+            disabled={loadingSqlUsers}
+            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingSqlUsers ? 'animate-spin' : ''}`} />
+            <span>Load from SQL</span>
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Shows user data from the SQL Server DeviceUsers table (Name field is used for employee names)
+        </p>
+
+        {sqlDeviceUsers ? (
+          <div>
+            <p className="text-sm text-gray-500 mb-2">
+              Total users in SQL Server: <strong>{sqlDeviceUsers.count}</strong>
+            </p>
+            {sqlDeviceUsers.users.length > 0 ? (
+              <div className="overflow-x-auto max-h-96">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-2 px-4">UserId</th>
+                      <th className="text-left py-2 px-4">Name</th>
+                      <th className="text-left py-2 px-4">UserName</th>
+                      <th className="text-left py-2 px-4">CardNumber</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sqlDeviceUsers.users.map((user) => (
+                      <tr key={user.UserId} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-4 font-mono">{user.UserId}</td>
+                        <td className="py-2 px-4 font-medium text-blue-600">{user.Name || <span className="text-gray-400 italic">null</span>}</td>
+                        <td className="py-2 px-4">{user.UserName || '-'}</td>
+                        <td className="py-2 px-4">{user.CardNumber || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500">No users found in SQL Server DeviceUsers table</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500">Click "Load from SQL" to view DeviceUsers from SQL Server</p>
         )}
       </div>
 
