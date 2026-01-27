@@ -2,12 +2,55 @@ import { useEffect, useState } from 'react';
 import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users } from 'lucide-react';
 import { syncAPI } from '../services/api';
 
+interface TableInfo {
+  name: string;
+  rowCount: number | null;
+  error?: string;
+}
+
+interface UnmatchedUsersData {
+  totalUniqueUsers: number;
+  matchedCount: number;
+  unmatchedCount: number;
+  unmatchedUserIds: string[];
+  matchedEmployees: Array<{
+    id: string;
+    deviceUserId: string;
+    firstName: string;
+    lastName: string;
+  }>;
+}
+
+interface SyncStatusData {
+  lastSync?: {
+    status: string;
+    message: string;
+    recordsSynced: number;
+    createdAt: string;
+  };
+  stats?: {
+    employeesWithDeviceId: number;
+    totalEmployees: number;
+  };
+}
+
+interface PreviewData {
+  lastSyncTime: string;
+  table: string;
+  logsFound: number;
+  logs: Array<{
+    DeviceLogId: number;
+    UserId: string;
+    LogDate: string;
+  }>;
+}
+
 export const SyncDiagnostics = () => {
-  const [connectionStatus, setConnectionStatus] = useState<any>(null);
-  const [syncStatus, setSyncStatus] = useState<any>(null);
-  const [preview, setPreview] = useState<any>(null);
-  const [discoveredTables, setDiscoveredTables] = useState<any[]>([]);
-  const [unmatchedUsers, setUnmatchedUsers] = useState<any>(null);
+  const [connectionStatus, setConnectionStatus] = useState<{status: string; deviceLogsCount?: number; error?: string} | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatusData | null>(null);
+  const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [discoveredTables, setDiscoveredTables] = useState<TableInfo[]>([]);
+  const [unmatchedUsers, setUnmatchedUsers] = useState<UnmatchedUsersData | null>(null);
   const [loading, setLoading] = useState({
     connection: false,
     sync: false,
@@ -22,8 +65,8 @@ export const SyncDiagnostics = () => {
       setLoading((prev) => ({ ...prev, connection: true }));
       const response = await syncAPI.testConnection();
       setConnectionStatus(response.data);
-    } catch (error) {
-      setConnectionStatus({ status: 'failed', error: 'Connection failed' });
+    } catch (error: any) {
+      setConnectionStatus({ status: 'failed', error: error?.response?.data?.error || 'Connection failed' });
     } finally {
       setLoading((prev) => ({ ...prev, connection: false }));
     }
@@ -45,7 +88,7 @@ export const SyncDiagnostics = () => {
     try {
       setLoading((prev) => ({ ...prev, trigger: true }));
       await syncAPI.trigger();
-      fetchSyncStatus();
+      await fetchSyncStatus();
     } catch (error) {
       console.error('Failed to trigger sync:', error);
     } finally {
@@ -69,9 +112,10 @@ export const SyncDiagnostics = () => {
     try {
       setLoading((prev) => ({ ...prev, tables: true }));
       const response = await syncAPI.discoverTables();
-      setDiscoveredTables(response.data.tables || []);
+      setDiscoveredTables(response.data?.tables || []);
     } catch (error) {
       console.error('Failed to discover tables:', error);
+      setDiscoveredTables([]);
     } finally {
       setLoading((prev) => ({ ...prev, tables: false }));
     }
@@ -81,19 +125,38 @@ export const SyncDiagnostics = () => {
     try {
       setLoading((prev) => ({ ...prev, unmatched: true }));
       const response = await syncAPI.getUnmatchedUsers();
-      setUnmatchedUsers(response.data);
+      const data = response.data;
+      setUnmatchedUsers({
+        totalUniqueUsers: data?.totalUniqueUsers || 0,
+        matchedCount: data?.matchedCount || 0,
+        unmatchedCount: data?.unmatchedCount || 0,
+        unmatchedUserIds: data?.unmatchedUserIds || [],
+        matchedEmployees: data?.matchedEmployees || [],
+      });
     } catch (error) {
       console.error('Failed to fetch unmatched users:', error);
+      setUnmatchedUsers({
+        totalUniqueUsers: 0,
+        matchedCount: 0,
+        unmatchedCount: 0,
+        unmatchedUserIds: [],
+        matchedEmployees: [],
+      });
     } finally {
       setLoading((prev) => ({ ...prev, unmatched: false }));
     }
   };
 
   useEffect(() => {
-    testConnection();
-    fetchSyncStatus();
-    discoverTables();
-    fetchUnmatchedUsers();
+    const loadData = async () => {
+      await Promise.all([
+        testConnection(),
+        fetchSyncStatus(),
+        discoverTables(),
+        fetchUnmatchedUsers(),
+      ]);
+    };
+    loadData();
   }, []);
 
   return (
@@ -103,7 +166,7 @@ export const SyncDiagnostics = () => {
       </div>
 
       {/* SQL Server Connection */}
-      <div className="card mb-6">
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <Database className="w-5 h-5 mr-2" />
           SQL Server Connection
@@ -121,7 +184,7 @@ export const SyncDiagnostics = () => {
                   <p className="font-medium">
                     {connectionStatus.status === 'connected' ? 'Connected' : 'Failed'}
                   </p>
-                  {connectionStatus.deviceLogsCount !== undefined && (
+                  {typeof connectionStatus.deviceLogsCount === 'number' && (
                     <p className="text-sm text-gray-500">
                       DeviceLogs table: {connectionStatus.deviceLogsCount} records
                     </p>
@@ -138,7 +201,7 @@ export const SyncDiagnostics = () => {
           <button
             onClick={testConnection}
             disabled={loading.connection}
-            className="btn-secondary flex items-center space-x-2"
+            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading.connection ? 'animate-spin' : ''}`} />
             <span>Test Connection</span>
@@ -147,7 +210,7 @@ export const SyncDiagnostics = () => {
       </div>
 
       {/* Sync Status */}
-      <div className="card mb-6">
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <RefreshCw className="w-5 h-5 mr-2" />
           Sync Status
@@ -158,13 +221,13 @@ export const SyncDiagnostics = () => {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">Employees with Device ID</p>
                 <p className="text-2xl font-bold">
-                  {syncStatus.stats?.employeesWithDeviceId || 0} / {syncStatus.stats?.totalEmployees || 0}
+                  {syncStatus.stats?.employeesWithDeviceId ?? 0} / {syncStatus.stats?.totalEmployees ?? 0}
                 </p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500">Last Sync</p>
                 <p className="text-lg font-medium">
-                  {syncStatus.lastSync
+                  {syncStatus.lastSync?.createdAt
                     ? new Date(syncStatus.lastSync.createdAt).toLocaleString()
                     : 'Never'}
                 </p>
@@ -189,7 +252,7 @@ export const SyncDiagnostics = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Records Synced</p>
-                    <p className="text-xl font-bold">{syncStatus.lastSync.recordsSynced}</p>
+                    <p className="text-xl font-bold">{syncStatus.lastSync.recordsSynced ?? 0}</p>
                   </div>
                 </div>
               </div>
@@ -200,7 +263,7 @@ export const SyncDiagnostics = () => {
               <p className="text-sm text-blue-600 font-medium mb-2">How Sync Works:</p>
               <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
                 <li>Queries ALL DeviceLogs partition tables automatically</li>
-                <li>Auto-creates employees if they don't exist (named "Employee {UserId}")</li>
+                <li>Auto-creates employees if they don't exist (named "Employee {'{UserId}'}")</li>
                 <li>Matches logs to employees by UserId from biometric device</li>
                 <li>Calculates First IN / Last OUT attendance</li>
               </ul>
@@ -210,7 +273,7 @@ export const SyncDiagnostics = () => {
               <button
                 onClick={fetchSyncStatus}
                 disabled={loading.sync}
-                className="btn-secondary flex items-center space-x-2"
+                className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 <RefreshCw className={`w-4 h-4 ${loading.sync ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
@@ -218,7 +281,7 @@ export const SyncDiagnostics = () => {
               <button
                 onClick={triggerSync}
                 disabled={loading.trigger}
-                className="btn-primary flex items-center space-x-2"
+                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
               >
                 <Play className="w-4 h-4" />
                 <span>{loading.trigger ? 'Syncing...' : 'Trigger Sync Now'}</span>
@@ -227,13 +290,13 @@ export const SyncDiagnostics = () => {
           </div>
         ) : (
           <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         )}
       </div>
 
       {/* Discovered Tables */}
-      <div className="card mb-6">
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <List className="w-5 h-5 mr-2" />
           Discovered DeviceLogs Tables
@@ -242,17 +305,19 @@ export const SyncDiagnostics = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Table Name</th>
-                  <th className="text-left py-2">Row Count</th>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-2 px-4">Table Name</th>
+                  <th className="text-left py-2 px-4">Row Count</th>
                 </tr>
               </thead>
               <tbody>
-                {discoveredTables.map((table: any) => (
-                  <tr key={table.name} className="border-b border-gray-100">
-                    <td className="py-2 font-mono">{table.name}</td>
-                    <td className="py-2">
-                      {table.rowCount !== null ? table.rowCount : <span className="text-red-500">Error</span>}
+                {discoveredTables.map((table) => (
+                  <tr key={table.name} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-2 px-4 font-mono">{table.name}</td>
+                    <td className="py-2 px-4">
+                      {table.rowCount !== null && table.rowCount !== undefined
+                        ? table.rowCount.toLocaleString()
+                        : <span className="text-red-500">Error</span>}
                     </td>
                   </tr>
                 ))}
@@ -267,7 +332,7 @@ export const SyncDiagnostics = () => {
       </div>
 
       {/* Preview Logs */}
-      <div className="card mb-6">
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <Eye className="w-5 h-5 mr-2" />
           Preview Logs from SQL Server
@@ -275,7 +340,7 @@ export const SyncDiagnostics = () => {
         <button
           onClick={fetchPreview}
           disabled={loading.preview}
-          className="btn-secondary mb-4"
+          className="btn-secondary mb-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           {loading.preview ? 'Loading...' : 'Load Preview'}
         </button>
@@ -283,28 +348,28 @@ export const SyncDiagnostics = () => {
         {preview && (
           <div>
             <p className="text-sm text-gray-500 mb-2">
-              Last sync time: {new Date(preview.lastSyncTime).toLocaleString()}
+              Last sync time: {preview.lastSyncTime ? new Date(preview.lastSyncTime).toLocaleString() : 'N/A'}
             </p>
             <p className="text-sm text-gray-500 mb-4">
-              Logs found since last sync: {preview.logsFound}
+              Logs found since last sync: {preview.logsFound ?? 0}
             </p>
 
             {preview.logs && preview.logs.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">DeviceLogId</th>
-                      <th className="text-left py-2">UserId</th>
-                      <th className="text-left py-2">LogDate</th>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left py-2 px-4">DeviceLogId</th>
+                      <th className="text-left py-2 px-4">UserId</th>
+                      <th className="text-left py-2 px-4">LogDate</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.logs.map((log: any) => (
-                      <tr key={log.DeviceLogId} className="border-b border-gray-100">
-                        <td className="py-2 font-mono">{log.DeviceLogId}</td>
-                        <td className="py-2">{log.UserId}</td>
-                        <td className="py-2">{new Date(log.LogDate).toLocaleString()}</td>
+                    {preview.logs.map((log) => (
+                      <tr key={log.DeviceLogId} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-4 font-mono">{log.DeviceLogId}</td>
+                        <td className="py-2 px-4">{log.UserId}</td>
+                        <td className="py-2 px-4">{log.LogDate ? new Date(log.LogDate).toLocaleString() : 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -318,7 +383,7 @@ export const SyncDiagnostics = () => {
       </div>
 
       {/* Unmatched Users */}
-      <div className="card mb-6">
+      <div className="card bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center">
           <Users className="w-5 h-5 mr-2" />
           Device User ID Mapping
@@ -330,7 +395,7 @@ export const SyncDiagnostics = () => {
           <button
             onClick={fetchUnmatchedUsers}
             disabled={loading.unmatched}
-            className="btn-secondary flex items-center space-x-2"
+            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading.unmatched ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -342,15 +407,15 @@ export const SyncDiagnostics = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gray-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-gray-500">Total Unique Users</p>
-                <p className="text-2xl font-bold">{unmatchedUsers.totalUniqueUsers || 0}</p>
+                <p className="text-2xl font-bold">{unmatchedUsers.totalUniqueUsers}</p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-green-600">Matched</p>
-                <p className="text-2xl font-bold text-green-600">{unmatchedUsers.matchedCount || 0}</p>
+                <p className="text-2xl font-bold text-green-600">{unmatchedUsers.matchedCount}</p>
               </div>
               <div className="bg-red-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-red-600">Unmatched</p>
-                <p className="text-2xl font-bold text-red-600">{unmatchedUsers.unmatchedCount || 0}</p>
+                <p className="text-2xl font-bold text-red-600">{unmatchedUsers.unmatchedCount}</p>
               </div>
             </div>
 
@@ -359,8 +424,8 @@ export const SyncDiagnostics = () => {
                 <p className="text-sm font-medium text-gray-700 mb-2">
                   Unmatched Device User IDs (will be auto-created during sync):
                 </p>
-                <div className="bg-gray-100 p-3 rounded-lg">
-                  <code className="text-sm">
+                <div className="bg-gray-100 p-3 rounded-lg overflow-x-auto">
+                  <code className="text-sm whitespace-nowrap">
                     {unmatchedUsers.unmatchedUserIds.join(', ')}
                   </code>
                 </div>
@@ -373,16 +438,16 @@ export const SyncDiagnostics = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2">Device User ID</th>
-                        <th className="text-left py-2">Employee Name</th>
+                      <tr className="border-b bg-gray-50">
+                        <th className="text-left py-2 px-4">Device User ID</th>
+                        <th className="text-left py-2 px-4">Employee Name</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {unmatchedUsers.matchedEmployees.map((emp: any) => (
-                        <tr key={emp.id} className="border-b border-gray-100">
-                          <td className="py-2 font-mono">{emp.deviceUserId}</td>
-                          <td className="py-2">
+                      {unmatchedUsers.matchedEmployees.map((emp) => (
+                        <tr key={emp.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-2 px-4 font-mono">{emp.deviceUserId}</td>
+                          <td className="py-2 px-4">
                             {emp.firstName} {emp.lastName}
                           </td>
                         </tr>
@@ -399,7 +464,7 @@ export const SyncDiagnostics = () => {
       </div>
 
       {/* Instructions */}
-      <div className="card mb-6 bg-yellow-50 border border-yellow-200">
+      <div className="card bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
         <h2 className="text-lg font-semibold mb-2 flex items-center text-yellow-800">
           <AlertCircle className="w-5 h-5 mr-2" />
           Setup Instructions
