@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git remote add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: ApexTime Attendance Management System\n\n- Full-stack attendance management application\n- Node.js/Express backend with TypeScript\n- React frontend with Tailwind CSS\n- PostgreSQL database with Prisma ORM\n- SQL Server 2008 R2 integration for biometric device logs\n- Automated 15-minute log sync service\n- First IN / Last OUT attendance processing\n- PDF and Excel report generation\n- Docker containerization with Nginx\n- JWT authentication\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
