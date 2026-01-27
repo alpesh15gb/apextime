@@ -98,8 +98,13 @@ export const MonthlyReport = () => {
 
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // Extract time directly from ISO string without timezone conversion
+    // Format: "2025-01-15T08:30:00.000Z" or "2025-01-15T08:30:00"
+    const match = dateStr.match(/T(\d{2}):(\d{2})/);
+    if (match) {
+      return `${match[1]}:${match[2]}`;
+    }
+    return '-';
   };
 
   const getDayShortName = (day: number) => {

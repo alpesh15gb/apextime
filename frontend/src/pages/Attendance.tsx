@@ -193,13 +193,13 @@ export const Attendance = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {new Date(log.date).toLocaleDateString()}
+                        {log.date.split('T')[0]}
                       </td>
                       <td className="py-3 px-4">
                         {log.firstIn ? (
                           <span className="flex items-center">
                             <Clock className="w-4 h-4 mr-1 text-green-600" />
-                            {new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {log.firstIn.match(/T(\d{2}:\d{2})/)?.[1] || '-'}
                           </span>
                         ) : (
                           '-'
@@ -209,7 +209,7 @@ export const Attendance = () => {
                         {log.lastOut ? (
                           <span className="flex items-center">
                             <Clock className="w-4 h-4 mr-1 text-blue-600" />
-                            {new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {log.lastOut.match(/T(\d{2}:\d{2})/)?.[1] || '-'}
                           </span>
                         ) : (
                           '-'
