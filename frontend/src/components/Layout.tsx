@@ -52,14 +52,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         }`}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
-          {sidebarOpen && (
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-lg">ApexTime</span>
+          {sidebarOpen ? (
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <img
+                src="/logo.png"
+                alt="Apextime"
+                className="h-10 w-auto object-contain"
+              />
             </div>
-          )}
+          ) : null}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-1 rounded hover:bg-gray-800"

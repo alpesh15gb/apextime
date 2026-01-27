@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Login = () => {
@@ -32,11 +32,13 @@ export const Login = () => {
       <div className="w-full max-w-md p-8">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <Clock className="w-12 h-12 text-primary-600" />
+          <div className="bg-white rounded-2xl mx-auto mb-4 p-4 flex items-center justify-center shadow-lg">
+            <img
+              src="/logo.png"
+              alt="Apextime Attendance Solutions"
+              className="h-20 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">ApexTime</h1>
-          <p className="text-primary-100">Attendance Management System</p>
         </div>
 
         {/* Login Form */}
