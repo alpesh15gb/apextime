@@ -184,6 +184,9 @@ export const syncAPI = {
   preview: (limit?: number, table?: string) => api.get('/sync/preview', { params: { limit, table } }),
   discoverTables: () => api.get('/sync/discover-tables'),
   getUnmatchedUsers: (table?: string) => api.get('/sync/unmatched-users', { params: { table } }),
+  syncNames: () => api.post('/sync/sync-names'),
+  discoverAllTables: () => api.get('/sync/discover-all-tables'),
+  getSqlDeviceUsers: () => api.get('/sync/sql-device-users'),
 };
 
 export default api;

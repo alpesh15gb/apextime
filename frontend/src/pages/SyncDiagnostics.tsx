@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users, RotateCcw, DatabaseBackup } from 'lucide-react';
+import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users, RotateCcw, DatabaseBackup, UserCheck } from 'lucide-react';
 import { syncAPI } from '../services/api';
 
 interface TableInfo {
@@ -58,7 +58,9 @@ export const SyncDiagnostics = () => {
     preview: false,
     tables: false,
     unmatched: false,
+    syncNames: false,
   });
+  const [syncNamesResult, setSyncNamesResult] = useState<{ updated: number; failed: number } | null>(null);
 
   const testConnection = async () => {
     try {
@@ -171,6 +173,27 @@ export const SyncDiagnostics = () => {
       });
     } finally {
       setLoading((prev) => ({ ...prev, unmatched: false }));
+    }
+  };
+
+  const syncEmployeeNames = async () => {
+    if (!confirm('This will sync employee names from SQL Server DeviceUsers table. Continue?')) {
+      return;
+    }
+    try {
+      setLoading((prev) => ({ ...prev, syncNames: true }));
+      const response = await syncAPI.syncNames();
+      setSyncNamesResult({
+        updated: response.data?.updated || 0,
+        failed: response.data?.failed || 0,
+      });
+      // Refresh unmatched users to show updated names
+      await fetchUnmatchedUsers();
+    } catch (error) {
+      console.error('Failed to sync employee names:', error);
+      alert('Failed to sync employee names. Check console for details.');
+    } finally {
+      setLoading((prev) => ({ ...prev, syncNames: false }));
     }
   };
 
@@ -329,7 +352,24 @@ export const SyncDiagnostics = () => {
                 <RotateCcw className="w-4 h-4" />
                 <span>Reset Sync</span>
               </button>
+              <button
+                onClick={syncEmployeeNames}
+                disabled={loading.syncNames}
+                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>{loading.syncNames ? 'Syncing Names...' : 'Sync Names from SQL'}</span>
+              </button>
             </div>
+
+            {syncNamesResult && (
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <p className="text-sm text-green-800 font-medium">Name Sync Complete</p>
+                <p className="text-sm text-green-700">
+                  Updated: {syncNamesResult.updated} employees | Failed: {syncNamesResult.failed}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center h-32">
