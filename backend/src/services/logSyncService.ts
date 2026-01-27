@@ -258,11 +258,70 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
     // Clear cache
     employeeCache.clear();
+    deviceUserInfoCache.clear();
   }
+}
+
+interface DeviceUserInfo {
+  UserId: string;
+  Name: string;
+  DeviceId: number;
+}
+
+// Cache for device user info from SQL Server
+const deviceUserInfoCache = new Map<string, DeviceUserInfo>();
+
+async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
+  try {
+    const pool = await getSqlPool();
+
+    // Query DeviceUsers from SQL Server to get names
+    const result = await pool.request().query(`
+      SELECT DeviceId, UserId, Name
+      FROM DeviceUsers
+      WHERE IsActive = 1
+    `);
+
+    for (const user of result.recordset) {
+      deviceUserInfoCache.set(user.UserId.toString(), {
+        UserId: user.UserId.toString(),
+        Name: user.Name,
+        DeviceId: user.DeviceId,
+      });
+    }
+
+    logger.info(`Loaded ${deviceUserInfoCache.size} device users from SQL Server`);
+  } catch (error) {
+    logger.error('Failed to load device user info from SQL Server:', error);
+  }
+}
+
+function parseEmployeeName(fullName: string): { firstName: string; lastName: string } {
+  if (!fullName || fullName.trim() === '') {
+    return { firstName: 'Employee', lastName: 'Unknown' };
+  }
+
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  // First part is first name, rest is last name
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(' ');
+  return { firstName, lastName };
 }
 
 async function createEmployeeFromDeviceLog(deviceUserId: string) {
   try {
+    // Load device user info if cache is empty
+    if (deviceUserInfoCache.size === 0) {
+      await loadDeviceUserInfoFromSqlServer();
+    }
+
+    // Get user info from cache
+    const userInfo = deviceUserInfoCache.get(deviceUserId);
+
     // Generate employee code from deviceUserId (ensure it's unique)
     const employeeCode = `EMP${deviceUserId.toString().padStart(4, '0')}`;
 
@@ -272,25 +331,48 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
     });
 
     if (existing) {
-      // Update existing employee with deviceUserId
+      // Update existing employee with deviceUserId and name if available
+      const updateData: any = { deviceUserId: deviceUserId.toString() };
+
+      if (userInfo?.Name && existing.firstName === `Employee` && existing.lastName === deviceUserId) {
+        // Update name if it was auto-generated
+        const { firstName, lastName } = parseEmployeeName(userInfo.Name);
+        updateData.firstName = firstName;
+        updateData.lastName = lastName;
+        logger.info(`Updating employee ${employeeCode} name to: ${firstName} ${lastName}`);
+      }
+
       return await prisma.employee.update({
         where: { id: existing.id },
-        data: { deviceUserId: deviceUserId.toString() }
+        data: updateData
       });
+    }
+
+    // Parse name from SQL Server or use default
+    let firstName = 'Employee';
+    let lastName = deviceUserId;
+
+    if (userInfo?.Name) {
+      const parsed = parseEmployeeName(userInfo.Name);
+      firstName = parsed.firstName;
+      lastName = parsed.lastName;
+      logger.info(`Creating employee ${employeeCode} with name from SQL Server: ${firstName} ${lastName}`);
+    } else {
+      logger.info(`Creating employee ${employeeCode} with default name (UserId: ${deviceUserId})`);
     }
 
     // Create new employee
     const employee = await prisma.employee.create({
       data: {
         employeeCode,
-        firstName: `Employee`,
-        lastName: `${deviceUserId}`,
+        firstName,
+        lastName,
         deviceUserId: deviceUserId.toString(),
         isActive: true,
       }
     });
 
-    logger.info(`Created new employee: ${employeeCode} with deviceUserId: ${deviceUserId}`);
+    logger.info(`Created new employee: ${employeeCode} (${firstName} ${lastName}) with deviceUserId: ${deviceUserId}`);
     return employee;
   } catch (error) {
     logger.error(`Failed to create employee for deviceUserId ${deviceUserId}:`, error);
@@ -417,12 +499,81 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
   return processedResults;
 }
 
+// Sync employee names from SQL Server DeviceUsers table
+export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number }> {
+  try {
+    logger.info('Starting employee name sync from SQL Server DeviceUsers...');
+
+    // Load device user info
+    await loadDeviceUserInfoFromSqlServer();
+
+    // Get all employees with deviceUserId
+    const employees = await prisma.employee.findMany({
+      where: { deviceUserId: { not: null } },
+    });
+
+    let updated = 0;
+    let failed = 0;
+
+    for (const employee of employees) {
+      if (!employee.deviceUserId) continue;
+
+      const userInfo = deviceUserInfoCache.get(employee.deviceUserId);
+      if (!userInfo?.Name) continue;
+
+      // Parse the name from SQL Server
+      const { firstName, lastName } = parseEmployeeName(userInfo.Name);
+
+      // Only update if the name is different and was auto-generated
+      const currentFullName = `${employee.firstName} ${employee.lastName}`.trim();
+      const newFullName = `${firstName} ${lastName}`.trim();
+
+      if (currentFullName !== newFullName &&
+          (employee.firstName === 'Employee' || currentFullName.includes(employee.deviceUserId))) {
+        try {
+          await prisma.employee.update({
+            where: { id: employee.id },
+            data: { firstName, lastName },
+          });
+          logger.info(`Updated employee ${employee.employeeCode} name: ${newFullName}`);
+          updated++;
+        } catch (error) {
+          logger.error(`Failed to update employee ${employee.employeeCode}:`, error);
+          failed++;
+        }
+      }
+    }
+
+    logger.info(`Employee name sync complete. Updated: ${updated}, Failed: ${failed}`);
+    return { updated, failed };
+  } catch (error) {
+    logger.error('Employee name sync failed:', error);
+    throw error;
+  } finally {
+    deviceUserInfoCache.clear();
+  }
+}
+
 // Export for manual execution
 if (require.main === module) {
-  startLogSync()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('Fatal error:', error);
-      process.exit(1);
-    });
+  const command = process.argv[2];
+
+  if (command === 'sync-names') {
+    syncEmployeeNamesFromDeviceUsers()
+      .then((result) => {
+        console.log(`Name sync complete. Updated: ${result.updated}, Failed: ${result.failed}`);
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+      });
+  } else {
+    startLogSync()
+      .then(() => process.exit(0))
+      .catch((error) => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+      });
+  }
 }

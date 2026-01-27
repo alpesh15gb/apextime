@@ -1,7 +1,7 @@
 import express from 'express';
 import { getSqlPool, prisma } from '../config/database';
 import logger from '../config/logger';
-import { startLogSync } from '../services/logSyncService';
+import { startLogSync, syncEmployeeNamesFromDeviceUsers } from '../services/logSyncService';
 import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
@@ -235,6 +235,120 @@ router.get('/unmatched-users', async (req, res) => {
   } catch (error) {
     logger.error('Get unmatched users failed:', error);
     res.status(500).json({ error: 'Failed to get unmatched users' });
+  }
+});
+
+// Sync employee names from SQL Server DeviceUsers table
+router.post('/sync-names', async (req, res) => {
+  try {
+    logger.info('Manual employee name sync triggered');
+    const result = await syncEmployeeNamesFromDeviceUsers();
+    res.json({
+      message: 'Employee name sync completed',
+      updated: result.updated,
+      failed: result.failed
+    });
+  } catch (error) {
+    logger.error('Sync names failed:', error);
+    res.status(500).json({ error: 'Failed to sync employee names' });
+  }
+});
+
+// Discover ALL tables in SQL Server (to find employee master data)
+router.get('/discover-all-tables', async (req, res) => {
+  try {
+    const pool = await getSqlPool();
+
+    // Get all tables
+    const result = await pool.request().query(`
+      SELECT TABLE_NAME
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_TYPE = 'BASE TABLE'
+      ORDER BY TABLE_NAME
+    `);
+
+    // Get columns for each table (limit to first 50 tables to avoid timeout)
+    const tablesWithColumns = [];
+    for (const row of result.recordset.slice(0, 50)) {
+      try {
+        const columnsResult = await pool.request().query(`
+          SELECT COLUMN_NAME, DATA_TYPE
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_NAME = '${row.TABLE_NAME}'
+          ORDER BY ORDINAL_POSITION
+        `);
+        tablesWithColumns.push({
+          name: row.TABLE_NAME,
+          columns: columnsResult.recordset
+        });
+      } catch (e) {
+        tablesWithColumns.push({
+          name: row.TABLE_NAME,
+          columns: [],
+          error: 'Failed to get columns'
+        });
+      }
+    }
+
+    res.json({
+      totalTables: result.recordset.length,
+      tables: tablesWithColumns
+    });
+  } catch (error) {
+    logger.error('Discover all tables failed:', error);
+    res.status(500).json({ error: 'Failed to discover tables' });
+  }
+});
+
+// Query specific table (for exploring employee data)
+router.get('/query-table/:tableName', async (req, res) => {
+  try {
+    const { tableName } = req.params;
+    const { limit = '10' } = req.query;
+
+    // Validate table name to prevent SQL injection
+    const validTableName = /^[a-zA-Z0-9_]+$/.test(tableName);
+    if (!validTableName) {
+      return res.status(400).json({ error: 'Invalid table name' });
+    }
+
+    const pool = await getSqlPool();
+
+    const result = await pool.request().query(`
+      SELECT TOP ${parseInt(limit as string)} *
+      FROM ${tableName}
+    `);
+
+    res.json({
+      table: tableName,
+      rowCount: result.recordset.length,
+      data: result.recordset
+    });
+  } catch (error) {
+    logger.error(`Query table ${req.params.tableName} failed:`, error);
+    res.status(500).json({ error: 'Failed to query table' });
+  }
+});
+
+// Get DeviceUsers from SQL Server (to see available employee info)
+router.get('/sql-device-users', async (req, res) => {
+  try {
+    const pool = await getSqlPool();
+
+    const result = await pool.request().query(`
+      SELECT DeviceId, UserId, Name, UserName, CardNumber, IsActive
+      FROM DeviceUsers
+      WHERE IsActive = 1
+      ORDER BY UserId
+    `);
+
+    res.json({
+      count: result.recordset.length,
+      users: result.recordset
+    });
+  } catch (error) {
+    logger.error('Get SQL Server device users failed:', error);
+    res.status(500).json({ error: 'Failed to get device users' });
   }
 });
 
