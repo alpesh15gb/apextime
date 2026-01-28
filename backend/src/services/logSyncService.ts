@@ -279,30 +279,44 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
   try {
     const pool = await getSqlPool();
 
-    // Query DeviceUsers joined with Employees and Departments to get full info
-    // Use EmployeeCodeInDevice as UserId to match DeviceLogs.UserId
+    // Query ALL employees with EmployeeCodeInDevice (not just DeviceUsers)
+    // This ensures we get names for employees on all devices (HO, KSDK, MIPA, etc.)
     const result = await pool.request().query(`
       SELECT
         e.EmployeeCodeInDevice as UserId,
-        du.DeviceId,
         e.EmployeeId,
         e.EmployeeName,
         e.Designation,
         e.DepartmentId,
-        d.DepartmentFName as DepartmentName
-      FROM DeviceUsers du
-      LEFT JOIN Employees e ON du.EmployeeId = e.EmployeeId
+        d.DepartmentFName as DepartmentName,
+        du.DeviceId
+      FROM Employees e
       LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
+      LEFT JOIN DeviceUsers du ON e.EmployeeId = du.EmployeeId
       WHERE e.EmployeeCodeInDevice IS NOT NULL
         AND e.EmployeeCodeInDevice <> ''
+        AND e.Status = 'Working'
     `);
 
     for (const user of result.recordset) {
-      // Use DeviceUserId (from SQL Server) as the key - convert to string to match app's deviceUserId
+      // Use EmployeeCodeInDevice as the key - convert to string to match app's deviceUserId
       const deviceUserIdStr = user.UserId?.toString();
+
+      // Skip if this deviceUserId is already cached and the new name is just a number
+      // This prioritizes records with actual names (e.g., "A Lakshman Rao") over placeholder names (e.g., "37")
+      const existingEntry = deviceUserInfoCache.get(deviceUserIdStr);
+      const newName = user.EmployeeName || `User ${deviceUserIdStr}`;
+      const isNewNameJustNumber = /^\d+$/.test(newName.trim());
+      const isExistingNameJustNumber = existingEntry ? /^\d+$/.test(existingEntry.Name.trim()) : true;
+
+      if (existingEntry && !isExistingNameJustNumber && isNewNameJustNumber) {
+        // Keep the existing entry with proper name, skip this numeric one
+        continue;
+      }
+
       deviceUserInfoCache.set(deviceUserIdStr, {
         UserId: deviceUserIdStr,
-        Name: user.EmployeeName || `User ${deviceUserIdStr}`,
+        Name: newName,
         DeviceId: user.DeviceId,
         EmployeeId: user.EmployeeId?.toString(),
         Designation: user.Designation,
@@ -401,6 +415,18 @@ async function getOrCreateDesignation(designationName: string): Promise<string |
   }
 }
 
+async function lookupProperEmployeeName(deviceUserId: string): Promise<string | null> {
+  // If deviceUserId is numeric, try to find the HO-prefixed version
+  if (/^\d+$/.test(deviceUserId)) {
+    const hoCode = `HO${deviceUserId.padStart(3, '0')}`;
+    const hoInfo = deviceUserInfoCache.get(hoCode);
+    if (hoInfo?.Name && !/^\d+$/.test(hoInfo.Name.trim())) {
+      return hoInfo.Name;
+    }
+  }
+  return null;
+}
+
 async function createEmployeeFromDeviceLog(deviceUserId: string) {
   try {
     // Load device user info if cache is empty
@@ -410,6 +436,16 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
 
     // Get user info from cache
     const userInfo = deviceUserInfoCache.get(deviceUserId);
+
+    // Try to find proper name from HO-prefixed code if current name is just a number
+    let effectiveName = userInfo?.Name;
+    if (!effectiveName || /^\d+$/.test(effectiveName.trim())) {
+      const properName = await lookupProperEmployeeName(deviceUserId);
+      if (properName) {
+        effectiveName = properName;
+        logger.info(`Found proper name for ${deviceUserId} from HO code: ${properName}`);
+      }
+    }
 
     // Generate employee code from deviceUserId (ensure it's unique)
     const employeeCode = `EMP${deviceUserId.toString().padStart(4, '0')}`;
@@ -435,9 +471,9 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
       // Update existing employee with deviceUserId, name, department, designation
       const updateData: any = { deviceUserId: deviceUserId.toString() };
 
-      if (userInfo?.Name && (existing.firstName === `Employee` || existing.lastName === deviceUserId)) {
-        // Update name if it was auto-generated
-        const { firstName, lastName } = parseEmployeeName(userInfo.Name);
+      if (effectiveName && (existing.firstName === `Employee` || existing.lastName === deviceUserId || /^\d+$/.test(existing.firstName))) {
+        // Update name if it was auto-generated or is just a number
+        const { firstName, lastName } = parseEmployeeName(effectiveName);
         updateData.firstName = firstName;
         updateData.lastName = lastName;
         logger.info(`Updating employee ${employeeCode} name to: ${firstName} ${lastName}`);
@@ -463,8 +499,8 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
     let firstName = 'Employee';
     let lastName = deviceUserId;
 
-    if (userInfo?.Name) {
-      const parsed = parseEmployeeName(userInfo.Name);
+    if (effectiveName) {
+      const parsed = parseEmployeeName(effectiveName);
       firstName = parsed.firstName;
       lastName = parsed.lastName;
       logger.info(`Creating employee ${employeeCode} with name from SQL Server: ${firstName} ${lastName}`);
