@@ -22,6 +22,7 @@ import dashboardRoutes from './routes/dashboard';
 import syncRoutes from './routes/sync';
 import holidayRoutes from './routes/holidays';
 import fixDuplicatesRoutes from './routes/fixDuplicates';
+import updateNamesRoutes from './routes/updateNames';
 
 dotenv.config();
 
@@ -56,6 +57,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/fix-duplicates', fixDuplicatesRoutes);
+app.use('/api/update-names', updateNamesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
