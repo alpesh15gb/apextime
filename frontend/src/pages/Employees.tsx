@@ -8,6 +8,12 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  Building2,
+  Briefcase,
+  Clock,
+  XCircle,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { Employee, Department, Branch, Shift } from '../types';
