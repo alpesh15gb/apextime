@@ -4,49 +4,65 @@ import logger from '../config/logger';
 
 const router = express.Router();
 
-// GET /update-names - Show form
+// GET /update-names - Show employees that need name updates
 router.get('/', async (req, res) => {
   try {
-    const pool = await getSqlPool();
-
-    // Get HO code names from SQL Server
-    const sqlResult = await pool.request().query(`
-      SELECT EmployeeCodeInDevice, EmployeeName
-      FROM Employees
-      WHERE EmployeeCodeInDevice LIKE 'HO%'
-        AND EmployeeName IS NOT NULL
-        AND Status = 'Working'
-    `);
-
-    const hoNames = new Map<string, string>();
-    for (const row of sqlResult.recordset) {
-      const code = row.EmployeeCodeInDevice?.toString();
-      if (code && row.EmployeeName && !/^\d+$/.test(row.EmployeeName.trim())) {
-        hoNames.set(code, row.EmployeeName);
-      }
-    }
-
-    // Get employees with numeric names from PostgreSQL
-    const numericEmployees = await prisma.employee.findMany({
-      where: {
-        deviceUserId: { not: null },
-        firstName: { not: '' }
-      },
+    // Get all PostgreSQL employees with deviceUserId
+    const pgEmployees = await prisma.employee.findMany({
+      where: { deviceUserId: { not: null } },
       orderBy: { deviceUserId: 'asc' }
     });
 
-    // Filter to only numeric codes with numeric names
-    const toUpdate = numericEmployees.filter(e => {
-      const code = e.deviceUserId!;
-      return /^\d+$/.test(code) && /^\d+$/.test(e.firstName);
-    }).map(e => {
-      const hoCode = 'HO' + e.deviceUserId!.padStart(3, '0');
-      return {
-        ...e,
-        hoCode,
-        newName: hoNames.get(hoCode) || 'NOT FOUND'
-      };
-    });
+    // Get all SQL Server employees
+    const pool = await getSqlPool();
+    const sqlResult = await pool.request().query(`
+      SELECT
+        EmployeeCodeInDevice,
+        EmployeeName,
+        DepartmentId
+      FROM Employees
+      WHERE EmployeeCodeInDevice IS NOT NULL
+        AND Status = 'Working'
+    `);
+
+    // Create SQL Server lookup by EmployeeCodeInDevice
+    const sqlData = new Map<string, { name: string; deptId: number }>();
+    for (const row of sqlResult.recordset) {
+      const code = row.EmployeeCodeInDevice?.toString();
+      if (code && row.EmployeeName) {
+        sqlData.set(code, {
+          name: row.EmployeeName,
+          deptId: row.DepartmentId
+        });
+      }
+    }
+
+    // Find employees needing name updates
+    const toUpdate = [];
+    for (const emp of pgEmployees) {
+      const code = emp.deviceUserId!;
+      const sqlInfo = sqlData.get(code);
+
+      if (!sqlInfo) continue;
+
+      // Check if name needs updating
+      const currentName = `${emp.firstName} ${emp.lastName}`.trim();
+      const sqlName = sqlInfo.name.trim();
+
+      // Skip if SQL name is just a number (not a real name)
+      if (/^\d+$/.test(sqlName)) continue;
+
+      // Needs update if current name is different from SQL name
+      if (currentName !== sqlName) {
+        toUpdate.push({
+          deviceUserId: code,
+          currentName,
+          sqlName,
+          deptId: sqlInfo.deptId,
+          employeeCode: emp.employeeCode
+        });
+      }
+    }
 
     res.send(`
       <!DOCTYPE html>
@@ -54,28 +70,30 @@ router.get('/', async (req, res) => {
       <head>
         <title>Update Employee Names</title>
         <style>
-          body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; }
-          .employee { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+          body { font-family: Arial, sans-serif; max-width: 1000px; margin: 30px auto; padding: 20px; }
+          .employee { background: #f5f5f5; padding: 10px; margin: 8px 0; border-radius: 5px; }
           .current { color: red; }
           .new { color: green; font-weight: bold; }
-          .notfound { color: orange; }
           button { background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
           button:hover { background: #218838; }
           code { background: #eee; padding: 2px 5px; border-radius: 3px; }
+          .stats { background: #d1ecf1; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
         </style>
       </head>
       <body>
         <h1>Update Employee Names from SQL Server</h1>
-        <p>Maps numeric codes to HO codes and updates names.</p>
+        <div class="stats">
+          <strong>${toUpdate.length} employees</strong> need name updates
+        </div>
         <form method="POST" action="">
           <button type="submit">Update All Names</button>
         </form>
         <div style="margin-top: 20px;">
           ${toUpdate.map(e => `
             <div class="employee">
-              deviceUserId: <code>${e.deviceUserId}</code> -> HO: <code>${e.hoCode}</code><br/>
-              Current: <span class="current">${e.firstName} ${e.lastName}</span> ->
-              New: <span class="${e.newName === 'NOT FOUND' ? 'notfound' : 'new'}">${e.newName}</span>
+              <code>${e.deviceUserId}</code> |
+              Current: <span class="current">${e.currentName}</span> →
+              New: <span class="new">${e.sqlName}</span>
             </div>
           `).join('')}
         </div>
@@ -87,111 +105,87 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /update-names - Update names from SQL Server (map numeric codes to HO codes)
+// POST /update-names - Update names from SQL Server
 router.post('/', async (req, res) => {
   try {
     logger.info('Starting name update from SQL Server...');
 
     const pool = await getSqlPool();
 
-    // Get all employees from SQL Server with proper names (HO codes)
+    // Get SQL Server employee data
     const sqlResult = await pool.request().query(`
       SELECT
-        e.EmployeeCodeInDevice as deviceUserId,
+        e.EmployeeCodeInDevice,
         e.EmployeeName,
-        e.Designation,
         d.DepartmentFName as DepartmentName
       FROM Employees e
       LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
       WHERE e.EmployeeCodeInDevice IS NOT NULL
-        AND e.EmployeeCodeInDevice <> ''
         AND e.Status = 'Working'
     `);
 
-    // Create lookup map for HO codes (e.g., HO018 -> name)
-    const hoNames = new Map<string, string>();
+    // Build lookup by EmployeeCodeInDevice
+    const sqlData = new Map<string, { name: string; dept: string }>();
     for (const row of sqlResult.recordset) {
-      const code = row.deviceUserId?.toString();
-      // Only use HO codes with proper names
-      if (code?.startsWith('HO') && row.EmployeeName && !/^\d+$/.test(row.EmployeeName.trim())) {
-        hoNames.set(code, row.EmployeeName);
+      const code = row.EmployeeCodeInDevice?.toString();
+      if (code && row.EmployeeName && !/^\d+$/.test(row.EmployeeName.trim())) {
+        sqlData.set(code, {
+          name: row.EmployeeName.trim(),
+          dept: row.DepartmentName
+        });
       }
     }
 
-    // Get postgres employees with numeric names that need updating
-    const employees = await prisma.employee.findMany({
-      where: {
-        deviceUserId: { not: null },
-        firstName: { not: '' } // Get all to filter
-      }
+    // Get PostgreSQL employees
+    const pgEmployees = await prisma.employee.findMany({
+      where: { deviceUserId: { not: null } }
     });
 
-    const results: { deviceUserId: string; oldName: string; newName: string; status: string }[] = [];
+    const results: { code: string; old: string; new: string; status: string }[] = [];
 
-    for (const emp of employees) {
+    for (const emp of pgEmployees) {
       const code = emp.deviceUserId!;
+      const info = sqlData.get(code);
 
-      // Only process numeric codes (18, 38, etc.)
-      if (!/^\d+$/.test(code)) continue;
-
-      // Check if current name is also just a number
-      if (!/^\d+$/.test(emp.firstName)) continue;
-
-      // Map to HO code (18 -> HO018)
-      const hoCode = 'HO' + code.padStart(3, '0');
-      const properName = hoNames.get(hoCode);
-
-      if (!properName) {
-        results.push({
-          deviceUserId: code,
-          oldName: `${emp.firstName} ${emp.lastName}`,
-          newName: 'NOT FOUND',
-          status: 'skipped - no HO code mapping'
-        });
+      if (!info) {
+        results.push({ code, old: `${emp.firstName} ${emp.lastName}`, new: 'N/A', status: 'no_sql_match' });
         continue;
       }
 
-      // Parse name
-      const parts = properName.trim().split(/\s+/);
+      const currentName = `${emp.firstName} ${emp.lastName}`.trim();
+
+      // Skip if already correct
+      if (currentName === info.name) {
+        continue;
+      }
+
+      // Parse new name
+      const parts = info.name.split(/\s+/);
       const firstName = parts[0];
       const lastName = parts.slice(1).join(' ');
 
       try {
         await prisma.employee.update({
           where: { id: emp.id },
-          data: {
-            firstName,
-            lastName: lastName || ''
-          }
+          data: { firstName, lastName: lastName || '' }
         });
 
-        results.push({
-          deviceUserId: code,
-          oldName: `${emp.firstName} ${emp.lastName}`,
-          newName: properName,
-          status: 'updated'
-        });
+        results.push({ code, old: currentName, new: info.name, status: 'updated' });
+        logger.info(`Updated ${code}: "${currentName}" → "${info.name}"`);
       } catch (e) {
-        results.push({
-          deviceUserId: code,
-          oldName: `${emp.firstName} ${emp.lastName}`,
-          newName: properName,
-          status: 'error: ' + (e instanceof Error ? e.message : 'unknown')
-        });
+        results.push({ code, old: currentName, new: info.name, status: 'error' });
       }
     }
 
-    logger.info(`Updated ${results.filter(r => r.status === 'updated').length} employee names`);
-
     res.json({
-      message: `Updated ${results.filter(r => r.status === 'updated').length} employee names`,
+      message: `Updated ${results.filter(r => r.status === 'updated').length} employees`,
       updated: results.filter(r => r.status === 'updated').length,
-      skipped: results.filter(r => r.status.includes('skipped')).length,
-      errors: results.filter(r => r.status.includes('error')).length,
+      skipped: results.filter(r => r.status === 'no_sql_match').length,
+      errors: results.filter(r => r.status === 'error').length,
       results
     });
   } catch (error) {
-    logger.error('Name update failed:', error);
+    logger.error('Update failed:', error);
     res.status(500).json({ error: 'Failed', details: error instanceof Error ? error.message : 'Unknown' });
   }
 });
