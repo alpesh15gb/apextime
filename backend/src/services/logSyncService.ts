@@ -105,13 +105,22 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       message = 'No new logs found';
       logger.info(message);
     } else {
-      // Pre-fetch all existing employees with deviceUserId
+      // Pre-fetch all existing employees with deviceUserId or sourceEmployeeId
       const existingEmployees = await prisma.employee.findMany({
-        where: { deviceUserId: { not: null } },
-        select: { id: true, deviceUserId: true }
+        where: {
+          OR: [
+            { deviceUserId: { not: null } },
+            { sourceEmployeeId: { not: null } }
+          ]
+        },
+        select: { id: true, deviceUserId: true, sourceEmployeeId: true }
       });
 
       for (const emp of existingEmployees) {
+        if (emp.sourceEmployeeId) {
+          // Use sourceEmployeeId as primary cache key if available
+          employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
+        }
         if (emp.deviceUserId) {
           employeeCache.set(emp.deviceUserId, emp.id);
         }
@@ -155,8 +164,29 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       for (const userId of uniqueUserIds) {
         if (!employeeCache.has(userId)) {
           try {
-            // Check if this userId maps to a name that already exists in another employee
+            // Check if this userId maps to a sourceEmployeeId that already exists
             const userInfo = deviceUserInfoCache.get(userId);
+            const sourceId = userInfo?.EmployeeId;
+
+            if (sourceId) {
+              const existingBySourceId = existingEmployees.find(e => e.sourceEmployeeId === sourceId.toString());
+              if (existingBySourceId) {
+                logger.info(`Found existing employee ${existingBySourceId.id} by sourceId ${sourceId} for deviceUserId ${userId}. Linking...`);
+
+                // Update deviceUserId if needed
+                if (existingBySourceId.deviceUserId !== userId) {
+                  await prisma.employee.update({
+                    where: { id: existingBySourceId.id },
+                    data: { deviceUserId: userId.toString() }
+                  });
+                }
+
+                employeeCache.set(userId, existingBySourceId.id);
+                continue;
+              }
+            }
+
+            // Fallback: Check if this userId maps to a name that already exists in another employee
             let effectiveName = userInfo?.Name;
 
             // Try to resolve proper name if it's currently numeric
@@ -497,7 +527,10 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
 
     if (existing) {
       // Update existing employee with deviceUserId, name, department, designation
-      const updateData: any = { deviceUserId: deviceUserId.toString() };
+      const updateData: any = {
+        deviceUserId: deviceUserId.toString(),
+        sourceEmployeeId: userInfo?.EmployeeId?.toString() // Ensure sourceId is stored
+      };
 
       if (effectiveName && (existing.firstName === `Employee` || existing.lastName === deviceUserId || /^\d+$/.test(existing.firstName))) {
         // Update name if it was auto-generated or is just a number
@@ -543,6 +576,7 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
         firstName,
         lastName,
         deviceUserId: deviceUserId.toString(),
+        sourceEmployeeId: userInfo?.EmployeeId?.toString(),
         departmentId,
         designationId,
         isActive: true,
