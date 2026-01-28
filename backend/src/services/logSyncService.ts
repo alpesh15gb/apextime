@@ -280,10 +280,10 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
     const pool = await getSqlPool();
 
     // Query DeviceUsers joined with Employees and Departments to get full info
-    // Use EmployeeCode as UserId since that matches the app's deviceUserId
+    // Use EmployeeCode (with slash removed) as UserId to match app's deviceUserId
     const result = await pool.request().query(`
       SELECT
-        e.EmployeeCode as UserId,
+        REPLACE(e.EmployeeCode, '/', '') as UserId,
         du.DeviceId,
         e.EmployeeId,
         e.EmployeeName,
