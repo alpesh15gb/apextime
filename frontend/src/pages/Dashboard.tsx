@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Building2,
@@ -13,6 +14,7 @@ import { dashboardAPI } from '../services/api';
 import { DashboardStats } from '../types';
 
 export const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,6 +62,7 @@ export const Dashboard = () => {
       icon: Users,
       color: 'bg-blue-500',
       subtitle: `${stats?.counts.activeEmployees || 0} Active`,
+      to: '/employees',
     },
     {
       title: 'Present Today',
@@ -67,6 +70,7 @@ export const Dashboard = () => {
       icon: CheckCircle,
       color: 'bg-green-500',
       subtitle: `${stats?.today.attendanceRate || 0}% Attendance Rate`,
+      to: '/attendance',
     },
     {
       title: 'Absent Today',
@@ -74,6 +78,7 @@ export const Dashboard = () => {
       icon: XCircle,
       color: 'bg-red-500',
       subtitle: 'Need attention',
+      to: '/attendance',
     },
     {
       title: 'Late Arrivals',
@@ -81,6 +86,7 @@ export const Dashboard = () => {
       icon: Clock,
       color: 'bg-yellow-500',
       subtitle: 'Today',
+      to: '/attendance',
     },
     {
       title: 'Departments',
@@ -88,6 +94,7 @@ export const Dashboard = () => {
       icon: Briefcase,
       color: 'bg-purple-500',
       subtitle: 'Across all branches',
+      to: '/departments',
     },
     {
       title: 'Branches',
@@ -95,6 +102,7 @@ export const Dashboard = () => {
       icon: Building2,
       color: 'bg-indigo-500',
       subtitle: `${stats?.counts.devicesCount || 0} Devices connected`,
+      to: '/branches',
     },
   ];
 
@@ -114,23 +122,30 @@ export const Dashboard = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {statCards.map((card, index) => (
-              <div key={index} className="card hover:shadow-lg transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-gray-500 text-sm mb-1">{card.title}</p>
-                    <p className="text-3xl font-bold text-gray-800">{card.value}</p>
-                    <p className="text-sm text-gray-400 mt-1">{card.subtitle}</p>
-                  </div>
-                  <div className={`${card.color} p-3 rounded-lg`}>
-                    <card.icon className="w-6 h-6 text-white" />
-                  </div>
+            <div
+              key={index}
+              onClick={() => navigate(card.to)}
+              className="card hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">{card.title}</p>
+                  <p className="text-3xl font-bold text-gray-800">{card.value}</p>
+                  <p className="text-sm text-gray-400 mt-1">{card.subtitle}</p>
+                </div>
+                <div className={`${card.color} p-3 rounded-lg`}>
+                  <card.icon className="w-6 h-6 text-white" />
                 </div>
               </div>
+            </div>
           ))}
         </div>
 
         {/* Last Sync Status */}
-        <div className="card">
+        <div
+          onClick={() => navigate('/sync-diagnostics')}
+          className="card hover:shadow-lg transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+        >
           <h2 className="text-lg font-semibold text-gray-800 mb-4">System Status</h2>
           <div className="flex items-center space-x-4">
             <div
