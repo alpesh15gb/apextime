@@ -4,25 +4,46 @@ import logger from '../config/logger';
 
 const router = express.Router();
 
-// Temporarily skipping auth for manual fix - remove this comment after use
+// Temporarily skipping auth for manual fix
 
-// GET /fix-duplicates - Show form with button
+// GET /fix-duplicates - Show duplicates and merge button
 router.get('/', async (req, res) => {
   try {
-    // Count duplicates first
+    // Get all employees
     const allEmployees = await prisma.employee.findMany({
       where: { deviceUserId: { not: null } },
-      select: { deviceUserId: true, firstName: true, lastName: true, employeeCode: true },
+      select: { id: true, deviceUserId: true, firstName: true, lastName: true, employeeCode: true, departmentId: true },
     });
 
-    const byCode = new Map<string, typeof allEmployees>();
+    // Group by normalized name
+    const byName = new Map<string, typeof allEmployees>();
     for (const emp of allEmployees) {
-      const code = emp.deviceUserId!;
-      if (!byCode.has(code)) byCode.set(code, []);
-      byCode.get(code)!.push(emp);
+      const normalized = `${emp.firstName} ${emp.lastName}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normalized.length < 3) continue; // Skip short names
+      if (!byName.has(normalized)) byName.set(normalized, []);
+      byName.get(normalized)!.push(emp);
     }
 
-    const duplicates = Array.from(byCode.entries()).filter(([_, emps]) => emps.length > 1);
+    // Find name duplicates
+    const nameDuplicates = Array.from(byName.entries())
+      .filter(([_, emps]) => emps.length > 1)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Also check for numeric firstName duplicates (like "38" and "HO038")
+    const numericCodes = allEmployees.filter(e => /^\d+$/.test(e.firstName));
+    const hoMappings: {numeric: typeof allEmployees[0], ho: typeof allEmployees[0]}[] = [];
+
+    for (const num of numericCodes) {
+      const padded = num.firstName.padStart(3, '0');
+      const hoCode = `HO${padded}`;
+      const hoMatch = allEmployees.find(e =>
+        e.deviceUserId === hoCode ||
+        e.employeeCode === hoCode
+      );
+      if (hoMatch) {
+        hoMappings.push({ numeric: num, ho: hoMatch });
+      }
+    }
 
     res.send(`
       <!DOCTYPE html>
@@ -30,34 +51,61 @@ router.get('/', async (req, res) => {
       <head>
         <title>Fix Duplicate Employees</title>
         <style>
-          body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+          body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; }
+          .section { margin: 20px 0; }
           .duplicate { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
           .kept { color: green; font-weight: bold; }
           .remove { color: red; }
-          button { background: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+          button { background: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 10px 10px 0 0; }
           button:hover { background: #0056b3; }
+          button.secondary { background: #28a745; }
+          button.secondary:hover { background: #218838; }
           .warning { background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+          .info { background: #d1ecf1; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+          code { background: #eee; padding: 2px 5px; border-radius: 3px; }
         </style>
       </head>
       <body>
         <h1>Fix Duplicate Employees</h1>
-        <div class="warning">
-          <strong>Found ${duplicates.length} duplicate deviceUserId codes</strong>
+
+        <div class="info">
+          Found <strong>${nameDuplicates.length}</strong> duplicate names and
+          <strong>${hoMappings.length}</strong> numeric/HO code pairs.
         </div>
-        ${duplicates.map(([code, emps]) => `
-          <div class="duplicate">
-            <strong>Code: ${code}</strong>
-            <ul>
-              ${emps.map(e => {
-                const name = `${e.firstName} ${e.lastName}`.trim();
-                const isNumeric = /^\d+$/.test(e.firstName);
-                return `<li class="${isNumeric ? 'remove' : 'kept'}">${name} (${e.employeeCode}) ${isNumeric ? '- will be deleted' : '- will be kept'}</li>`;
-              }).join('')}
-            </ul>
-          </div>
-        `).join('')}
+
+        ${nameDuplicates.length > 0 ? `
+        <div class="section">
+          <h2>Duplicate Names (same person, different deviceUserIds)</h2>
+          ${nameDuplicates.map(([name, emps]) => `
+            <div class="duplicate">
+              <strong>${emps[0].firstName} ${emps[0].lastName}</strong>
+              <ul>
+                ${emps.map(e => {
+                  const isNumeric = /^\d+$/.test(e.firstName);
+                  return `<li class="${isNumeric ? 'remove' : 'kept'}">deviceUserId: <code>${e.deviceUserId}</code> | code: ${e.employeeCode} ${isNumeric ? '(will delete)' : '(will keep)'}</li>`;
+                }).join('')}
+              </ul>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        ${hoMappings.length > 0 ? `
+        <div class="section">
+          <h2>Numeric → HO Code Mappings</h2>
+          <p>These will merge numeric codes (like "38") into their HO equivalents (like "HO038")</p>
+          ${hoMappings.map(({numeric, ho}) => `
+            <div class="duplicate">
+              <span class="remove">${numeric.firstName} (${numeric.employeeCode}, deviceUserId: ${numeric.deviceUserId})</span>
+              →
+              <span class="kept">${ho.firstName} ${ho.lastName} (${ho.employeeCode}, deviceUserId: ${ho.deviceUserId})</span>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
         <form method="POST" action="">
-          <button type="submit">Merge Duplicates</button>
+          <button type="submit" class="secondary">Merge All Duplicates</button>
         </form>
       </body>
       </html>
@@ -67,71 +115,38 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /fix-duplicates - Merge duplicate employees
+// POST /fix-duplicates - Merge duplicates
 router.post('/', async (req, res) => {
   try {
     logger.info('Starting duplicate employee fix...');
 
-    // Find all employees with deviceUserId
     const allEmployees = await prisma.employee.findMany({
-      where: {
-        deviceUserId: {
-          not: null,
-        },
-      },
-      orderBy: {
-        deviceUserId: 'asc',
-      },
+      where: { deviceUserId: { not: null } },
     });
 
-    // Group by deviceUserId
-    const byDeviceUserId = new Map<string, typeof allEmployees>();
+    const results: { type: string; kept: string; removed: string[]; attendanceMigrated: number }[] = [];
+
+    // 1. Merge by name duplicates
+    const byName = new Map<string, typeof allEmployees>();
     for (const emp of allEmployees) {
-      const code = emp.deviceUserId!;
-      if (!byDeviceUserId.has(code)) {
-        byDeviceUserId.set(code, []);
-      }
-      byDeviceUserId.get(code)!.push(emp);
+      const normalized = `${emp.firstName} ${emp.lastName}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normalized.length < 3) continue;
+      if (!byName.has(normalized)) byName.set(normalized, []);
+      byName.get(normalized)!.push(emp);
     }
 
-    // Find duplicates
-    const duplicates: { code: string; employees: typeof allEmployees }[] = [];
-    for (const [code, employees] of byDeviceUserId) {
-      if (employees.length > 1) {
-        duplicates.push({ code, employees });
-      }
-    }
+    for (const [_, emps] of byName) {
+      if (emps.length < 2) continue;
 
-    const results: {
-      code: string;
-      kept: string;
-      removed: string[];
-      attendanceMigrated: number;
-    }[] = [];
+      // Keep the one with proper name (not just a number)
+      let keep = emps.find(e => !/^\d+$/.test(e.firstName));
+      if (!keep) keep = emps[0];
 
-    for (const { code, employees } of duplicates) {
-      // Determine which to keep (the one with proper name, not just a number)
-      let keepIndex = 0;
-      for (let i = 0; i < employees.length; i++) {
-        const name = `${employees[i].firstName} ${employees[i].lastName}`.trim();
-        // If name is not just a number, keep this one
-        if (!/^\d+$/.test(employees[i].firstName) && !/^EMP\d+$/.test(name)) {
-          keepIndex = i;
-          break;
-        }
-      }
-
-      const keep = employees[keepIndex];
-      const remove = employees.filter((_, i) => i !== keepIndex);
+      const remove = emps.filter(e => e.id !== keep.id);
 
       let attendanceMigrated = 0;
-
-      // Merge attendance logs from duplicates to the kept employee
       for (const dup of remove) {
-        const count = await prisma.attendanceLog.count({
-          where: { employeeId: dup.id },
-        });
-
+        const count = await prisma.attendanceLog.count({ where: { employeeId: dup.id } });
         if (count > 0) {
           await prisma.attendanceLog.updateMany({
             where: { employeeId: dup.id },
@@ -139,33 +154,55 @@ router.post('/', async (req, res) => {
           });
           attendanceMigrated += count;
         }
-
-        // Delete the duplicate employee
-        await prisma.employee.delete({
-          where: { id: dup.id },
-        });
+        await prisma.employee.delete({ where: { id: dup.id } });
       }
 
       results.push({
-        code,
+        type: 'name',
         kept: `${keep.firstName} ${keep.lastName} (${keep.employeeCode})`,
-        removed: remove.map((e) => `${e.firstName} ${e.lastName} (${e.employeeCode})`),
+        removed: remove.map(e => `${e.firstName} ${e.lastName} (${e.employeeCode})`),
         attendanceMigrated,
       });
     }
 
-    logger.info(`Duplicate employee fix completed. Merged ${results.length} duplicates.`);
+    // 2. Merge numeric codes into HO codes
+    const remainingEmployees = await prisma.employee.findMany({ where: { deviceUserId: { not: null } } });
+    const numericCodes = remainingEmployees.filter(e => /^\d+$/.test(e.firstName));
+
+    for (const num of numericCodes) {
+      const padded = num.firstName.padStart(3, '0');
+      const hoCode = `HO${padded}`;
+      const hoMatch = remainingEmployees.find(e => e.deviceUserId === hoCode);
+
+      if (hoMatch) {
+        // Merge numeric into HO
+        const count = await prisma.attendanceLog.count({ where: { employeeId: num.id } });
+        if (count > 0) {
+          await prisma.attendanceLog.updateMany({
+            where: { employeeId: num.id },
+            data: { employeeId: hoMatch.id },
+          });
+        }
+        await prisma.employee.delete({ where: { id: num.id } });
+
+        results.push({
+          type: 'ho-mapping',
+          kept: `${hoMatch.firstName} ${hoMatch.lastName} (${hoMatch.employeeCode}, deviceUserId: ${hoMatch.deviceUserId})`,
+          removed: [`${num.firstName} (${num.employeeCode}, deviceUserId: ${num.deviceUserId})`],
+          attendanceMigrated: count,
+        });
+      }
+    }
+
+    logger.info(`Merged ${results.length} duplicates`);
 
     res.json({
-      message: `Merged ${results.length} duplicate employee codes`,
+      message: `Merged ${results.length} duplicates`,
       results,
     });
   } catch (error) {
-    logger.error('Fix duplicates failed:', error);
-    res.status(500).json({
-      error: 'Failed to fix duplicates',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
+    logger.error('Fix failed:', error);
+    res.status(500).json({ error: 'Failed', details: error instanceof Error ? error.message : 'Unknown' });
   }
 });
 
