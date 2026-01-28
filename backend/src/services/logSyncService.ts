@@ -336,8 +336,8 @@ async function getOrCreateDepartment(departmentName: string): Promise<string | n
   const deptCode = departmentName.toUpperCase().replace(/\s+/g, '_').substring(0, 20);
 
   try {
-    // Try to find existing department
-    const existing = await prisma.department.findUnique({
+    // Try to find existing department by code (using findFirst since code+branchId is unique)
+    const existing = await prisma.department.findFirst({
       where: { code: deptCode }
     });
 
