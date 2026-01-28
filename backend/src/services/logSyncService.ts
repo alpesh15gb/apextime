@@ -1,6 +1,7 @@
 import { getSqlPool, prisma } from '../config/database';
 import sql from 'mssql';
 import logger from '../config/logger';
+import { normalizeName, parseEmployeeName } from '../utils/nameUtils';
 
 interface RawLog {
   DeviceLogId: number;
@@ -165,20 +166,21 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
             }
 
             if (effectiveName && !/^\d+$/.test(effectiveName.trim())) {
-              const { firstName, lastName } = parseEmployeeName(effectiveName);
-              const existingByName = await prisma.employee.findFirst({
-                where: {
-                  firstName: { equals: firstName, mode: 'insensitive' },
-                  lastName: { equals: lastName, mode: 'insensitive' }
-                }
+              const normalizedSearch = normalizeName(effectiveName);
+
+              // Find all employees and check normalized names
+              const allEmps = await prisma.employee.findMany({
+                select: { id: true, firstName: true, lastName: true, employeeCode: true, deviceUserId: true }
               });
+
+              const existingByName = allEmps.find(e => normalizeName(e.firstName, e.lastName) === normalizedSearch);
 
               if (existingByName) {
                 // Link this userId to the existing employee
-                logger.info(`Found existing employee ${existingByName.employeeCode} by name "${effectiveName}" for userId ${userId}. Linking...`);
+                logger.info(`Found existing employee ${existingByName.employeeCode} by fuzzy name match "${effectiveName}" for userId ${userId}. Linking...`);
 
                 // If the existing employee doesn't have a deviceUserId yet, or it's the numeric version of this one
-                if (!existingByName.deviceUserId || existingByName.deviceUserId === userId.replace(/\D/g, '')) {
+                if (!existingByName.deviceUserId || /^\d+$/.test(existingByName.deviceUserId)) {
                   await prisma.employee.update({
                     where: { id: existingByName.id },
                     data: { deviceUserId: userId.toString() }
@@ -371,21 +373,7 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
   }
 }
 
-function parseEmployeeName(fullName: string): { firstName: string; lastName: string } {
-  if (!fullName || fullName.trim() === '') {
-    return { firstName: 'Employee', lastName: 'Unknown' };
-  }
-
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) {
-    return { firstName: parts[0], lastName: '' };
-  }
-
-  // First part is first name, rest is last name
-  const firstName = parts[0];
-  const lastName = parts.slice(1).join(' ');
-  return { firstName, lastName };
-}
+// Utility removed as it's now in src/utils/nameUtils.ts
 
 async function getOrCreateDepartment(departmentName: string): Promise<string | null> {
   if (!departmentName || departmentName.trim() === '') {

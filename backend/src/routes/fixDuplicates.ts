@@ -1,6 +1,7 @@
 import express from 'express';
 import { prisma } from '../config/database';
 import logger from '../config/logger';
+import { normalizeName } from '../utils/nameUtils';
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.get('/', async (req, res) => {
     // Group by normalized name
     const byName = new Map<string, typeof allEmployees>();
     for (const emp of allEmployees) {
-      const normalized = `${emp.firstName} ${emp.lastName}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalized = normalizeName(emp.firstName, emp.lastName);
       if (normalized.length < 3) continue; // Skip short names
       if (!byName.has(normalized)) byName.set(normalized, []);
       byName.get(normalized)!.push(emp);
@@ -136,7 +137,7 @@ router.post('/', async (req, res) => {
     // 1. Merge by name duplicates
     const byName = new Map<string, typeof allEmployees>();
     for (const emp of allEmployees) {
-      const normalized = `${emp.firstName} ${emp.lastName}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalized = normalizeName(emp.firstName, emp.lastName);
       if (normalized.length < 3) continue;
       if (!byName.has(normalized)) byName.set(normalized, []);
       byName.get(normalized)!.push(emp);
