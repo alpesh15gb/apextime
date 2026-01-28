@@ -141,6 +141,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       }
       logger.info(`Stored ${storedCount} raw logs`);
 
+      // Load device user info from SQL Server once at start
+      await loadDeviceUserInfoFromSqlServer();
+      logger.info(`Loaded ${deviceUserInfoCache.size} device users into cache for deduplication`);
+
       // Auto-create employees if they don't exist
       const uniqueUserIds = new Set<string>();
       for (const log of uniqueLogs.values()) {
@@ -150,13 +154,49 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       for (const userId of uniqueUserIds) {
         if (!employeeCache.has(userId)) {
           try {
+            // Check if this userId maps to a name that already exists in another employee
+            const userInfo = deviceUserInfoCache.get(userId);
+            let effectiveName = userInfo?.Name;
+
+            // Try to resolve proper name if it's currently numeric
+            if (!effectiveName || /^\d+$/.test(effectiveName.trim())) {
+              const properName = await lookupProperEmployeeName(userId);
+              if (properName) effectiveName = properName;
+            }
+
+            if (effectiveName && !/^\d+$/.test(effectiveName.trim())) {
+              const { firstName, lastName } = parseEmployeeName(effectiveName);
+              const existingByName = await prisma.employee.findFirst({
+                where: {
+                  firstName: { equals: firstName, mode: 'insensitive' },
+                  lastName: { equals: lastName, mode: 'insensitive' }
+                }
+              });
+
+              if (existingByName) {
+                // Link this userId to the existing employee
+                logger.info(`Found existing employee ${existingByName.employeeCode} by name "${effectiveName}" for userId ${userId}. Linking...`);
+
+                // If the existing employee doesn't have a deviceUserId yet, or it's the numeric version of this one
+                if (!existingByName.deviceUserId || existingByName.deviceUserId === userId.replace(/\D/g, '')) {
+                  await prisma.employee.update({
+                    where: { id: existingByName.id },
+                    data: { deviceUserId: userId.toString() }
+                  });
+                }
+
+                employeeCache.set(userId, existingByName.id);
+                continue;
+              }
+            }
+
             const newEmployee = await createEmployeeFromDeviceLog(userId);
             if (newEmployee) {
               employeeCache.set(userId, newEmployee.id);
               employeesCreated++;
             }
           } catch (error) {
-            logger.error(`Failed to create employee for userId ${userId}:`, error);
+            logger.error(`Failed to create/link employee for userId ${userId}:`, error);
           }
         }
       }

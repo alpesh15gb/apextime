@@ -55,13 +55,16 @@ interface SqlDeviceUser {
 }
 
 interface SqlTableInfo {
-  name: string;
-  columns: Array<{ COLUMN_NAME: string; DATA_TYPE: string }>;
   error?: string;
 }
 
+interface DuplicateData {
+  nameDuplicates: [string, any[]][];
+  hoMappings: { numeric: any, ho: any }[];
+}
+
 export const SyncDiagnostics = () => {
-  const [connectionStatus, setConnectionStatus] = useState<{status: string; deviceLogsCount?: number; error?: string} | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<{ status: string; deviceLogsCount?: number; error?: string } | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatusData | null>(null);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [discoveredTables, setDiscoveredTables] = useState<TableInfo[]>([]);
@@ -83,6 +86,9 @@ export const SyncDiagnostics = () => {
   const [selectedTable, setSelectedTable] = useState('');
   const [tableQueryResult, setTableQueryResult] = useState<{ table: string; rowCount: number; data: any[] } | null>(null);
   const [loadingTableQuery, setLoadingTableQuery] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateData | null>(null);
+  const [loadingDuplicates, setLoadingDuplicates] = useState(false);
+  const [merging, setMerging] = useState(false);
 
   const testConnection = async () => {
     try {
@@ -269,6 +275,38 @@ export const SyncDiagnostics = () => {
     }
   };
 
+  const fetchDuplicates = async () => {
+    try {
+      setLoadingDuplicates(true);
+      const response = await syncAPI.getDuplicates();
+      // The current API returns HTML for /api/fix-duplicates
+      // We need to either parse it or update the API to return JSON
+      setDuplicates(response.data);
+    } catch (error) {
+      console.error('Failed to fetch duplicates:', error);
+    } finally {
+      setLoadingDuplicates(false);
+    }
+  };
+
+  const mergeDuplicates = async () => {
+    if (!confirm('This will merge all detected duplicates and migrate their attendance data. This action cannot be undone. Continue?')) {
+      return;
+    }
+    try {
+      setMerging(true);
+      await syncAPI.mergeDuplicates();
+      alert('Duplicates merged successfully!');
+      await fetchDuplicates();
+      await fetchUnmatchedUsers();
+    } catch (error) {
+      console.error('Failed to merge duplicates:', error);
+      alert('Merge failed. Check console for details.');
+    } finally {
+      setMerging(false);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       await Promise.all([
@@ -276,6 +314,7 @@ export const SyncDiagnostics = () => {
         fetchSyncStatus(),
         discoverTables(),
         fetchUnmatchedUsers(),
+        fetchDuplicates(),
       ]);
     };
     loadData();
@@ -362,11 +401,10 @@ export const SyncDiagnostics = () => {
                   <div>
                     <p className="text-sm text-gray-500">Last Sync Result</p>
                     <p
-                      className={`font-medium ${
-                        syncStatus.lastSync.status === 'success'
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
+                      className={`font-medium ${syncStatus.lastSync.status === 'success'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                        }`}
                     >
                       {syncStatus.lastSync.status === 'success' ? 'Success' : 'Failed'}
                     </p>
@@ -618,6 +656,96 @@ export const SyncDiagnostics = () => {
         )}
       </div>
 
+      {/* Duplicate Employees */}
+      <div className="card bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-yellow-500">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center">
+            <Users className="w-5 h-5 mr-2 text-yellow-500" />
+            Duplicate Employee Detection
+          </h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={fetchDuplicates}
+              disabled={loadingDuplicates}
+              className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingDuplicates ? 'animate-spin' : ''}`} />
+              <span>Scan for Duplicates</span>
+            </button>
+            {duplicates && (duplicates.nameDuplicates.length > 0 || duplicates.hoMappings.length > 0) && (
+              <button
+                onClick={mergeDuplicates}
+                disabled={merging}
+                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                <span>{merging ? 'Merging...' : 'Merge All Duplicates'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {duplicates ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <p className="text-sm text-yellow-700">Name Duplicates</p>
+                <p className="text-2xl font-bold text-yellow-700">{duplicates.nameDuplicates.length}</p>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-700">Numeric → HO Mappings</p>
+                <p className="text-2xl font-bold text-blue-700">{duplicates.hoMappings.length}</p>
+              </div>
+            </div>
+
+            {duplicates.nameDuplicates.length > 0 && (
+              <div>
+                <h3 className="text-md font-medium mb-3">Duplicate Names (Different IDs)</h3>
+                <div className="space-y-3">
+                  {duplicates.nameDuplicates.map(([name, emps], idx) => (
+                    <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <p className="font-bold text-gray-800 mb-1">{name.toUpperCase()}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {emps.map((e: any, i: number) => (
+                          <span key={i} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded">
+                            ID: {e.deviceUserId} | Code: {e.employeeCode}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {duplicates.hoMappings.length > 0 && (
+              <div>
+                <h3 className="text-md font-medium mb-3">Numeric → HO Code Pairs</h3>
+                <div className="space-y-2">
+                  {duplicates.hoMappings.map((map, idx) => (
+                    <div key={idx} className="flex items-center text-sm bg-blue-50 p-2 rounded border border-blue-100">
+                      <code className="bg-white px-2 py-1 rounded">{map.numeric.deviceUserId}</code>
+                      <span className="mx-3 text-gray-400">→</span>
+                      <span className="font-medium text-blue-800">{map.ho.firstName} {map.ho.lastName}</span>
+                      <code className="ml-2 bg-white px-2 py-1 rounded text-xs">{map.ho.deviceUserId}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {duplicates.nameDuplicates.length === 0 && duplicates.hoMappings.length === 0 && (
+              <div className="text-center py-6 bg-green-50 rounded-lg border border-green-100">
+                <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                <p className="text-green-800 font-medium">No duplicates found!</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">Click "Scan for Duplicates" to analyze the database</p>
+        )}
+      </div>
+
       {/* SQL Server Device Users */}
       <div className="card bg-white shadow rounded-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -799,8 +927,8 @@ export const SyncDiagnostics = () => {
                         {Object.values(row).map((val: any, i) => (
                           <td key={i} className="py-2 px-4">
                             {val === null ? <span className="text-gray-400 italic">null</span> :
-                             typeof val === 'object' ? JSON.stringify(val).substring(0, 50) :
-                             String(val).substring(0, 50)}
+                              typeof val === 'object' ? JSON.stringify(val).substring(0, 50) :
+                                String(val).substring(0, 50)}
                           </td>
                         ))}
                       </tr>

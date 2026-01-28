@@ -13,7 +13,12 @@
       "Bash(ssh:*)",
       "Bash(docker logs:*)",
       "Bash(docker exec apextime-postgres psql:*)",
-      "Bash(docker exec apextime-backend node:*)"
+      "Bash(docker exec apextime-backend node:*)",
+      "Bash(docker exec apextime-backend grep:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(dir:*)",
+      "Bash(ls -la:*)",
+      "Bash(docker exec apextime-backend ls:*)"
     ]
   }
 }

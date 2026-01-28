@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
 
     // Also check for numeric firstName duplicates (like "38" and "HO038")
     const numericCodes = allEmployees.filter(e => /^\d+$/.test(e.firstName));
-    const hoMappings: {numeric: typeof allEmployees[0], ho: typeof allEmployees[0]}[] = [];
+    const hoMappings: { numeric: typeof allEmployees[0], ho: typeof allEmployees[0] }[] = [];
 
     for (const num of numericCodes) {
       const padded = num.firstName.padStart(3, '0');
@@ -43,6 +43,13 @@ router.get('/', async (req, res) => {
       if (hoMatch) {
         hoMappings.push({ numeric: num, ho: hoMatch });
       }
+    }
+
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({
+        nameDuplicates,
+        hoMappings
+      });
     }
 
     res.send(`
@@ -81,9 +88,9 @@ router.get('/', async (req, res) => {
               <strong>${emps[0].firstName} ${emps[0].lastName}</strong>
               <ul>
                 ${emps.map(e => {
-                  const isNumeric = /^\d+$/.test(e.firstName);
-                  return `<li class="${isNumeric ? 'remove' : 'kept'}">deviceUserId: <code>${e.deviceUserId}</code> | code: ${e.employeeCode} ${isNumeric ? '(will delete)' : '(will keep)'}</li>`;
-                }).join('')}
+      const isNumeric = /^\d+$/.test(e.firstName);
+      return `<li class="${isNumeric ? 'remove' : 'kept'}">deviceUserId: <code>${e.deviceUserId}</code> | code: ${e.employeeCode} ${isNumeric ? '(will delete)' : '(will keep)'}</li>`;
+    }).join('')}
               </ul>
             </div>
           `).join('')}
@@ -94,7 +101,7 @@ router.get('/', async (req, res) => {
         <div class="section">
           <h2>Numeric → HO Code Mappings</h2>
           <p>These will merge numeric codes (like "38") into their HO equivalents (like "HO038")</p>
-          ${hoMappings.map(({numeric, ho}) => `
+          ${hoMappings.map(({ numeric, ho }) => `
             <div class="duplicate">
               <span class="remove">${numeric.firstName} (${numeric.employeeCode}, deviceUserId: ${numeric.deviceUserId})</span>
               →
