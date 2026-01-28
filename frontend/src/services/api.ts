@@ -188,7 +188,10 @@ export const syncAPI = {
   discoverAllTables: () => api.get('/sync/discover-all-tables'),
   getSqlDeviceUsers: () => api.get('/sync/sql-device-users'),
   queryTable: (tableName: string, limit?: number) => api.get(`/sync/query-table/${tableName}`, { params: { limit } }),
-  getDuplicates: () => api.get('/fix-duplicates', { headers: { 'Accept': 'application/json' } }),
+  getDuplicates: () => api.get('/fix-duplicates', {
+    params: { format: 'json' },
+    headers: { 'Accept': 'application/json' }
+  }),
   mergeDuplicates: () => api.post('/fix-duplicates'),
 };
 

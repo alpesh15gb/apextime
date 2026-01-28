@@ -278,10 +278,15 @@ export const SyncDiagnostics = () => {
 
   const fetchDuplicates = async () => {
     try {
+      console.log('Fetching duplicates...');
       setLoadingDuplicates(true);
       const response = await syncAPI.getDuplicates();
-      // The current API returns HTML for /api/fix-duplicates
-      // We need to either parse it or update the API to return JSON
+      console.log('Duplicates received:', response.data);
+
+      if (typeof response.data === 'string') {
+        throw new Error('Received HTML instead of JSON. Please refresh the page.');
+      }
+
       setDuplicates(response.data);
     } catch (error: any) {
       console.error('Failed to fetch duplicates:', error);
@@ -311,13 +316,12 @@ export const SyncDiagnostics = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([
-        testConnection(),
-        fetchSyncStatus(),
-        discoverTables(),
-        fetchUnmatchedUsers(),
-        fetchDuplicates(),
-      ]);
+      // Run these individually so one failure doesn't block others
+      try { await testConnection(); } catch (e) { console.error(e); }
+      try { await fetchSyncStatus(); } catch (e) { console.error(e); }
+      try { await discoverTables(); } catch (e) { console.error(e); }
+      try { await fetchUnmatchedUsers(); } catch (e) { console.error(e); }
+      try { await fetchDuplicates(); } catch (e) { console.error(e); }
     };
     loadData();
   }, []);

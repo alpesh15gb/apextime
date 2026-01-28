@@ -63,6 +63,7 @@ router.get('/', async (req, res) => {
       .filter(([_, emps]) => emps.length > 1);
 
     if (req.headers.accept?.includes('application/json') || req.query.format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
       return res.json({
         nameDuplicates,
         hoMappings,
