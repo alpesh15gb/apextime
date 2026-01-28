@@ -280,9 +280,10 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
     const pool = await getSqlPool();
 
     // Query DeviceUsers joined with Employees and Departments to get full info
+    // Use DeviceUserId as UserId since that's what matches the app's deviceUserId
     const result = await pool.request().query(`
       SELECT
-        du.DeviceUserId as UserId,
+        CAST(du.DeviceUserId AS VARCHAR) as UserId,
         du.DeviceId,
         e.EmployeeId,
         e.EmployeeName,
@@ -295,9 +296,11 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
     `);
 
     for (const user of result.recordset) {
-      deviceUserInfoCache.set(user.UserId.toString(), {
-        UserId: user.UserId.toString(),
-        Name: user.EmployeeName || `User ${user.UserId}`,
+      // Use DeviceUserId (from SQL Server) as the key - convert to string to match app's deviceUserId
+      const deviceUserIdStr = user.UserId?.toString();
+      deviceUserInfoCache.set(deviceUserIdStr, {
+        UserId: deviceUserIdStr,
+        Name: user.EmployeeName || `User ${deviceUserIdStr}`,
         DeviceId: user.DeviceId,
         EmployeeId: user.EmployeeId?.toString(),
         Designation: user.Designation,
