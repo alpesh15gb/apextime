@@ -54,7 +54,7 @@ const MANUAL_NAME_MAP: Record<string, { firstName: string; lastName: string }> =
 
   // P V N Somayajulu
   '53': { firstName: 'P V N', lastName: 'Somayajulu' },
-  '8': { firstName: 'P V N', lastName: 'Somayajulu' }, // Conflict with CH.Praveen Kumar - user needs to clarify
+  // Note: Code '8' is CH.Praveen Kumar (defined above)
 };
 
 // GET /manual-update-names - Show what will be updated
