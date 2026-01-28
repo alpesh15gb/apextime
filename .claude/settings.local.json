@@ -10,7 +10,9 @@
       "Bash(npm run build:*)",
       "Bash(git rm:*)",
       "Bash(copy:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec apextime-postgres psql:*)"
     ]
   }
 }

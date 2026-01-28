@@ -266,6 +266,10 @@ interface DeviceUserInfo {
   UserId: string;
   Name: string;
   DeviceId: number;
+  EmployeeId?: string;
+  Designation?: string;
+  DepartmentId?: string;
+  DepartmentName?: string;
 }
 
 // Cache for device user info from SQL Server
@@ -275,18 +279,30 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
   try {
     const pool = await getSqlPool();
 
-    // Query DeviceUsers from SQL Server to get names
+    // Query DeviceUsers joined with Employees and Departments to get full info
     const result = await pool.request().query(`
-      SELECT DeviceId, UserId, Name
-      FROM DeviceUsers
-      WHERE IsActive = 1
+      SELECT
+        du.DeviceUserId as UserId,
+        du.DeviceId,
+        e.EmployeeId,
+        e.EmployeeName,
+        e.Designation,
+        e.DepartmentId,
+        d.DepartmentFName as DepartmentName
+      FROM DeviceUsers du
+      LEFT JOIN Employees e ON du.EmployeeId = e.EmployeeId
+      LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
     `);
 
     for (const user of result.recordset) {
       deviceUserInfoCache.set(user.UserId.toString(), {
         UserId: user.UserId.toString(),
-        Name: user.Name,
+        Name: user.EmployeeName || `User ${user.UserId}`,
         DeviceId: user.DeviceId,
+        EmployeeId: user.EmployeeId?.toString(),
+        Designation: user.Designation,
+        DepartmentId: user.DepartmentId?.toString(),
+        DepartmentName: user.DepartmentName,
       });
     }
 
@@ -312,6 +328,74 @@ function parseEmployeeName(fullName: string): { firstName: string; lastName: str
   return { firstName, lastName };
 }
 
+async function getOrCreateDepartment(departmentName: string): Promise<string | null> {
+  if (!departmentName || departmentName.trim() === '') {
+    return null;
+  }
+
+  const deptCode = departmentName.toUpperCase().replace(/\s+/g, '_').substring(0, 20);
+
+  try {
+    // Try to find existing department
+    const existing = await prisma.department.findUnique({
+      where: { code: deptCode }
+    });
+
+    if (existing) {
+      return existing.id;
+    }
+
+    // Create new department
+    const newDept = await prisma.department.create({
+      data: {
+        name: departmentName,
+        code: deptCode,
+        isActive: true,
+      }
+    });
+
+    logger.info(`Created new department: ${departmentName} (${deptCode})`);
+    return newDept.id;
+  } catch (error) {
+    logger.error(`Failed to create department ${departmentName}:`, error);
+    return null;
+  }
+}
+
+async function getOrCreateDesignation(designationName: string): Promise<string | null> {
+  if (!designationName || designationName.trim() === '') {
+    return null;
+  }
+
+  const desigCode = designationName.toUpperCase().replace(/\s+/g, '_').substring(0, 20);
+
+  try {
+    // Try to find existing designation
+    const existing = await prisma.designation.findUnique({
+      where: { code: desigCode }
+    });
+
+    if (existing) {
+      return existing.id;
+    }
+
+    // Create new designation
+    const newDesig = await prisma.designation.create({
+      data: {
+        name: designationName,
+        code: desigCode,
+        isActive: true,
+      }
+    });
+
+    logger.info(`Created new designation: ${designationName} (${desigCode})`);
+    return newDesig.id;
+  } catch (error) {
+    logger.error(`Failed to create designation ${designationName}:`, error);
+    return null;
+  }
+}
+
 async function createEmployeeFromDeviceLog(deviceUserId: string) {
   try {
     // Load device user info if cache is empty
@@ -325,21 +409,43 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
     // Generate employee code from deviceUserId (ensure it's unique)
     const employeeCode = `EMP${deviceUserId.toString().padStart(4, '0')}`;
 
+    // Get or create department and designation
+    let departmentId: string | null = null;
+    let designationId: string | null = null;
+
+    if (userInfo?.DepartmentName) {
+      departmentId = await getOrCreateDepartment(userInfo.DepartmentName);
+    }
+
+    if (userInfo?.Designation) {
+      designationId = await getOrCreateDesignation(userInfo.Designation);
+    }
+
     // Check if employee code already exists
     const existing = await prisma.employee.findUnique({
       where: { employeeCode }
     });
 
     if (existing) {
-      // Update existing employee with deviceUserId and name if available
+      // Update existing employee with deviceUserId, name, department, designation
       const updateData: any = { deviceUserId: deviceUserId.toString() };
 
-      if (userInfo?.Name && existing.firstName === `Employee` && existing.lastName === deviceUserId) {
+      if (userInfo?.Name && (existing.firstName === `Employee` || existing.lastName === deviceUserId)) {
         // Update name if it was auto-generated
         const { firstName, lastName } = parseEmployeeName(userInfo.Name);
         updateData.firstName = firstName;
         updateData.lastName = lastName;
         logger.info(`Updating employee ${employeeCode} name to: ${firstName} ${lastName}`);
+      }
+
+      // Update department if not set
+      if (departmentId && !existing.departmentId) {
+        updateData.departmentId = departmentId;
+      }
+
+      // Update designation if not set
+      if (designationId && !existing.designationId) {
+        updateData.designationId = designationId;
       }
 
       return await prisma.employee.update({
@@ -361,18 +467,20 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
       logger.info(`Creating employee ${employeeCode} with default name (UserId: ${deviceUserId})`);
     }
 
-    // Create new employee
+    // Create new employee with department and designation
     const employee = await prisma.employee.create({
       data: {
         employeeCode,
         firstName,
         lastName,
         deviceUserId: deviceUserId.toString(),
+        departmentId,
+        designationId,
         isActive: true,
       }
     });
 
-    logger.info(`Created new employee: ${employeeCode} (${firstName} ${lastName}) with deviceUserId: ${deviceUserId}`);
+    logger.info(`Created new employee: ${employeeCode} (${firstName} ${lastName}) with deviceUserId: ${deviceUserId}, department: ${userInfo?.DepartmentName || 'none'}, designation: ${userInfo?.Designation || 'none'}`);
     return employee;
   } catch (error) {
     logger.error(`Failed to create employee for deviceUserId ${deviceUserId}:`, error);
@@ -499,10 +607,10 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
   return processedResults;
 }
 
-// Sync employee names from SQL Server DeviceUsers table
-export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number }> {
+// Sync employee names, designation and department from SQL Server
+export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
   try {
-    logger.info('Starting employee name sync from SQL Server DeviceUsers...');
+    logger.info('Starting employee name, department and designation sync from SQL Server...');
 
     // Load device user info
     await loadDeviceUserInfoFromSqlServer();
@@ -514,6 +622,8 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
 
     let updated = 0;
     let failed = 0;
+    let deptUpdated = 0;
+    let desigUpdated = 0;
 
     for (const employee of employees) {
       if (!employee.deviceUserId) continue;
@@ -524,19 +634,59 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
       // Parse the name from SQL Server
       const { firstName, lastName } = parseEmployeeName(userInfo.Name);
 
-      // Only update if the name is different and was auto-generated
+      // Get or create department and designation
+      let departmentId: string | null = employee.departmentId;
+      let designationId: string | null = employee.designationId;
+
+      if (userInfo?.DepartmentName && !employee.departmentId) {
+        departmentId = await getOrCreateDepartment(userInfo.DepartmentName);
+      }
+
+      if (userInfo?.Designation && !employee.designationId) {
+        designationId = await getOrCreateDesignation(userInfo.Designation);
+      }
+
+      // Only update if something changed or was auto-generated
       const currentFullName = `${employee.firstName} ${employee.lastName}`.trim();
       const newFullName = `${firstName} ${lastName}`.trim();
 
-      if (currentFullName !== newFullName &&
-          (employee.firstName === 'Employee' || currentFullName.includes(employee.deviceUserId))) {
+      const shouldUpdateName = currentFullName !== newFullName &&
+        (employee.firstName === 'Employee' || currentFullName.includes(employee.deviceUserId));
+
+      const shouldUpdateDept = departmentId && !employee.departmentId;
+      const shouldUpdateDesig = designationId && !employee.designationId;
+
+      if (shouldUpdateName || shouldUpdateDept || shouldUpdateDesig) {
         try {
+          const updateData: any = {};
+          if (shouldUpdateName) {
+            updateData.firstName = firstName;
+            updateData.lastName = lastName;
+          }
+          if (shouldUpdateDept) {
+            updateData.departmentId = departmentId;
+          }
+          if (shouldUpdateDesig) {
+            updateData.designationId = designationId;
+          }
+
           await prisma.employee.update({
             where: { id: employee.id },
-            data: { firstName, lastName },
+            data: updateData,
           });
-          logger.info(`Updated employee ${employee.employeeCode} name: ${newFullName}`);
-          updated++;
+
+          if (shouldUpdateName) {
+            logger.info(`Updated employee ${employee.employeeCode} name: ${newFullName}`);
+            updated++;
+          }
+          if (shouldUpdateDept) {
+            logger.info(`Updated employee ${employee.employeeCode} department: ${userInfo.DepartmentName}`);
+            deptUpdated++;
+          }
+          if (shouldUpdateDesig) {
+            logger.info(`Updated employee ${employee.employeeCode} designation: ${userInfo.Designation}`);
+            desigUpdated++;
+          }
         } catch (error) {
           logger.error(`Failed to update employee ${employee.employeeCode}:`, error);
           failed++;
@@ -544,10 +694,10 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
       }
     }
 
-    logger.info(`Employee name sync complete. Updated: ${updated}, Failed: ${failed}`);
-    return { updated, failed };
+    logger.info(`Employee sync complete. Names updated: ${updated}, Departments updated: ${deptUpdated}, Designations updated: ${desigUpdated}, Failed: ${failed}`);
+    return { updated, failed, deptUpdated, desigUpdated };
   } catch (error) {
-    logger.error('Employee name sync failed:', error);
+    logger.error('Employee sync failed:', error);
     throw error;
   } finally {
     deviceUserInfoCache.clear();
