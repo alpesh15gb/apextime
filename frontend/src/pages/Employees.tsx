@@ -9,8 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { employeesAPI, departmentsAPI } from '../services/api';
-import { Employee, Department } from '../types';
+import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
+import { Employee, Department, Branch, Shift } from '../types';
 
 export const Employees = () => {
   const navigate = useNavigate();
@@ -22,10 +22,23 @@ export const Employees = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [bulkData, setBulkData] = useState({
+    branchId: '',
+    departmentId: '',
+    shiftId: '',
+    isActive: '',
+  });
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
     fetchDepartments();
+    fetchBranches();
+    fetchShifts();
   }, [page, searchTerm, selectedDepartment]);
 
   const fetchEmployees = async () => {
@@ -54,6 +67,59 @@ export const Employees = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const response = await branchesAPI.getAll();
+      setBranches(response.data);
+    } catch (error) {
+      console.error('Failed to fetch branches:', error);
+    }
+  };
+
+  const fetchShifts = async () => {
+    try {
+      const response = await shiftsAPI.getAll();
+      setShifts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch shifts:', error);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === employees.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(employees.map(e => e.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkUpdate = async () => {
+    try {
+      setIsBulkUpdating(true);
+      const data: any = {};
+      if (bulkData.branchId) data.branchId = bulkData.branchId;
+      if (bulkData.departmentId) data.departmentId = bulkData.departmentId;
+      if (bulkData.shiftId) data.shiftId = bulkData.shiftId;
+      if (bulkData.isActive) data.isActive = bulkData.isActive === 'true';
+
+      await employeesAPI.bulkUpdate(selectedIds, data);
+      setShowBulkModal(false);
+      setSelectedIds([]);
+      fetchEmployees();
+    } catch (error) {
+      console.error('Bulk update failed:', error);
+      alert('Bulk update failed');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await employeesAPI.delete(id);
@@ -68,13 +134,24 @@ export const Employees = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Employees</h1>
-        <button
-          onClick={() => navigate('/employees/new')}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Employee</span>
-        </button>
+        <div className="flex space-x-3">
+          {selectedIds.length > 0 && (
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2 shadow-sm"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Bulk Update ({selectedIds.length})</span>
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/employees/new')}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Employee</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -120,6 +197,14 @@ export const Employees = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
+                    <th className="py-3 px-4">
+                      <input
+                        type="checkbox"
+                        checked={employees.length > 0 && selectedIds.length === employees.length}
+                        onChange={toggleSelectAll}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4"
+                      />
+                    </th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Employee Code</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Department</th>
@@ -130,7 +215,15 @@ export const Employees = () => {
                 </thead>
                 <tbody>
                   {employees.map((employee) => (
-                    <tr key={employee.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr key={employee.id} className={`border-b border-gray-100 hover:bg-gray-50 ${selectedIds.includes(employee.id) ? 'bg-primary-50' : ''}`}>
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(employee.id)}
+                          onChange={() => toggleSelect(employee.id)}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4"
+                        />
+                      </td>
                       <td className="py-3 px-4 font-mono text-sm">{employee.employeeCode}</td>
                       <td className="py-3 px-4">
                         <div>
@@ -142,11 +235,10 @@ export const Employees = () => {
                       <td className="py-3 px-4">{employee.branch?.name || '-'}</td>
                       <td className="py-3 px-4">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            employee.isActive
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${employee.isActive
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}
                         >
                           {employee.isActive ? 'Active' : 'Inactive'}
                         </span>
@@ -219,6 +311,106 @@ export const Employees = () => {
                 className="btn-danger"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Update Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Bulk Update Employees</h3>
+                <p className="text-sm text-gray-500 mt-1">Updating {selectedIds.length} selected employees</p>
+              </div>
+              <button onClick={() => setShowBulkModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                    <Building2 className="w-4 h-4 text-indigo-500" />
+                    <span>Branch</span>
+                  </label>
+                  <select
+                    value={bulkData.branchId}
+                    onChange={(e) => setBulkData({ ...bulkData, branchId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  >
+                    <option value="">No Change</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                    <Briefcase className="w-4 h-4 text-indigo-500" />
+                    <span>Department</span>
+                  </label>
+                  <select
+                    value={bulkData.departmentId}
+                    onChange={(e) => setBulkData({ ...bulkData, departmentId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  >
+                    <option value="">No Change</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <span>Shift</span>
+                  </label>
+                  <select
+                    value={bulkData.shiftId}
+                    onChange={(e) => setBulkData({ ...bulkData, shiftId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  >
+                    <option value="">No Change</option>
+                    {shifts.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4 text-indigo-500" />
+                    <span>Status</span>
+                  </label>
+                  <select
+                    value={bulkData.isActive}
+                    onChange={(e) => setBulkData({ ...bulkData, isActive: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  >
+                    <option value="">No Change</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <p className="text-sm text-yellow-700">
+                  Only the fields you select will be updated. Others will remain unchanged for the {selectedIds.length} selected employees.
+                </p>
+              </div>
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowBulkModal(false)}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-white transition-colors"
+                disabled={isBulkUpdating}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkUpdate}
+                disabled={isBulkUpdating || (!bulkData.branchId && !bulkData.departmentId && !bulkData.shiftId && !bulkData.isActive)}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md disabled:bg-gray-400 disabled:shadow-none font-bold"
+              >
+                {isBulkUpdating ? 'Updating...' : 'Update All'}
               </button>
             </div>
           </div>

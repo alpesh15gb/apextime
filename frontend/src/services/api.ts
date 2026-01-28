@@ -54,6 +54,8 @@ export const employeesAPI = {
     api.post('/employees', data),
   update: (id: string, data: any) =>
     api.put(`/employees/${id}`, data),
+  bulkUpdate: (ids: string[], data: any) =>
+    api.post('/employees/bulk-update', { ids, data }),
   delete: (id: string) =>
     api.delete(`/employees/${id}`),
 };

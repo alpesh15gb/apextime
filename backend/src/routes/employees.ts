@@ -100,6 +100,37 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Bulk update employees
+router.post('/bulk-update', async (req, res) => {
+  try {
+    const { ids, data } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No employee IDs provided' });
+    }
+
+    const updateData: any = {};
+    if (data.branchId !== undefined) updateData.branchId = data.branchId;
+    if (data.departmentId !== undefined) updateData.departmentId = data.departmentId;
+    if (data.shiftId !== undefined) updateData.shiftId = data.shiftId;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.designationId !== undefined) updateData.designationId = data.designationId;
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+
+    const result = await prisma.employee.updateMany({
+      where: {
+        id: { in: ids }
+      },
+      data: updateData
+    });
+
+    res.json({ message: `Successfully updated ${result.count} employees`, count: result.count });
+  } catch (error) {
+    console.error('Bulk update error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Create employee
 router.post(
   '/',
