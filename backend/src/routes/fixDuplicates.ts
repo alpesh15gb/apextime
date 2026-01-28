@@ -12,8 +12,13 @@ router.get('/', async (req, res) => {
   try {
     // Get all employees
     const allEmployees = await prisma.employee.findMany({
-      where: { deviceUserId: { not: null } },
-      select: { id: true, deviceUserId: true, firstName: true, lastName: true, employeeCode: true, departmentId: true },
+      where: {
+        OR: [
+          { deviceUserId: { not: null } },
+          { sourceEmployeeId: { not: null } }
+        ]
+      },
+      select: { id: true, deviceUserId: true, firstName: true, lastName: true, employeeCode: true, departmentId: true, sourceEmployeeId: true },
     });
 
     // Group by normalized name
@@ -30,9 +35,9 @@ router.get('/', async (req, res) => {
       .filter(([_, emps]) => emps.length > 1)
       .sort((a, b) => a[0].localeCompare(b[0]));
 
-    // Also check for numeric firstName duplicates (like "38" and "HO038")
+    // 2. Also check for numeric firstName duplicates (like "38" and "HO038")
     const numericCodes = allEmployees.filter(e => /^\d+$/.test(e.firstName));
-    const hoMappings: { numeric: typeof allEmployees[0], ho: typeof allEmployees[0] }[] = [];
+    const hoMappings: { numeric: any, ho: any }[] = [];
 
     for (const num of numericCodes) {
       const padded = num.firstName.padStart(3, '0');
@@ -46,10 +51,22 @@ router.get('/', async (req, res) => {
       }
     }
 
-    if (req.headers.accept?.includes('application/json')) {
+    // 3. Find sourceEmployeeId duplicates (the 2644 ID)
+    const bySourceId = new Map<string, typeof allEmployees>();
+    for (const emp of allEmployees) {
+      if (emp.sourceEmployeeId) {
+        if (!bySourceId.has(emp.sourceEmployeeId)) bySourceId.set(emp.sourceEmployeeId, []);
+        bySourceId.get(emp.sourceEmployeeId)!.push(emp);
+      }
+    }
+    const sourceIdDuplicates = Array.from(bySourceId.entries())
+      .filter(([_, emps]) => emps.length > 1);
+
+    if (req.headers.accept?.includes('application/json') || req.query.format === 'json') {
       return res.json({
         nameDuplicates,
-        hoMappings
+        hoMappings,
+        sourceIdDuplicates
       });
     }
 
@@ -202,7 +219,57 @@ router.post('/', async (req, res) => {
       }
     }
 
-    logger.info(`Merged ${results.length} duplicates`);
+    // 3. Merge by sourceEmployeeId duplicates
+    const finalEmployees = await prisma.employee.findMany();
+    const bySourceId = new Map<string, typeof finalEmployees>();
+    for (const emp of finalEmployees) {
+      if (emp.sourceEmployeeId) {
+        if (!bySourceId.has(emp.sourceEmployeeId)) bySourceId.set(emp.sourceEmployeeId, []);
+        bySourceId.get(emp.sourceEmployeeId)!.push(emp);
+      }
+    }
+
+    for (const [sourceId, emps] of bySourceId) {
+      if (emps.length < 2) continue;
+
+      // Keep the one with most info (or first one)
+      const keep = emps[0];
+      const remove = emps.slice(1);
+
+      let attendanceMigrated = 0;
+      for (const dup of remove) {
+        const count = await prisma.attendanceLog.count({ where: { employeeId: dup.id } });
+        if (count > 0) {
+          // Check for existing records on same date to avoid primary key conflicts
+          const existingDates = await prisma.attendanceLog.findMany({
+            where: { employeeId: keep.id },
+            select: { date: true }
+          });
+          const datesSet = new Set(existingDates.map(d => d.date.toISOString()));
+
+          const dupLogs = await prisma.attendanceLog.findMany({ where: { employeeId: dup.id } });
+          for (const log of dupLogs) {
+            if (!datesSet.has(log.date.toISOString())) {
+              await prisma.attendanceLog.update({
+                where: { id: log.id },
+                data: { employeeId: keep.id }
+              });
+              attendanceMigrated++;
+            }
+          }
+        }
+        await prisma.employee.delete({ where: { id: dup.id } });
+      }
+
+      results.push({
+        type: 'source-id',
+        kept: `${keep.firstName} ${keep.lastName} (SourceID: ${sourceId})`,
+        removed: remove.map(e => `${e.firstName} ${e.lastName} (${e.employeeCode})`),
+        attendanceMigrated,
+      });
+    }
+
+    logger.info(`Merged ${results.length} total duplicates`);
 
     res.json({
       message: `Merged ${results.length} duplicates`,

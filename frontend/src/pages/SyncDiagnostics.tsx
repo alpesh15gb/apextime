@@ -61,6 +61,7 @@ interface SqlTableInfo {
 interface DuplicateData {
   nameDuplicates: [string, any[]][];
   hoMappings: { numeric: any, ho: any }[];
+  sourceIdDuplicates: [string, any[]][];
 }
 
 export const SyncDiagnostics = () => {
@@ -282,8 +283,9 @@ export const SyncDiagnostics = () => {
       // The current API returns HTML for /api/fix-duplicates
       // We need to either parse it or update the API to return JSON
       setDuplicates(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch duplicates:', error);
+      alert('Failed to scan for duplicates. Error: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoadingDuplicates(false);
     }
@@ -687,7 +689,7 @@ export const SyncDiagnostics = () => {
 
         {duplicates ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-yellow-50 p-4 rounded-lg">
                 <p className="text-sm text-yellow-700">Name Duplicates</p>
                 <p className="text-2xl font-bold text-yellow-700">{duplicates.nameDuplicates.length}</p>
@@ -696,7 +698,31 @@ export const SyncDiagnostics = () => {
                 <p className="text-sm text-blue-700">Numeric → HO Mappings</p>
                 <p className="text-2xl font-bold text-blue-700">{duplicates.hoMappings.length}</p>
               </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <p className="text-sm text-purple-700">SQL Source ID Dups</p>
+                <p className="text-2xl font-bold text-purple-700">{duplicates.sourceIdDuplicates.length}</p>
+              </div>
             </div>
+
+            {duplicates.sourceIdDuplicates.length > 0 && (
+              <div>
+                <h3 className="text-md font-medium mb-3 text-purple-700">Direct SQL Source ID Duplicates (Best for Merging)</h3>
+                <div className="space-y-3">
+                  {duplicates.sourceIdDuplicates.map(([sid, emps], idx) => (
+                    <div key={idx} className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                      <p className="font-bold text-purple-800 mb-1">Source Employee ID: {sid}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {emps.map((e: any, i: number) => (
+                          <span key={i} className="text-xs bg-white border border-purple-300 px-2 py-1 rounded">
+                            {e.firstName} {e.lastName} | ID: {e.deviceUserId} | Code: {e.employeeCode}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {duplicates.nameDuplicates.length > 0 && (
               <div>
@@ -734,7 +760,7 @@ export const SyncDiagnostics = () => {
               </div>
             )}
 
-            {duplicates.nameDuplicates.length === 0 && duplicates.hoMappings.length === 0 && (
+            {duplicates.nameDuplicates.length === 0 && duplicates.hoMappings.length === 0 && duplicates.sourceIdDuplicates.length === 0 && (
               <div className="text-center py-6 bg-green-50 rounded-lg border border-green-100">
                 <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
                 <p className="text-green-800 font-medium">No duplicates found!</p>
