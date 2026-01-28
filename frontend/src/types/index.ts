@@ -117,6 +117,7 @@ export interface DashboardStats {
   today: {
     present: number;
     absent: number;
+    absentEmployees: Array<{ id: string; firstName: string; lastName: string; employeeCode: string }>;
     lateArrivals: number;
     attendanceRate: number;
   };

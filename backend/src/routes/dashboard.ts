@@ -55,15 +55,29 @@ router.get('/stats', async (req, res) => {
       },
     });
 
-    const todayStatus = {
-      present: 0,
-      absent: 0,
-    };
-
     for (const stat of todayStats) {
       if (stat.status === 'present') todayStatus.present = stat._count.status;
       if (stat.status === 'absent') todayStatus.absent = stat._count.status;
     }
+
+    // Get absent employees list
+    const absentEmployees = await prisma.attendanceLog.findMany({
+      where: {
+        date: { gte: today },
+        status: 'absent',
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+          },
+        },
+      },
+      take: 20, // Limit to 20 for dashboard summary
+    });
 
     // Get late arrivals today
     const lateArrivals = await prisma.attendanceLog.count({
@@ -89,6 +103,7 @@ router.get('/stats', async (req, res) => {
       today: {
         present: todayStatus.present,
         absent: todayStatus.absent,
+        absentEmployees: absentEmployees.map(a => a.employee),
         lateArrivals,
         attendanceRate: totalEmployees > 0 ? Math.round((todayStatus.present / totalEmployees) * 100) : 0,
       },
