@@ -153,11 +153,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Main Content */}
       <main
-        className={`flex-1 transition-all duration-300 ${
+        className={`flex-1 transition-all duration-300 print:m-0 print:p-0 ${
           sidebarOpen ? 'ml-64' : 'ml-16'
         }`}
       >
-        <div className="p-6">{children}</div>
+        <div className="p-6 print:p-0 print:m-0">{children}</div>
       </main>
     </div>
   );

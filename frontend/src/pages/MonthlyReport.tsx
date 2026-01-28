@@ -177,9 +177,9 @@ export const MonthlyReport = () => {
   const days = Array.from({ length: report?.daysInMonth || 31 }, (_, i) => i + 1);
 
   return (
-    <div className="print:m-0 print:p-0">
+    <div className="print:w-full print:max-w-none print:m-0 print:p-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 print:hidden print:mb-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 print:hidden print:mb-0 print:hidden">
         <h1 className="text-2xl font-bold text-gray-800">Monthly Attendance Report</h1>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -408,7 +408,7 @@ export const MonthlyReport = () => {
         @media print {
           @page {
             size: landscape;
-            margin: 3mm;
+            margin: 2mm 3mm;
           }
           html, body {
             margin: 0 !important;
@@ -417,6 +417,13 @@ export const MonthlyReport = () => {
             max-width: 100% !important;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
+          }
+          /* Remove all margins from parent containers */
+          #root, main, .min-h-screen, .bg-gray-50, .flex-1 {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
           }
           .print\\:hidden {
             display: none !important;
@@ -443,12 +450,15 @@ export const MonthlyReport = () => {
             font-size: 7px !important;
           }
           .print\\:min-w\\[20px\\] {
-            min-width: 18px !important;
+            min-width: 16px !important;
           }
           .print\\:w-full {
             width: 100% !important;
             max-width: 100% !important;
             flex: none !important;
+          }
+          .print\\:max-w-none {
+            max-width: none !important;
           }
           .print\\:m-0 {
             margin: 0 !important;
@@ -469,17 +479,17 @@ export const MonthlyReport = () => {
             border-collapse: collapse;
           }
           th, td {
-            padding: 1px !important;
+            padding: 1px 2px !important;
             font-size: 7px !important;
           }
           th:first-child {
-            width: 100px !important;
+            width: 90px !important;
           }
           th:nth-child(2) {
-            width: 35px !important;
+            width: 32px !important;
           }
           th:last-child, th:nth-last-child(2), th:nth-last-child(3), th:nth-last-child(4), th:nth-last-child(5) {
-            width: 30px !important;
+            width: 28px !important;
           }
           th {
             overflow: hidden;
@@ -504,6 +514,22 @@ export const MonthlyReport = () => {
           }
           .flex-col, .lg\\:flex-row {
             flex-direction: column !important;
+          }
+          /* Force main container to full width */
+          main > div {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          /* Remove margin-left from sidebar offset */
+          .ml-64, .ml-16 {
+            margin-left: 0 !important;
+          }
+          /* Ensure print container is full width */
+          .print\\:w-full {
+            width: 100vw !important;
+            max-width: 100vw !important;
           }
         }
       `}</style>
