@@ -55,6 +55,11 @@ router.get('/stats', async (req, res) => {
       },
     });
 
+    const todayStatus = {
+      present: 0,
+      absent: 0,
+    };
+
     for (const stat of todayStats) {
       if (stat.status === 'present') todayStatus.present = stat._count.status;
       if (stat.status === 'absent') todayStatus.absent = stat._count.status;
