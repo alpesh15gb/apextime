@@ -3,10 +3,16 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
-COPY package.json ./
+# Copy frontend package.json from parent directory
+COPY ../frontend/package.json ./
 RUN npm install
 
-COPY . .
+# Copy frontend source
+COPY ../frontend/ .
+
+# Build with API URL
+ARG REACT_APP_API_URL=/api
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 RUN npm run build
 
 # Production nginx stage
