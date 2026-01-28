@@ -7,24 +7,45 @@ const router = express.Router();
 // GET /update-names - Show form
 router.get('/', async (req, res) => {
   try {
-    // Get employees with numeric names
+    const pool = await getSqlPool();
+
+    // Get HO code names from SQL Server
+    const sqlResult = await pool.request().query(`
+      SELECT EmployeeCodeInDevice, EmployeeName
+      FROM Employees
+      WHERE EmployeeCodeInDevice LIKE 'HO%'
+        AND EmployeeName IS NOT NULL
+        AND Status = 'Working'
+    `);
+
+    const hoNames = new Map<string, string>();
+    for (const row of sqlResult.recordset) {
+      const code = row.EmployeeCodeInDevice?.toString();
+      if (code && row.EmployeeName && !/^\d+$/.test(row.EmployeeName.trim())) {
+        hoNames.set(code, row.EmployeeName);
+      }
+    }
+
+    // Get employees with numeric names from PostgreSQL
     const numericEmployees = await prisma.employee.findMany({
       where: {
         deviceUserId: { not: null },
-        OR: [
-          { firstName: { equals: 'Employee' } },
-          { firstName: { contains: '' } } // Get all to check
-        ]
+        firstName: { not: '' }
       },
       orderBy: { deviceUserId: 'asc' }
     });
 
-    // Filter to only those with numeric-looking names
+    // Filter to only numeric codes with numeric names
     const toUpdate = numericEmployees.filter(e => {
-      const name = `${e.firstName} ${e.lastName}`.trim();
-      return /^\d+$/.test(e.firstName) ||
-             /^\d+$/.test(e.lastName) ||
-             (name === `Employee ${e.deviceUserId}`);
+      const code = e.deviceUserId!;
+      return /^\d+$/.test(code) && /^\d+$/.test(e.firstName);
+    }).map(e => {
+      const hoCode = 'HO' + e.deviceUserId!.padStart(3, '0');
+      return {
+        ...e,
+        hoCode,
+        newName: hoNames.get(hoCode) || 'NOT FOUND'
+      };
     });
 
     res.send(`
@@ -37,6 +58,7 @@ router.get('/', async (req, res) => {
           .employee { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
           .current { color: red; }
           .new { color: green; font-weight: bold; }
+          .notfound { color: orange; }
           button { background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
           button:hover { background: #218838; }
           code { background: #eee; padding: 2px 5px; border-radius: 3px; }
@@ -44,16 +66,16 @@ router.get('/', async (req, res) => {
       </head>
       <body>
         <h1>Update Employee Names from SQL Server</h1>
-        <p>Found ${toUpdate.length} employees with numeric/default names that can be updated.</p>
+        <p>Maps numeric codes to HO codes and updates names.</p>
         <form method="POST" action="">
           <button type="submit">Update All Names</button>
         </form>
         <div style="margin-top: 20px;">
           ${toUpdate.map(e => `
             <div class="employee">
-              deviceUserId: <code>${e.deviceUserId}</code> |
-              Current: <span class="current">${e.firstName} ${e.lastName}</span> |
-              Code: ${e.employeeCode}
+              deviceUserId: <code>${e.deviceUserId}</code> -> HO: <code>${e.hoCode}</code><br/>
+              Current: <span class="current">${e.firstName} ${e.lastName}</span> ->
+              New: <span class="${e.newName === 'NOT FOUND' ? 'notfound' : 'new'}">${e.newName}</span>
             </div>
           `).join('')}
         </div>
@@ -65,14 +87,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /update-names - Update names from SQL Server
+// POST /update-names - Update names from SQL Server (map numeric codes to HO codes)
 router.post('/', async (req, res) => {
   try {
     logger.info('Starting name update from SQL Server...');
 
     const pool = await getSqlPool();
 
-    // Get all employees from SQL Server with proper names
+    // Get all employees from SQL Server with proper names (HO codes)
     const sqlResult = await pool.request().query(`
       SELECT
         e.EmployeeCodeInDevice as deviceUserId,
@@ -86,67 +108,76 @@ router.post('/', async (req, res) => {
         AND e.Status = 'Working'
     `);
 
-    // Create lookup map
-    const sqlData = new Map<string, { name: string; dept: string; desig: string }>();
+    // Create lookup map for HO codes (e.g., HO018 -> name)
+    const hoNames = new Map<string, string>();
     for (const row of sqlResult.recordset) {
       const code = row.deviceUserId?.toString();
-      if (code && row.EmployeeName && !/^\d+$/.test(row.EmployeeName.trim())) {
-        sqlData.set(code, {
-          name: row.EmployeeName,
-          dept: row.DepartmentName,
-          desig: row.Designation
-        });
+      // Only use HO codes with proper names
+      if (code?.startsWith('HO') && row.EmployeeName && !/^\d+$/.test(row.EmployeeName.trim())) {
+        hoNames.set(code, row.EmployeeName);
       }
     }
 
-    // Get postgres employees that need updating
+    // Get postgres employees with numeric names that need updating
     const employees = await prisma.employee.findMany({
-      where: { deviceUserId: { not: null } }
+      where: {
+        deviceUserId: { not: null },
+        firstName: { not: '' } // Get all to filter
+      }
     });
 
     const results: { deviceUserId: string; oldName: string; newName: string; status: string }[] = [];
 
     for (const emp of employees) {
       const code = emp.deviceUserId!;
-      const sqlInfo = sqlData.get(code);
 
-      if (!sqlInfo) continue;
+      // Only process numeric codes (18, 38, etc.)
+      if (!/^\d+$/.test(code)) continue;
 
-      const currentName = `${emp.firstName} ${emp.lastName}`.trim();
-      const needsUpdate =
-        /^\d+$/.test(emp.firstName) ||
-        /^\d+$/.test(emp.lastName) ||
-        currentName === `Employee ${code}`;
+      // Check if current name is also just a number
+      if (!/^\d+$/.test(emp.firstName)) continue;
 
-      if (needsUpdate) {
-        // Parse name
-        const parts = sqlInfo.name.trim().split(/\s+/);
-        const firstName = parts[0];
-        const lastName = parts.slice(1).join(' ');
+      // Map to HO code (18 -> HO018)
+      const hoCode = 'HO' + code.padStart(3, '0');
+      const properName = hoNames.get(hoCode);
 
-        try {
-          await prisma.employee.update({
-            where: { id: emp.id },
-            data: {
-              firstName,
-              lastName: lastName || ''
-            }
-          });
+      if (!properName) {
+        results.push({
+          deviceUserId: code,
+          oldName: `${emp.firstName} ${emp.lastName}`,
+          newName: 'NOT FOUND',
+          status: 'skipped - no HO code mapping'
+        });
+        continue;
+      }
 
-          results.push({
-            deviceUserId: code,
-            oldName: currentName,
-            newName: sqlInfo.name,
-            status: 'updated'
-          });
-        } catch (e) {
-          results.push({
-            deviceUserId: code,
-            oldName: currentName,
-            newName: sqlInfo.name,
-            status: 'error: ' + (e instanceof Error ? e.message : 'unknown')
-          });
-        }
+      // Parse name
+      const parts = properName.trim().split(/\s+/);
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(' ');
+
+      try {
+        await prisma.employee.update({
+          where: { id: emp.id },
+          data: {
+            firstName,
+            lastName: lastName || ''
+          }
+        });
+
+        results.push({
+          deviceUserId: code,
+          oldName: `${emp.firstName} ${emp.lastName}`,
+          newName: properName,
+          status: 'updated'
+        });
+      } catch (e) {
+        results.push({
+          deviceUserId: code,
+          oldName: `${emp.firstName} ${emp.lastName}`,
+          newName: properName,
+          status: 'error: ' + (e instanceof Error ? e.message : 'unknown')
+        });
       }
     }
 
@@ -155,7 +186,8 @@ router.post('/', async (req, res) => {
     res.json({
       message: `Updated ${results.filter(r => r.status === 'updated').length} employee names`,
       updated: results.filter(r => r.status === 'updated').length,
-      errors: results.filter(r => r.status !== 'updated').length,
+      skipped: results.filter(r => r.status.includes('skipped')).length,
+      errors: results.filter(r => r.status.includes('error')).length,
       results
     });
   } catch (error) {
