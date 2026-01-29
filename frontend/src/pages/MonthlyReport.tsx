@@ -306,7 +306,7 @@ export const MonthlyReport = () => {
           </div>
 
           {/* The Big Matrix */}
-          <div className="flex-1 app-card overflow-hidden print:border-none print:shadow-none">
+          <div className="flex-1 min-w-0 app-card overflow-hidden print:border-none print:shadow-none">
             <div className="p-8 border-b border-gray-50 flex justify-between items-center print:p-2 print:border-none">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
@@ -323,7 +323,7 @@ export const MonthlyReport = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto print:overflow-visible">
+            <div className="overflow-x-auto w-full pb-4 custom-scrollbar print:overflow-visible">
               <table className="w-full text-[10px] border-collapse">
                 <thead>
                   <tr className="bg-gray-50/50">
@@ -333,7 +333,7 @@ export const MonthlyReport = () => {
                       const isSun = date.getDay() === 0;
                       const isHol = report?.holidays?.some(h => h.day === day);
                       return (
-                        <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[32px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
+                        <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[34px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
                           <div className={`text-[10px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
                           <div className="text-[7px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
                         </th>
