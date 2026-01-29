@@ -78,23 +78,23 @@ export const Dashboard = () => {
 
   const statCards = [
     {
-      title: 'Total Personnel',
+      title: 'Total Staff',
       value: stats?.counts?.totalEmployees || 0,
       icon: Users,
-      trend: `${stats?.counts?.activeEmployees || 0} Active Nodes`,
+      trend: `${stats?.counts?.activeEmployees || 0} Active`,
       trendUp: true,
       color: 'bg-blue-50 text-blue-600',
     },
     {
-      title: 'Presence Matrix',
+      title: 'Present Today',
       value: stats?.today?.present || 0,
       icon: CheckCircle,
-      trend: stats?.today?.present ? 'Stable Signal' : 'No Data yet',
+      trend: stats?.today?.present ? 'On Time' : 'No Data yet',
       trendUp: true,
       color: 'bg-emerald-50 text-emerald-600',
     },
     {
-      title: 'Precision Lag',
+      title: 'Late Arrivals',
       value: stats?.today?.lateArrivals || 0,
       icon: Clock,
       trend: 'Late Clock-ins',
@@ -102,10 +102,10 @@ export const Dashboard = () => {
       color: 'bg-orange-50 text-orange-600',
     },
     {
-      title: 'Signal Gaps (Absent)',
+      title: 'Absent',
       value: stats?.today?.absent || 0,
       icon: XCircle,
-      trend: 'Unaccounted for',
+      trend: 'Not Checked In',
       trendUp: false,
       color: 'bg-red-50 text-red-600',
     },
@@ -196,14 +196,14 @@ export const Dashboard = () => {
         <div className="app-card p-10 lg:col-span-1">
           <div className="flex justify-between items-center mb-10">
             <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-orange-500" /> Matrix Signals
+              <Sparkles className="w-4 h-4 text-orange-500" /> Quick Stats
             </h3>
           </div>
           <div className="space-y-6">
             {[
-              { label: 'Unmapped IDs', value: (stats as any)?.today?.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
+              { label: 'Unmapped Logs', value: (stats as any)?.today?.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
               { label: 'Shift Overlaps', value: '04', color: 'text-orange-600', bg: 'bg-orange-50' },
-              { label: 'Statutory Marks', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
+              { label: 'Compliance', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
             ].map((sig, i) => (
               <div key={i} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-2xl transition-all group">
                 <div className="flex items-center space-x-4">
@@ -221,13 +221,13 @@ export const Dashboard = () => {
       <div className="app-card overflow-hidden">
         <div className="p-10 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div>
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Employee Registry & Financial Status</h3>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase italic tracking-tighter">Real-time mapping of localized personnel</p>
+            <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Employee Directory</h3>
+            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase italic tracking-tighter">Real-time status overview</p>
           </div>
           <div className="flex items-center space-x-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-80">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-              <input type="text" placeholder="Scan identification matrix..." className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-red-50 transition-all" />
+              <input type="text" placeholder="Search employees..." className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-red-50 transition-all" />
             </div>
             <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all">
               <Filter className="w-5 h-5" />
@@ -238,17 +238,17 @@ export const Dashboard = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50/20">
-                <th className="table-header w-20 px-10">Hash</th>
-                <th className="table-header">Identity Matrix</th>
-                <th className="table-header">Routing Path</th>
-                <th className="table-header">Status Signal</th>
-                <th className="table-header text-right px-10">Verification Date</th>
+                <th className="table-header w-20 px-10">ID</th>
+                <th className="table-header">Employee</th>
+                <th className="table-header">Department</th>
+                <th className="table-header">Status</th>
+                <th className="table-header text-right px-10">Join Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {displayedEmployees.map((emp, i) => (
                 <tr key={String(emp.id)} className="table-row group">
-                  <td className="px-10 py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{String(i + 1).padStart(3, '0')}</td>
+                  <td className="px-10 py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{String(emp.employeeCode || String(i + 1).padStart(3, '0'))}</td>
                   <td className="px-6 py-6 font-bold">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-inner">
@@ -261,16 +261,15 @@ export const Dashboard = () => {
                     </div>
                   </td>
                   <td className="px-6 py-6">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Personnel Hub</p>
-                    <p className="text-xs font-bold text-gray-700">{String(emp.department?.name || 'Departmental Node')}</p>
+                    <p className="text-xs font-bold text-gray-700">{String(emp.department?.name || 'N/A')}</p>
                   </td>
                   <td className="px-6 py-6">
                     <div className={`badge ${emp.isActive ? 'badge-success' : 'badge-warning'} text-[8px] font-black uppercase tracking-[0.2em] px-4 py-1.5`}>
-                      {emp.isActive ? 'Active' : 'Dormant'}
+                      {emp.isActive ? 'Active' : 'Inactive'}
                     </div>
                   </td>
                   <td className="px-10 py-6 text-xs font-black text-gray-900 text-right opacity-40 group-hover:opacity-100 transition-opacity">
-                    30 OCT, 2025
+                    ---
                   </td>
                 </tr>
               ))}
