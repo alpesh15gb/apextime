@@ -20,6 +20,7 @@ import {
   MoreVertical,
   Search,
   Filter,
+  DollarSign
 } from 'lucide-react';
 import { dashboardAPI, employeesAPI } from '../services/api';
 import { DashboardStats } from '../types';
