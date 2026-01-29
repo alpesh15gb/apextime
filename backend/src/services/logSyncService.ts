@@ -127,10 +127,33 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       }
       logger.info(`Loaded ${employeeCache.size} employees into cache`);
 
+      // Pre-ensure devices exist and create a ID mapping
+      const deviceMap = new Map<string, string>(); // machineId -> internalUuid
+      const uniqueDeviceIds = new Set<string>();
+      for (const log of uniqueLogs.values()) {
+        uniqueDeviceIds.add(log.DeviceId.toString());
+      }
+
+      for (const dId of uniqueDeviceIds) {
+        const device = await prisma.device.upsert({
+          where: { deviceId: dId },
+          update: {},
+          create: {
+            deviceId: dId,
+            name: `Biometric Device ${dId}`,
+            status: 'online',
+          }
+        });
+        deviceMap.set(dId, device.id);
+      }
+
       // Store raw device logs (with error handling for each)
       let storedCount = 0;
       for (const log of uniqueLogs.values()) {
         try {
+          const internalDeviceId = deviceMap.get(log.DeviceId.toString());
+          if (!internalDeviceId) continue;
+
           await prisma.rawDeviceLog.upsert({
             where: {
               id: log.DeviceLogId.toString(),
@@ -138,7 +161,7 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
             update: {},
             create: {
               id: log.DeviceLogId.toString(),
-              deviceId: log.DeviceId.toString(),
+              deviceId: internalDeviceId, // Uses internal UUID
               userId: log.UserId.toString(),
               punchTime: log.LogDate,
               isProcessed: false,
@@ -146,9 +169,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
           });
           storedCount++;
         } catch (error) {
-          logger.warn(`Failed to store raw log ${log.DeviceLogId}:`, error);
+          logger.warn(`Failed to store raw log ${log.DeviceLogId}: ${error instanceof Error ? error.message : 'Unknown'}`);
         }
       }
+      console.log(`[STORAGE] Successfully committed ${storedCount} raw logs to database archive.`);
       logger.info(`Stored ${storedCount} raw logs`);
 
       // Load device user info from SQL Server once at start
