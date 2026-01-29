@@ -211,7 +211,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </header>
 
         {/* Content Container */}
-        <main className="p-8 max-w-[1600px] mx-auto min-h-[calc(100vh-80px)]">
+        <main className="p-8 pb-24 md:pb-8 max-w-[1600px] mx-auto min-h-[calc(100vh-80px)]">
           {children}
         </main>
       </div>
