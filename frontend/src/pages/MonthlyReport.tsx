@@ -310,7 +310,7 @@ export const MonthlyReport = () => {
                     {days.map(day => {
                       const date = new Date(year, month - 1, day);
                       const isSun = date.getDay() === 0;
-                      const isHol = report?.holidays.some(h => h.day === day);
+                      const isHol = report?.holidays?.some(h => h.day === day);
                       return (
                         <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[32px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
                           <div className={`text-[10px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
@@ -325,7 +325,7 @@ export const MonthlyReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {report?.reportData.map((row, idx) => (
+                  {report?.reportData?.map((row, idx) => (
                     <tr key={row.employee.id} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
                       <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
                         <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row.employee.name}</div>
@@ -339,7 +339,7 @@ export const MonthlyReport = () => {
                       <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary.presentDays}</td>
                       <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary.absentDays}</td>
                       <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary.lateDays}</td>
-                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{row.summary.totalWorkingHours.toFixed(0)}</td>
+                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row.summary.totalWorkingHours || 0).toFixed(0)}</td>
                     </tr>
                   ))}
                 </tbody>
