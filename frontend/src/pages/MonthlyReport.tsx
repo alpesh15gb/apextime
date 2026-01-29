@@ -127,13 +127,17 @@ export const MonthlyReport = () => {
     window.print();
   };
 
-  const formatTime = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    const match = dateStr.match(/T(\d{2}):(\d{2})/);
-    if (match) {
-      return `${match[1]}:${match[2]}`;
+  const formatTime = (dateStr: any) => {
+    if (!dateStr || typeof dateStr !== 'string') return '-';
+    try {
+      const match = dateStr.match(/T(\d{2}):(\d{2})/);
+      if (match) {
+        return `${match[1]}:${match[2]}`;
+      }
+      return '-';
+    } catch {
+      return '-';
     }
-    return '-';
   };
 
   const getDayShortName = (day: number) => {
@@ -261,14 +265,17 @@ export const MonthlyReport = () => {
               </h3>
               <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
                 {report?.holidays && report.holidays.length > 0 ? (
-                  report.holidays.map(h => (
-                    <div key={h.day} className="flex items-center space-x-3 group">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black group-hover:bg-blue-600 group-hover:text-white transition-all">
-                        {h.day}
+                  report.holidays.map((h, idx) => {
+                    if (!h) return null;
+                    return (
+                      <div key={h.day || idx} className="flex items-center space-x-3 group">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black group-hover:bg-blue-600 group-hover:text-white transition-all">
+                          {h.day || '-'}
+                        </div>
+                        <p className="text-xs font-bold text-gray-700 truncate">{h.name || 'Holiday'}</p>
                       </div>
-                      <p className="text-xs font-bold text-gray-700 truncate">{h.name}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-[10px] font-bold text-gray-300 italic">No public holidays</p>
                 )}
