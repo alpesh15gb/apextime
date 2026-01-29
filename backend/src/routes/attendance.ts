@@ -229,6 +229,11 @@ router.get('/monthly-report', async (req, res) => {
       include: {
         department: true,
         shift: true,
+        branch: {
+          include: {
+            location: true
+          }
+        },
       },
       orderBy: { firstName: 'asc' },
     });
@@ -354,6 +359,8 @@ router.get('/monthly-report', async (req, res) => {
           name: `${employee.firstName} ${employee.lastName}`,
           employeeCode: employee.employeeCode,
           department: employee.department?.name || 'N/A',
+          branch: employee.branch?.name || 'N/A',
+          location: employee.branch?.location?.name || 'N/A',
         },
         dailyData,
         summary: {
@@ -367,7 +374,7 @@ router.get('/monthly-report', async (req, res) => {
     });
 
     // Format holidays for response
-    const formattedHolidays: Array<{day: number, name: string, isRecurring: boolean}> = [];
+    const formattedHolidays: Array<{ day: number, name: string, isRecurring: boolean }> = [];
 
     holidays.forEach(h => {
       const d = new Date(h.date);

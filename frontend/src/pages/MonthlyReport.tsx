@@ -1,6 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { Calendar, Download, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
-import { attendanceAPI, departmentsAPI, holidaysAPI } from '../services/api';
+import { MapPin } from 'lucide-react';
+import { attendanceAPI, departmentsAPI, branchesAPI } from '../services/api';
 
 interface DailyData {
   day: number;
@@ -22,6 +21,8 @@ interface EmployeeReport {
     name: string;
     employeeCode: string;
     department: string;
+    branch: string;
+    location: string;
   };
   dailyData: DailyData[];
   summary: {
@@ -51,7 +52,9 @@ export const MonthlyReport = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [report, setReport] = useState<ReportData | null>(null);
   const [departments, setDepartments] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [loading, setLoading] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -61,11 +64,12 @@ export const MonthlyReport = () => {
 
   useEffect(() => {
     fetchDepartments();
+    fetchBranches();
   }, []);
 
   useEffect(() => {
     fetchReport();
-  }, [currentDate, selectedDepartment]);
+  }, [currentDate, selectedDepartment, selectedBranch]);
 
   const fetchDepartments = async () => {
     try {
@@ -73,6 +77,15 @@ export const MonthlyReport = () => {
       setDepartments(response.data || []);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const response = await branchesAPI.getAll();
+      setBranches(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch branches:', error);
     }
   };
 
@@ -85,6 +98,9 @@ export const MonthlyReport = () => {
       };
       if (selectedDepartment) {
         params.departmentId = selectedDepartment;
+      }
+      if (selectedBranch) {
+        params.branchId = selectedBranch;
       }
       const response = await attendanceAPI.getMonthlyReport(params);
       setReport(response.data);
@@ -183,6 +199,18 @@ export const MonthlyReport = () => {
         <h1 className="text-2xl font-bold text-gray-800">Monthly Attendance Report</h1>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Branch Filter */}
+          <select
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm"
+          >
+            <option value="">All Branches</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>{branch.name}</option>
+            ))}
+          </select>
+
           {/* Department Filter */}
           <select
             value={selectedDepartment}
@@ -301,78 +329,97 @@ export const MonthlyReport = () => {
               </div>
             </div>
 
-            {/* Report Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-[10px] print:text-[8px]">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="text-left py-2 px-1 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[120px] print:static print:min-w-[80px] print:text-[7px]">
-                      Employee
-                    </th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[30px] print:text-[7px]">Code</th>
-                    {days.map((day) => {
-                      const date = new Date(year, month - 1, day);
-                      const isSunday = date.getDay() === 0;
-                      const isHoliday = report?.holidays.some(h => h.day === day);
-                      return (
-                        <th
-                          key={day}
-                          className={`text-center py-1 px-[2px] font-semibold min-w-[24px] print:min-w-[16px] print:px-[1px] print:text-[6px] ${
-                            isSunday ? 'bg-gray-200' : isHoliday ? 'bg-blue-100' : ''
-                          }`}
-                        >
-                          <div>{day}</div>
-                          <div className="text-[8px] text-gray-500 font-normal">
-                            {getDayShortName(day)}
-                          </div>
-                        </th>
-                      );
-                    })}
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">P</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">A</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">L</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">WO</th>
-                    <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">Hrs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report?.reportData.map((row, index) => (
-                    <tr key={row.employee.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="py-1 px-1 sticky left-0 bg-inherit z-10 border-r print:static">
-                        <div className="font-medium text-xs truncate max-w-[120px]">{row.employee.name}</div>
-                        <div className="text-[9px] text-gray-500">{row.employee.department}</div>
-                      </td>
-                      <td className="py-1 px-1 text-center font-mono text-xs">
-                        {row.employee.employeeCode}
-                      </td>
-                      {row.dailyData.map((data) => (
-                        <td
-                          key={data.day}
-                          className={`py-1 px-[2px] text-center border-r border-gray-100 min-w-[24px] h-8 print:min-w-[16px] print:px-[1px] print:h-6 ${getCellClass(data)}`}
-                        >
-                          {getCellContent(data)}
-                        </td>
-                      ))}
-                      <td className="py-1 px-1 text-center font-medium text-green-600">
-                        {row.summary.presentDays}
-                      </td>
-                      <td className="py-1 px-1 text-center font-medium text-red-600">
-                        {row.summary.absentDays}
-                      </td>
-                      <td className="py-1 px-1 text-center font-medium text-yellow-600">
-                        {row.summary.lateDays}
-                      </td>
-                      <td className="py-1 px-1 text-center font-medium text-purple-600">
-                        {row.summary.workedOnOffDay}
-                      </td>
-                      <td className="py-1 px-1 text-center font-mono text-xs">
-                        {row.summary.totalWorkingHours.toFixed(1)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* Groups by Branch/Location */}
+            {(() => {
+              const groupedData: Record<string, EmployeeReport[]> = {};
+              report?.reportData.forEach(row => {
+                const groupKey = row.employee.branch || 'N/A';
+                if (!groupedData[groupKey]) groupedData[groupKey] = [];
+                groupedData[groupKey].push(row);
+              });
+
+              return Object.entries(groupedData).map(([branchName, employees], groupIndex) => (
+                <div key={branchName} className={groupIndex > 0 ? "mt-8 print:mt-0 print:break-before-page" : ""}>
+                  <div className="bg-gray-100 p-2 border-b print:bg-gray-50 flex justify-between items-center">
+                    <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      {branchName}
+                    </h3>
+                    <span className="text-xs text-gray-500">{employees.length} Employees</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[10px] print:text-[8px]">
+                      <thead>
+                        <tr className="bg-gray-50 border-b">
+                          <th className="text-left py-2 px-1 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[120px] print:static print:min-w-[80px] print:text-[7px]">
+                            Employee
+                          </th>
+                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[30px] print:text-[7px]">Code</th>
+                          {days.map((day) => {
+                            const date = new Date(year, month - 1, day);
+                            const isSunday = date.getDay() === 0;
+                            const isHoliday = report?.holidays.some(h => h.day === day);
+                            return (
+                              <th
+                                key={day}
+                                className={`text-center py-1 px-[2px] font-semibold min-w-[24px] print:min-w-[16px] print:px-[1px] print:text-[6px] ${isSunday ? 'bg-gray-200' : isHoliday ? 'bg-blue-100' : ''
+                                  }`}
+                              >
+                                <div>{day}</div>
+                                <div className="text-[8px] text-gray-500 font-normal">
+                                  {getDayShortName(day)}
+                                </div>
+                              </th>
+                            );
+                          })}
+                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">P</th>
+                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">A</th>
+                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">L</th>
+                          <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">WO</th>
+                          <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">Hrs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employees.map((row, index) => (
+                          <tr key={row.employee.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="py-1 px-1 sticky left-0 bg-inherit z-10 border-r print:static">
+                              <div className="font-medium text-xs truncate max-w-[120px]">{row.employee.name}</div>
+                              <div className="text-[9px] text-gray-500">{row.employee.department}</div>
+                            </td>
+                            <td className="py-1 px-1 text-center font-mono text-xs">
+                              {row.employee.employeeCode}
+                            </td>
+                            {row.dailyData.map((data) => (
+                              <td
+                                key={data.day}
+                                className={`py-1 px-[2px] text-center border-r border-gray-100 min-w-[24px] h-8 print:min-w-[16px] print:px-[1px] print:h-6 ${getCellClass(data)}`}
+                              >
+                                {getCellContent(data)}
+                              </td>
+                            ))}
+                            <td className="py-1 px-1 text-center font-medium text-green-600">
+                              {row.summary.presentDays}
+                            </td>
+                            <td className="py-1 px-1 text-center font-medium text-red-600">
+                              {row.summary.absentDays}
+                            </td>
+                            <td className="py-1 px-1 text-center font-medium text-yellow-600">
+                              {row.summary.lateDays}
+                            </td>
+                            <td className="py-1 px-1 text-center font-medium text-purple-600">
+                              {row.summary.workedOnOffDay}
+                            </td>
+                            <td className="py-1 px-1 text-center font-mono text-xs">
+                              {row.summary.totalWorkingHours.toFixed(1)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ));
+            })()}
 
             {/* Print Footer - Legend */}
             <div className="hidden print:block p-4 border-t text-xs">
@@ -530,6 +577,10 @@ export const MonthlyReport = () => {
           .print\\:w-full {
             width: 100vw !important;
             max-width: 100vw !important;
+          }
+          .print\\:break-before-page {
+            break-before: page !important;
+            margin-top: 0 !important;
           }
         }
       `}</style>
