@@ -979,6 +979,18 @@ if (require.main === module) {
         console.error('Fatal error:', error);
         process.exit(1);
       });
+  } else if (command === 'reprocess') {
+    const startDateStr = process.argv[3];
+    const startDate = startDateStr ? new Date(startDateStr) : undefined;
+    reprocessHistoricalLogs(startDate)
+      .then((result) => {
+        console.log(`Reprocessing complete. Pairs: ${result.pairsProcessed}, Records: ${result.recordsUpdated}`);
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+      });
   } else {
     startLogSync()
       .then(() => process.exit(0))
