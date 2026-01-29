@@ -860,6 +860,25 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
 export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, employeeId?: string): Promise<{ pairsProcessed: number; recordsUpdated: number }> {
   try {
     logger.info(`Starting historical re-processing... ${employeeId ? `Employee: ${employeeId}` : 'All employees'}`);
+    console.log(`[${new Date().toISOString()}] Starting historical repair...`);
+
+    // CRITICAL: Populate employee cache so the processor knows who is who
+    const existingEmployees = await prisma.employee.findMany({
+      where: {
+        OR: [
+          { deviceUserId: { not: null } },
+          { sourceEmployeeId: { not: null } }
+        ]
+      },
+      select: { id: true, deviceUserId: true, sourceEmployeeId: true }
+    });
+
+    employeeCache.clear();
+    for (const emp of existingEmployees) {
+      if (emp.sourceEmployeeId) employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
+      if (emp.deviceUserId) employeeCache.set(emp.deviceUserId, emp.id);
+    }
+    console.log(`Loaded ${employeeCache.size} employees into memory for repair.`);
 
     const where: any = {};
     if (startDate || endDate) {
@@ -879,13 +898,15 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
       orderBy: { punchTime: 'asc' }
     });
 
+    console.log(`Found ${logs.length} raw logs to analyze.`);
+
     const affectedPairs = new Set<string>();
     for (const log of logs) {
       const dStr = log.punchTime.toISOString().split('T')[0];
       affectedPairs.add(`${log.userId}|${dStr}`);
     }
 
-    logger.info(`Found ${affectedPairs.size} employee-day pairs to re-process`);
+    console.log(`Identified ${affectedPairs.size} employee-day sessions requiring recalculation.`);
 
     let pairsProcessed = 0;
     let recordsUpdated = 0;
@@ -908,7 +929,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
         if (dayLogs.length === 0) continue;
 
         const formattedLogs: RawLog[] = dayLogs.map(rl => ({
-          DeviceLogId: 0, // Not used by processor
+          DeviceLogId: 0,
           DeviceId: parseInt(rl.deviceId) || 0,
           UserId: rl.userId,
           LogDate: rl.punchTime
@@ -952,6 +973,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
           recordsUpdated++;
         }
         pairsProcessed++;
+        if (pairsProcessed % 50 === 0) console.log(`Progress: ${pairsProcessed}/${affectedPairs.size} sessions repaired...`);
       } catch (err) {
         logger.error(`Failed to re-process pair ${pair}:`, err);
       }
@@ -984,9 +1006,17 @@ if (require.main === module) {
     const startDate = startDateStr ? new Date(startDateStr) : undefined;
     reprocessHistoricalLogs(startDate)
       .then((result) => {
-        console.log(`Reprocessing complete. Pairs: ${result.pairsProcessed}, Records: ${result.recordsUpdated}`);
+        console.log(`Reprocessing complete. Sessions: ${result.pairsProcessed}, Updates: ${result.recordsUpdated}`);
         process.exit(0);
       })
+      .catch((error) => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+      });
+  } else if (command === 'full-sync') {
+    console.log('Initiating Full Historical Sync (2020-Present)...');
+    startLogSync(true)
+      .then(() => process.exit(0))
       .catch((error) => {
         console.error('Fatal error:', error);
         process.exit(1);
