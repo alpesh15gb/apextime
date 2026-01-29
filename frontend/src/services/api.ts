@@ -197,10 +197,22 @@ export const syncAPI = {
   mergeDuplicates: () => api.post('/fix-duplicates'),
 };
 
+export const leavesAPI = {
+  getTypes: () => api.get('/leaves/types'),
+  createType: (data: any) => api.post('/leaves/types', data),
+  getAll: (params?: any) => api.get('/leaves', { params }),
+  create: (data: any) => api.post('/leaves', data),
+  approveManager: (id: string) => api.patch(`/leaves/${id}/approve-manager`),
+  approveCEO: (id: string) => api.patch(`/leaves/${id}/approve-ceo`),
+  reject: (id: string, reason?: string) => api.patch(`/leaves/${id}/reject`, { reason }),
+  delete: (id: string) => api.delete(`/leaves/${id}`),
+};
+
 export const payrollAPI = {
   get: (params: any) => api.get('/payroll', { params }),
   generate: (data: any) => api.post('/payroll/generate', data),
   updateSalary: (employeeId: string, data: any) => api.put(`/payroll/salary/${employeeId}`, data),
+  processPay: (data: any) => api.post('/payroll/process-pay', data),
 };
 
 export default api;

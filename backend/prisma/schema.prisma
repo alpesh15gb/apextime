@@ -8,12 +8,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
-  role      String   @default("admin")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  username   String   @unique
+  password   String
+  role       String   @default("admin") // admin, manager, employee
+  employeeId String?  @unique // Link to employee record if any
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Location {
@@ -49,10 +51,13 @@ model Department {
   code        String
   branchId    String?
   branch      Branch?    @relation(fields: [branchId], references: [id])
+  managerId   String?    
+  manager     Employee?  @relation("DeptManager", fields: [managerId], references: [id])
+  description String?
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  employees   Employee[]
+  employees   Employee[] @relation("EmployeeDept")
 
   @@unique([code, branchId])
 }
@@ -89,7 +94,7 @@ model Employee {
   branchId        String?
   branch          Branch?          @relation(fields: [branchId], references: [id])
   departmentId    String?
-  department      Department?      @relation(fields: [departmentId], references: [id])
+  department      Department?      @relation("EmployeeDept", fields: [departmentId], references: [id])
   designationId   String?
   designation     Designation?     @relation(fields: [designationId], references: [id])
   categoryId      String?
@@ -102,22 +107,34 @@ model Employee {
   isActive        Boolean          @default(true)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  
+  user            User?
+
+  // Multi-level approval relations
+  managedDepartments   Department[] @relation("DeptManager")
+  managerApprovedLeaves LeaveEntry[] @relation("ManagerApprovedLeaves")
+  ceoApprovedLeaves     LeaveEntry[] @relation("CEOApprovedLeaves")
+
   attendanceLogs  AttendanceLog[]
   leaveEntries    LeaveEntry[]
   employeeShifts  EmployeeShift[]
   payrolls        Payroll[]
   
-  // Salary Fields
+  // Salary Fields (Fixed)
   basicSalary       Float            @default(0)
   hra               Float            @default(0)
-  totalAllowances   Float            @default(0)
+  conveyance        Float            @default(0)
+  medicalAllowance  Float            @default(0)
+  specialAllowance  Float            @default(0)
+  otherAllowances   Float            @default(0)
   standardDeductions Float           @default(0)
   
   // Advanced Payroll Configuration
   isPFEnabled       Boolean          @default(false)
   isESIEnabled      Boolean          @default(false)
+  isPTEnabled       Boolean          @default(true) // Professional Tax
   isOTEnabled       Boolean          @default(false)
-  otRateMultiplier  Float            @default(1.5) // e.g., 1.5x hourly rate
+  otRateMultiplier  Float            @default(1.5)
 }
 
 model Shift {
@@ -170,18 +187,29 @@ model LeaveType {
 }
 
 model LeaveEntry {
-  id          String    @id @default(uuid())
-  employeeId  String
-  employee    Employee  @relation(fields: [employeeId], references: [id])
-  leaveTypeId String
-  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
-  startDate   DateTime
-  endDate     DateTime
-  days        Float
-  reason      String?
-  status      String    @default("approved")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id])
+  leaveTypeId      String
+  leaveType        LeaveType @relation(fields: [leaveTypeId], references: [id])
+  startDate        DateTime
+  endDate          DateTime
+  days             Float
+  reason           String?
+  status           String    @default("pending_manager") // pending_manager, pending_ceo, approved, rejected
+  
+  managerApproval  Boolean?
+  managerApprovedAt DateTime?
+  managerId        String?
+  manager          Employee? @relation("ManagerApprovedLeaves", fields: [managerId], references: [id])
+  
+  ceoApproval      Boolean?
+  ceoApprovedAt    DateTime?
+  ceoId            String?
+  ceo              Employee? @relation("CEOApprovedLeaves", fields: [ceoId], references: [id])
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Device {
@@ -281,32 +309,43 @@ model Payroll {
   month             Int
   year              Int
   totalWorkingDays  Int
-  presentDays       Float
-  absentDays        Float
-  lateDays          Int       @default(0)
+  actualPresentDays Float
+  lopDays           Float            @default(0) // Loss of Pay Days
+  paidDays          Float
   
   basicPaid         Float
   hraPaid           Float
+  conveyancePaid    Float            @default(0)
+  medicalPaid       Float            @default(0)
+  specialPaid       Float            @default(0)
   allowancesPaid    Float
+  
+  // Variable Components
+  bonus             Float            @default(0)
+  incentives        Float            @default(0)
+  arrears           Float            @default(0)
   
   // Overtime
   otHours           Float            @default(0)
   otPay             Float            @default(0)
   
-  // Statutory Deductions (Employee Share)
+  // Deductions (Employee Share)
   pfDeduction       Float            @default(0)
   esiDeduction      Float            @default(0)
+  ptDeduction       Float            @default(0) // Professional Tax
   tdsDeduction      Float            @default(0)
   otherDeductions   Float            @default(0)
   
-  // Employer Contributions (Cost to Company - CTC)
+  // Employer Contributions
   employerPF        Float            @default(0)
   employerESI       Float            @default(0)
   
-  netSalary         Float
   grossSalary       Float
+  totalDeductions   Float
+  netSalary         Float
   
   status            String    @default("draft") // draft, generated, paid
+  remarks           String?
   paidAt            DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

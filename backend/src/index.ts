@@ -25,6 +25,7 @@ import fixDuplicatesRoutes from './routes/fixDuplicates';
 import updateNamesRoutes from './routes/updateNames';
 import manualUpdateNamesRoutes from './routes/manualUpdateNames';
 import payrollRoutes from './routes/payroll';
+import leaveRoutes from './routes/leaves';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/fix-duplicates', fixDuplicatesRoutes);
 app.use('/api/update-names', updateNamesRoutes);
 app.use('/api/manual-update-names', manualUpdateNamesRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/leaves', leaveRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -16,6 +16,8 @@ import { MonthlyReport } from './pages/MonthlyReport';
 import { SyncDiagnostics } from './pages/SyncDiagnostics';
 import { Holidays } from './pages/Holidays';
 import { Payroll } from './pages/Payroll';
+import { Leaves } from './pages/Leaves';
+import { EmployeePortal } from './pages/EmployeePortal';
 
 function App() {
   return (
@@ -44,6 +46,8 @@ function App() {
                     <Route path="/holidays" element={<Holidays />} />
                     <Route path="/sync-diagnostics" element={<SyncDiagnostics />} />
                     <Route path="/payroll" element={<Payroll />} />
+                    <Route path="/leaves" element={<Leaves />} />
+                    <Route path="/portal" element={<EmployeePortal />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

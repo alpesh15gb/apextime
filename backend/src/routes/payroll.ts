@@ -57,6 +57,9 @@ router.post('/generate', async (req, res) => {
 
         const m = parseInt(month);
         const y = parseInt(year);
+        const startDate = new Date(y, m - 1, 1);
+        const endDate = new Date(y, m, 0); // Last day of month
+        const daysInMonth = endDate.getDate();
 
         // Get employees filtered by branch/dept
         const employeeWhere: any = { isActive: true };
@@ -68,67 +71,98 @@ router.post('/generate', async (req, res) => {
             include: {
                 attendanceLogs: {
                     where: {
-                        date: {
-                            gte: new Date(y, m - 1, 1),
-                            lte: new Date(y, m, 0),
-                        }
+                        date: { gte: startDate, lte: endDate }
                     }
+                },
+                leaveEntries: {
+                    where: {
+                        status: 'approved',
+                        OR: [
+                            { startDate: { lte: endDate }, endDate: { gte: startDate } }
+                        ]
+                    },
+                    include: { leaveType: true }
                 }
             }
         });
 
-        const daysInMonth = new Date(y, m, 0).getDate();
         const results = [];
 
         for (const emp of employees) {
-            const presentDays = emp.attendanceLogs.filter(l => l.status === 'present').length;
-            const absentDays = daysInMonth - presentDays;
+            // 1. Calculate Attendance & LOP
+            const actualPresentDays = emp.attendanceLogs.filter(l => l.status === 'present').length;
 
-            // 1. Calculate OT Hours and Pay
+            // Calculate Unpaid Leaves (LOP)
+            let lopDays = 0;
+            emp.leaveEntries.forEach(leave => {
+                if (!leave.leaveType.isPaid) {
+                    // Calculate days within the current month
+                    const start = leave.startDate < startDate ? startDate : leave.startDate;
+                    const end = leave.endDate > endDate ? endDate : leave.endDate;
+                    const diffTime = Math.abs(end.getTime() - start.getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    lopDays += diffDays;
+                }
+            });
+
+            // Paid Days = Days in Month - Loss of Pay Days
+            const paidDays = daysInMonth - lopDays;
+
+            // 2. Base Components (Pro-rata)
+            const basicPaid = (emp.basicSalary / daysInMonth) * paidDays;
+            const hraPaid = (emp.hra / daysInMonth) * paidDays;
+            const conveyancePaid = (emp.conveyance / daysInMonth) * paidDays;
+            const medicalPaid = (emp.medicalAllowance / daysInMonth) * paidDays;
+            const specialPaid = (emp.specialAllowance / daysInMonth) * paidDays;
+            const otherAllowancesPaid = (emp.otherAllowances / daysInMonth) * paidDays;
+
+            // Total Allowances (Fixed part)
+            const allowancesPaid = hraPaid + conveyancePaid + medicalPaid + specialPaid + otherAllowancesPaid;
+
+            // 3. Overtime Pay
             let otHours = 0;
             let otPay = 0;
             if (emp.isOTEnabled) {
-                // Calculate hourly rate based on standard 8hr day
-                const monthlyFixedGross = emp.basicSalary + emp.hra + emp.totalAllowances;
+                const monthlyFixedGross = emp.basicSalary + emp.hra + emp.conveyance + emp.medicalAllowance + emp.specialAllowance + emp.otherAllowances;
                 const hourlyRate = monthlyFixedGross / (daysInMonth * 8);
 
                 emp.attendanceLogs.forEach(log => {
                     if (log.workingHours && log.workingHours > 8) {
-                        const extra = log.workingHours - 8;
-                        otHours += extra;
+                        otHours += (log.workingHours - 8);
                     }
                 });
                 otPay = otHours * hourlyRate * (emp.otRateMultiplier || 1.5);
             }
 
-            // 2. Base Salary Calculations (Pro-rata)
-            const basicPaid = (emp.basicSalary / daysInMonth) * presentDays;
-            const hraPaid = (emp.hra / daysInMonth) * presentDays;
-            const allowancesPaid = (emp.totalAllowances / daysInMonth) * presentDays;
+            const grossSalary = basicPaid + allowancesPaid + otPay;
 
-            const grossSalary = basicPaid + hraPaid + allowancesPaid + otPay;
-
-            // 3. Statutory Deductions (Employee Share)
+            // 4. Statutory Deductions (Employee Share)
             let pfDeduction = 0;
             let esiDeduction = 0;
+            let ptDeduction = 0;
 
             if (emp.isPFEnabled) {
-                // Standard 12% of Basic
-                pfDeduction = Math.min(basicPaid * 0.12, 1800); // Usually capped at 1800 (12% of 15000)
+                // Provident Fund: 12% of Basic, capped at 1800 (12% of 15000 ceiling)
+                const pfBasis = Math.min(basicPaid, 15000);
+                pfDeduction = pfBasis * 0.12;
             }
 
             if (emp.isESIEnabled && grossSalary <= 21000) {
-                // Standard 0.75% of Gross
+                // ESI: 0.75% of Gross
                 esiDeduction = Math.ceil(grossSalary * 0.0075);
             }
 
-            // 4. Employer Contributions
-            let employerPF = emp.isPFEnabled ? Math.min(basicPaid * 0.12, 1800) : 0;
+            if (emp.isPTEnabled && grossSalary > 0) {
+                // Professional Tax: Simplified fixed ₹200 if gross > 0
+                ptDeduction = 200;
+            }
+
+            // 5. Employer Contributions
+            let employerPF = emp.isPFEnabled ? (Math.min(basicPaid, 15000) * 0.12) : 0;
             let employerESI = (emp.isESIEnabled && grossSalary <= 21000) ? Math.ceil(grossSalary * 0.0325) : 0;
 
-            // 5. Net Salary Calculation
-            // Net = Gross - PF - ESI - Other Standard Deductions
-            const totalDeductions = pfDeduction + esiDeduction + emp.standardDeductions;
+            // 6. Final Totals
+            const totalDeductions = pfDeduction + esiDeduction + ptDeduction + emp.standardDeductions;
             const netSalary = grossSalary - totalDeductions;
 
             const payroll = await prisma.payroll.upsert({
@@ -141,18 +175,24 @@ router.post('/generate', async (req, res) => {
                 },
                 update: {
                     totalWorkingDays: daysInMonth,
-                    presentDays,
-                    absentDays,
+                    actualPresentDays,
+                    lopDays,
+                    paidDays,
                     basicPaid,
                     hraPaid,
+                    conveyancePaid,
+                    medicalPaid,
+                    specialPaid,
                     allowancesPaid,
                     otHours,
                     otPay,
                     pfDeduction,
                     esiDeduction,
+                    ptDeduction,
                     employerPF,
                     employerESI,
                     grossSalary,
+                    totalDeductions,
                     netSalary: netSalary > 0 ? netSalary : 0,
                     status: 'generated',
                 },
@@ -161,18 +201,24 @@ router.post('/generate', async (req, res) => {
                     month: m,
                     year: y,
                     totalWorkingDays: daysInMonth,
-                    presentDays,
-                    absentDays,
+                    actualPresentDays,
+                    lopDays,
+                    paidDays,
                     basicPaid,
                     hraPaid,
+                    conveyancePaid,
+                    medicalPaid,
+                    specialPaid,
                     allowancesPaid,
                     otHours,
                     otPay,
                     pfDeduction,
                     esiDeduction,
+                    ptDeduction,
                     employerPF,
                     employerESI,
                     grossSalary,
+                    totalDeductions,
                     netSalary: netSalary > 0 ? netSalary : 0,
                     status: 'generated',
                 }
@@ -194,10 +240,14 @@ router.put('/salary/:employeeId', async (req, res) => {
         const {
             basicSalary,
             hra,
-            totalAllowances,
+            conveyance,
+            medicalAllowance,
+            specialAllowance,
+            otherAllowances,
             standardDeductions,
             isPFEnabled,
             isESIEnabled,
+            isPTEnabled,
             isOTEnabled,
             otRateMultiplier
         } = req.body;
@@ -205,13 +255,17 @@ router.put('/salary/:employeeId', async (req, res) => {
         await prisma.employee.update({
             where: { id: employeeId },
             data: {
-                basicSalary: parseFloat(basicSalary),
-                hra: parseFloat(hra),
-                totalAllowances: parseFloat(totalAllowances),
-                standardDeductions: parseFloat(standardDeductions),
-                isPFEnabled: Boolean(isPFEnabled),
-                isESIEnabled: Boolean(isESIEnabled),
-                isOTEnabled: Boolean(isOTEnabled),
+                basicSalary: parseFloat(basicSalary || 0),
+                hra: parseFloat(hra || 0),
+                conveyance: parseFloat(conveyance || 0),
+                medicalAllowance: parseFloat(medicalAllowance || 0),
+                specialAllowance: parseFloat(specialAllowance || 0),
+                otherAllowances: parseFloat(otherAllowances || 0),
+                standardDeductions: parseFloat(standardDeductions || 0),
+                isPFEnabled: !!isPFEnabled,
+                isESIEnabled: !!isESIEnabled,
+                isPTEnabled: !!isPTEnabled,
+                isOTEnabled: !!isOTEnabled,
                 otRateMultiplier: parseFloat(otRateMultiplier || '1.5'),
             }
         });
@@ -219,6 +273,39 @@ router.put('/salary/:employeeId', async (req, res) => {
         res.json({ message: 'Salary structure updated' });
     } catch (error) {
         logger.error('Update salary error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Mark payroll as paid
+router.post('/process-pay', async (req, res) => {
+    try {
+        const { month, year, branchId, departmentId } = req.body;
+
+        if (!month || !year) {
+            return res.status(400).json({ error: 'Month and Year are required' });
+        }
+
+        const where: any = {
+            month: parseInt(month),
+            year: parseInt(year),
+            status: 'generated'
+        };
+
+        if (branchId) where.employee = { branchId };
+        if (departmentId) where.employee = { ...where.employee, departmentId };
+
+        const result = await prisma.payroll.updateMany({
+            where,
+            data: {
+                status: 'paid',
+                paidAt: new Date(),
+            }
+        });
+
+        res.json({ message: `Successfully processed payment for ${result.count} records`, count: result.count });
+    } catch (error) {
+        logger.error('Process pay error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
