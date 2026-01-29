@@ -102,11 +102,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       >
         <div className="h-20 flex items-center px-8">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-red-600" />
-            </div>
+            <img src="/logo.png" alt="Apextime" className="w-10 h-10 object-contain" />
             {sidebarOpen && (
-              <span className="font-extrabold text-xl text-gray-900 tracking-tight">EasyHR</span>
+              <span className="font-extrabold text-xl text-gray-900 tracking-tight">Apextime</span>
             )}
           </div>
         </div>

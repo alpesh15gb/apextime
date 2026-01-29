@@ -147,166 +147,153 @@ export const Dashboard = () => {
       </div>
 
       {/* Middle Grid: Charts & Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Attendance Report Mock-up Chart */}
-        <div className="app-card p-10 lg:col-span-1 border-none shadow-xl shadow-gray-100">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <Activity className="w-4 h-4 text-red-600" /> Weekly Frequency
-            </h3>
-            <MoreVertical className="w-4 h-4 text-gray-300" />
-          </div>
-          <div className="flex items-end justify-between h-48 space-x-4">
-            {[40, 60, 45, 80, 55, 75, 50].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center space-y-4">
-                <div className="w-full bg-gray-50 rounded-2xl h-40 relative group overflow-hidden">
-                  <div
-                    className={`absolute bottom-0 w-full transition-all duration-700 rounded-2xl group-hover:brightness-110 ${i === 3 ? 'bg-red-600' : 'bg-gray-200'}`}
-                    style={{ height: `${h}%` }}
-                  ></div>
-                </div>
-                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                  {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'][i]}
-                </span>
-              </div>
-            ))}
-          </div>
+      {/* Attendance Report Chart */}
+      <div className="app-card p-10 lg:col-span-1 border-none shadow-xl shadow-gray-100">
+        <div className="flex justify-between items-center mb-10">
+          <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
+            <Activity className="w-4 h-4 text-red-600" /> Weekly Frequency
+          </h3>
+          <MoreVertical className="w-4 h-4 text-gray-300" />
         </div>
-
-        {/* Payroll Summary / Pay Runs */}
-        <div className="app-card p-10 lg:col-span-1 bg-gray-900 text-white border-none shadow-2xl">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-red-500 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <DollarSign className="w-4 h-4" /> Liquidity Pulse
-            </h3>
-            <div className="badge border border-white/10 text-white/40 text-[8px] font-black uppercase">Active</div>
-          </div>
-          <div className="space-y-10">
-            <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
-              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 font-mono">Current Liabilities</p>
-              <h4 className="text-3xl font-black tracking-tighter italic">₹42,84,200</h4>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Tax Nodes</p>
-                <p className="text-xl font-black text-emerald-500">24/24</p>
-              </div>
-              <div>
-                <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Cycle Node</p>
-                <p className="text-xl font-black text-red-500">Oct 25</p>
-              </div>
-            </div>
-
-            <button className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-red-900/40 hover:bg-red-700 transition-all">
-              Authorize Batch
-            </button>
-          </div>
-        </div>
-
-        {/* Quick Insights List */}
-        <div className="app-card p-10 lg:col-span-1">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-orange-500" /> Matrix Signals
-            </h3>
-          </div>
-          <div className="space-y-6">
-            {[
-              { label: 'Unmapped IDs', value: (stats as any)?.today?.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
-              { label: 'Shift Overlaps', value: '04', color: 'text-orange-600', bg: 'bg-orange-50' },
-              { label: 'Statutory Marks', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
-            ].map((sig, i) => (
-              <div key={i} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-2xl transition-all group">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-2 h-10 rounded-full ${sig.bg}`}></div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{sig.label}</p>
-                </div>
-                <p className={`text-xl font-black ${sig.color}`}>{sig.value}</p>
-              </div>
-            ))}
-          </div>
+        <div className="flex items-end justify-center h-48">
+          <p className="text-xs font-bold text-gray-400">No chart data available</p>
         </div>
       </div>
 
-      {/* Bottom Section: Employee Table */}
-      <div className="app-card overflow-hidden">
-        <div className="p-10 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-          <div>
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Employee Registry & Financial Status</h3>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase italic tracking-tighter">Real-time mapping of localized personnel</p>
-          </div>
-          <div className="flex items-center space-x-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-80">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-              <input type="text" placeholder="Scan identification matrix..." className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-red-50 transition-all" />
-            </div>
-            <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all">
-              <Filter className="w-5 h-5" />
-            </button>
-          </div>
+      {/* Payroll Summary / Pay Runs */}
+      <div className="app-card p-10 lg:col-span-1 bg-gray-900 text-white border-none shadow-2xl">
+        <div className="flex justify-between items-center mb-10">
+          <h3 className="font-black text-red-500 uppercase tracking-widest text-[10px] flex items-center gap-2">
+            <DollarSign className="w-4 h-4" /> Payroll Status
+          </h3>
+          <div className="badge border border-white/10 text-white/40 text-[8px] font-black uppercase">Inactive</div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50/20">
-                <th className="table-header w-20 px-10">Hash</th>
-                <th className="table-header">Identity Matrix</th>
-                <th className="table-header">Routing Path</th>
-                <th className="table-header">Status Signal</th>
-                <th className="table-header text-right px-10">Verification Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {displayedEmployees.map((emp, i) => (
-                <tr key={String(emp.id)} className="table-row group">
-                  <td className="px-10 py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{String(i + 1).padStart(3, '0')}</td>
-                  <td className="px-6 py-6 font-bold">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-inner">
-                        {String(emp.firstName || '').charAt(0)}{String(emp.lastName || '').charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-gray-800 tracking-tight">{String(emp.firstName || '')} {String(emp.lastName || '')}</p>
-                        <p className="text-[9px] text-red-600 font-black uppercase tracking-[0.2em] mt-0.5">{String(emp.employeeCode || '')}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-6">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Personnel Hub</p>
-                    <p className="text-xs font-bold text-gray-700">{String(emp.department?.name || 'Departmental Node')}</p>
-                  </td>
-                  <td className="px-6 py-6">
-                    <div className={`badge ${emp.isActive ? 'badge-success' : 'badge-warning'} text-[8px] font-black uppercase tracking-[0.2em] px-4 py-1.5`}>
-                      {emp.isActive ? 'Active' : 'Dormant'}
-                    </div>
-                  </td>
-                  <td className="px-10 py-6 text-xs font-black text-gray-900 text-right opacity-40 group-hover:opacity-100 transition-opacity">
-                    30 OCT, 2025
-                  </td>
-                </tr>
-              ))}
+        <div className="space-y-10">
+          <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 font-mono">Current Liabilities</p>
+            <h4 className="text-3xl font-black tracking-tighter italic">---</h4>
+          </div>
 
-              {displayedEmployees.length === 0 && (
-                [1, 2, 3, 4, 5].map(i => (
-                  <tr key={i} className="table-row group animate-pulse">
-                    <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="p-10 bg-gray-50/30 flex justify-center">
-          <button onClick={() => navigate('/employees')} className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em] hover:underline flex items-center gap-2">
-            Explore Full Registry <ArrowUpRight className="w-4 h-4" />
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Tax Nodes</p>
+              <p className="text-xl font-black text-emerald-500">--/--</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Cycle Node</p>
+              <p className="text-xl font-black text-red-500">---</p>
+            </div>
+          </div>
+
+          <button disabled className="w-full py-4 bg-gray-800 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all cursor-not-allowed">
+            Batch Processing Unavailable
           </button>
         </div>
       </div>
+
+      {/* Quick Insights List */}
+      <div className="app-card p-10 lg:col-span-1">
+        <div className="flex justify-between items-center mb-10">
+          <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-orange-500" /> Matrix Signals
+          </h3>
+        </div>
+        <div className="space-y-6">
+          {[
+            { label: 'Unmapped IDs', value: (stats as any)?.today?.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
+            { label: 'Shift Overlaps', value: '04', color: 'text-orange-600', bg: 'bg-orange-50' },
+            { label: 'Statutory Marks', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
+          ].map((sig, i) => (
+            <div key={i} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-2xl transition-all group">
+              <div className="flex items-center space-x-4">
+                <div className={`w-2 h-10 rounded-full ${sig.bg}`}></div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{sig.label}</p>
+              </div>
+              <p className={`text-xl font-black ${sig.color}`}>{sig.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
+
+      {/* Bottom Section: Employee Table */ }
+  <div className="app-card overflow-hidden">
+    <div className="p-10 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+      <div>
+        <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Employee Registry & Financial Status</h3>
+        <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase italic tracking-tighter">Real-time mapping of localized personnel</p>
+      </div>
+      <div className="flex items-center space-x-3 w-full sm:w-auto">
+        <div className="relative flex-1 sm:w-80">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+          <input type="text" placeholder="Scan identification matrix..." className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-red-50 transition-all" />
+        </div>
+        <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all">
+          <Filter className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="bg-gray-50/20">
+            <th className="table-header w-20 px-10">Hash</th>
+            <th className="table-header">Identity Matrix</th>
+            <th className="table-header">Routing Path</th>
+            <th className="table-header">Status Signal</th>
+            <th className="table-header text-right px-10">Verification Date</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {displayedEmployees.map((emp, i) => (
+            <tr key={String(emp.id)} className="table-row group">
+              <td className="px-10 py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{String(i + 1).padStart(3, '0')}</td>
+              <td className="px-6 py-6 font-bold">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-inner">
+                    {String(emp.firstName || '').charAt(0)}{String(emp.lastName || '').charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-gray-800 tracking-tight">{String(emp.firstName || '')} {String(emp.lastName || '')}</p>
+                    <p className="text-[9px] text-red-600 font-black uppercase tracking-[0.2em] mt-0.5">{String(emp.employeeCode || '')}</p>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-6">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Personnel Hub</p>
+                <p className="text-xs font-bold text-gray-700">{String(emp.department?.name || 'Departmental Node')}</p>
+              </td>
+              <td className="px-6 py-6">
+                <div className={`badge ${emp.isActive ? 'badge-success' : 'badge-warning'} text-[8px] font-black uppercase tracking-[0.2em] px-4 py-1.5`}>
+                  {emp.isActive ? 'Active' : 'Dormant'}
+                </div>
+              </td>
+              <td className="px-10 py-6 text-xs font-black text-gray-900 text-right opacity-40 group-hover:opacity-100 transition-opacity">
+                30 OCT, 2025
+              </td>
+            </tr>
+          ))}
+
+          {displayedEmployees.length === 0 && (
+            [1, 2, 3, 4, 5].map(i => (
+              <tr key={i} className="table-row group animate-pulse">
+                <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
+                <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
+                <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
+                <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
+                <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+    <div className="p-10 bg-gray-50/30 flex justify-center">
+      <button onClick={() => navigate('/employees')} className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em] hover:underline flex items-center gap-2">
+        Explore Full Registry <ArrowUpRight className="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+    </div >
   );
 };
