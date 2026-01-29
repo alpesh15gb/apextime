@@ -61,8 +61,7 @@ router.get('/', async (req, res) => {
             include: {
                 employee: {
                     include: {
-                        department: true,
-                        manager: true
+                        department: true
                     }
                 },
                 leaveType: true,

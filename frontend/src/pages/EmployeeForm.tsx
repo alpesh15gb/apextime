@@ -24,7 +24,7 @@ export const EmployeeForm = () => {
     isActive: true,
     basicSalary: 0,
     hra: 0,
-    totalAllowances: 0,
+    otherAllowances: 0,
     standardDeductions: 0,
     isPFEnabled: false,
     isESIEnabled: false,
@@ -88,7 +88,7 @@ export const EmployeeForm = () => {
         isActive: employee.isActive,
         basicSalary: employee.basicSalary || 0,
         hra: employee.hra || 0,
-        totalAllowances: employee.totalAllowances || 0,
+        otherAllowances: employee.otherAllowances || 0,
         standardDeductions: employee.standardDeductions || 0,
         isPFEnabled: employee.isPFEnabled || false,
         isESIEnabled: employee.isESIEnabled || false,
@@ -345,8 +345,8 @@ export const EmployeeForm = () => {
                 <label className="form-label">Other Allowances</label>
                 <input
                   type="number"
-                  name="totalAllowances"
-                  value={formData.totalAllowances}
+                  name="otherAllowances"
+                  value={formData.otherAllowances}
                   onChange={handleChange}
                   className="form-input"
                   min="0"
@@ -396,7 +396,6 @@ export const EmployeeForm = () => {
                 />
                 <label className="ml-2 text-sm text-gray-700">Enable OT Calculation</label>
               </div>
-              )}
             </div>
           </div>
 
