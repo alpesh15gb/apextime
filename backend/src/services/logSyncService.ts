@@ -8,6 +8,7 @@ interface RawLog {
   DeviceId: number;
   UserId: string;
   LogDate: Date;
+  TableName?: string;
 }
 
 interface ProcessedAttendance {
@@ -76,7 +77,7 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
         const result = await pool.request()
           .input('lastSyncTime', sql.DateTime, lastSyncTime)
           .query<RawLog>(`
-            SELECT DeviceLogId, DeviceId, UserId, LogDate
+            SELECT DeviceLogId, DeviceId, UserId, LogDate, '${tableName}' as TableName
             FROM ${tableName}
             WHERE LogDate > @lastSyncTime
             ORDER BY LogDate ASC
@@ -89,10 +90,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       }
     }
 
-    // Deduplicate logs
+    // Deduplicate logs using a globally unique key: TableName + DeviceLogId
     const uniqueLogs = new Map<string, RawLog>();
     for (const log of allLogs) {
-      const key = `${log.DeviceLogId}`;
+      const key = `${log.TableName}_${log.DeviceLogId}`;
       if (!uniqueLogs.has(key)) {
         uniqueLogs.set(key, log);
       }
@@ -154,13 +155,16 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
           const internalDeviceId = deviceMap.get(log.DeviceId.toString());
           if (!internalDeviceId) continue;
 
+          // Synthesize a globally unique record ID to prevent collisions between different tables/devices
+          const uniqueRecordId = `${log.TableName || 'DL'}_${log.DeviceId}_${log.DeviceLogId}`;
+
           await prisma.rawDeviceLog.upsert({
             where: {
-              id: log.DeviceLogId.toString(),
+              id: uniqueRecordId,
             },
             update: {},
             create: {
-              id: log.DeviceLogId.toString(),
+              id: uniqueRecordId,
               deviceId: internalDeviceId, // Uses internal UUID
               userId: log.UserId.toString(),
               punchTime: log.LogDate,
