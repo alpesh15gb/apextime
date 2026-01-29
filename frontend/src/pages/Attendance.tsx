@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
-  Search,
-  Calendar,
   Download,
+  Calendar,
   Filter,
   ChevronLeft,
   ChevronRight,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
   MoreVertical,
+  Zap,
+  Activity,
+  Search
 } from 'lucide-react';
 import { attendanceAPI, employeesAPI, departmentsAPI } from '../services/api';
 import { AttendanceLog } from '../types';
@@ -78,181 +77,192 @@ export const Attendance = () => {
   const getStatusBadge = (log: AttendanceLog) => {
     if (log.status === 'absent') {
       return (
-        <div className="badge border border-red-100 bg-red-50 text-red-600 uppercase tracking-widest text-[10px] font-black">
-          Absent
+        <div className="badge border border-red-100 bg-red-50 text-red-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+          Absent Node
         </div>
       );
     }
     if (log.lateArrival > 0) {
       return (
-        <div className="badge border border-orange-100 bg-orange-50 text-orange-600 uppercase tracking-widest text-[10px] font-black">
-          Late ({log.lateArrival}m)
+        <div className="badge border border-orange-100 bg-orange-50 text-orange-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+          Lag ({log.lateArrival}m)
         </div>
       );
     }
     if (log.earlyDeparture > 0) {
       return (
-        <div className="badge border border-yellow-100 bg-yellow-50 text-yellow-600 uppercase tracking-widest text-[10px] font-black">
-          Early ({log.earlyDeparture}m)
+        <div className="badge border border-yellow-100 bg-yellow-50 text-yellow-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+          Early Exit ({log.earlyDeparture}m)
         </div>
       );
     }
     return (
-      <div className="badge border border-emerald-100 bg-emerald-50 text-emerald-600 uppercase tracking-widest text-[10px] font-black">
-        Present
+      <div className="badge border border-emerald-100 bg-emerald-50 text-emerald-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+        Verified
       </div>
     );
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10 pb-32">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Attendance Logs</h1>
-          <p className="text-sm font-bold text-gray-400 mt-1">Daily records of check-ins and check-outs</p>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter italic">Daily <span className="text-red-600">Pulse</span></h1>
+          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.3em]">Real-time Chronometric Identifiers</p>
         </div>
-        <button className="btn-app bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 flex items-center space-x-2">
-          <Download className="w-5 h-5" />
-          <span>Export Logs</span>
+
+        <button className="px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105">
+          <Download className="w-4 h-4" /> Export Sequence
         </button>
       </div>
 
-      {/* Modern Filter Strip */}
-      <div className="app-card p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Period From</label>
+      {/* Control Deck */}
+      <div className="app-card p-10 bg-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-2xl -mr-10 -mt-10"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+          <div className="space-y-4">
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Calendar className="w-3 h-3 text-red-500" /> Timeframe Start
+            </label>
+            <input
+              type="date"
+              value={filters.startDate}
+              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all uppercase tracking-wider"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Calendar className="w-3 h-3 text-red-500" /> Timeframe End
+            </label>
+            <input
+              type="date"
+              value={filters.endDate}
+              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all uppercase tracking-wider"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Personnel Filter</label>
             <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-red-100 transition-all"
-              />
+              <select
+                value={filters.employeeId}
+                onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
+                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+              >
+                <option value="">Global Roster</option>
+                {employees.map((emp: any) => (
+                  <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                ))}
+              </select>
+              <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Period To</label>
+
+          <div className="space-y-4">
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
             <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-red-100 transition-all"
-              />
+              <select
+                value={filters.departmentId}
+                onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
+                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+              >
+                <option value="">All Units</option>
+                {departments.map((dept: any) => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+              <Activity className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
-          </div>
-          <div className="space-y-2 flex flex-col">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee</label>
-            <select
-              value={filters.employeeId}
-              onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-red-100 appearance-none"
-            >
-              <option value="">All Members</option>
-              {employees.map((emp: any) => (
-                <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 flex flex-col">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
-            <select
-              value={filters.departmentId}
-              onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold text-gray-600 focus:ring-2 focus:ring-red-100 appearance-none"
-            >
-              <option value="">All Departments</option>
-              {departments.map((dept: any) => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
 
-      {/* Log Table */}
-      <div className="app-card overflow-hidden">
+      {/* Log Matrix */}
+      <div className="app-card overflow-hidden shadow-xl shadow-gray-100/50 border-none">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scanning Log Database...</p>
+          <div className="flex flex-col items-center justify-center py-32 space-y-6">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-gray-100 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-red-600 rounded-full border-t-transparent animate-spin absolute top-0 left-0"></div>
+            </div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] animate-pulse">Synchronizing Chronometry...</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50/30">
-                    <th className="table-header">Employee</th>
-                    <th className="table-header">Date</th>
-                    <th className="table-header">Clock In</th>
-                    <th className="table-header">Clock Out</th>
-                    <th className="table-header">Work Hours</th>
-                    <th className="table-header text-right">Status Badge</th>
+                  <tr className="bg-gray-50/40 border-b border-gray-50">
+                    <th className="table-header px-8 w-1/4">Personnel Node</th>
+                    <th className="table-header w-1/6">Log Date</th>
+                    <th className="table-header">Initial Signal</th>
+                    <th className="table-header">Terminal Signal</th>
+                    <th className="table-header">Duration</th>
+                    <th className="table-header text-right px-8">Audit Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {logs.map((log) => (
-                    <tr key={log.id} className="table-row group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center font-bold text-gray-500 ring-2 ring-gray-50 group-hover:ring-red-100 transition-all">
+                    <tr key={log.id} className="table-row group hover:bg-red-50/5 transition-colors">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center space-x-5">
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-sm group-hover:scale-110 transition-transform duration-300 group-hover:border-red-100 group-hover:text-red-500">
                             {log.employee?.firstName?.[0]}{log.employee?.lastName?.[0]}
                           </div>
                           <div>
-                            <p className="text-sm font-extrabold text-gray-900 leading-none">{log.employee?.firstName} {log.employee?.lastName}</p>
-                            <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">Code: {log.employee?.employeeCode}</p>
+                            <p className="text-sm font-black text-gray-900 tracking-tight">{log.employee?.firstName} {log.employee?.lastName}</p>
+                            <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-[0.2em] group-hover:text-red-400 transition-colors">ID: {log.employee?.employeeCode}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-bold text-gray-600">
+                      <td className="px-6 py-5">
+                        <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                           {new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
                       </td>
-                      <td className="px-6 py-4 transition-all group-hover:pl-8">
+                      <td className="px-6 py-5">
                         {log.firstIn ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center">
-                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                          <div className="flex items-center space-x-3 group/time">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center group-hover/time:bg-emerald-500 transition-colors">
+                              <Clock className="w-4 h-4 text-emerald-600 group-hover/time:text-white transition-colors" />
                             </div>
-                            <span className="text-xs font-black text-gray-700">
+                            <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
                               {log.firstIn.match(/T(\d{2}:\d{2})/)?.[1] || '-'}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs font-bold text-gray-300">No Record</span>
+                          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest px-3 py-1 bg-gray-50 rounded-lg">Null</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-5">
                         {log.lastOut ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="w-6 h-6 rounded-lg bg-red-50 flex items-center justify-center">
-                              <Clock className="w-3.5 h-3.5 text-red-600" />
+                          <div className="flex items-center space-x-3 group/time">
+                            <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center group-hover/time:bg-red-500 transition-colors">
+                              <Clock className="w-4 h-4 text-red-600 group-hover/time:text-white transition-colors" />
                             </div>
-                            <span className="text-xs font-black text-gray-700">
+                            <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
                               {log.lastOut.match(/T(\d{2}:\d{2})/)?.[1] || '-'}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs font-bold text-gray-300">Pending</span>
+                          <span className="text-[10px] font-black text-orange-300 uppercase tracking-widest px-3 py-1 bg-orange-50/50 rounded-lg">Active</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-5">
                         {log.workingHours ? (
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-sm font-extrabold text-gray-900">{log.workingHours.toFixed(1)}</span>
-                            <span className="text-[10px] font-black text-gray-400 uppercase">hrs</span>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-lg font-black text-gray-900 tracking-tighter italic">{log.workingHours.toFixed(1)}</span>
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-wide mt-1">hrs</span>
                           </div>
                         ) : (
-                          <span className="text-xs font-bold text-gray-400 tracking-widest opacity-30">---</span>
+                          <span className="text-xs font-bold text-gray-200 tracking-widest">--.--</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-8 py-5 text-right">
                         {getStatusBadge(log)}
                       </td>
                     </tr>
@@ -262,22 +272,22 @@ export const Attendance = () => {
             </div>
 
             {/* Pagination */}
-            <div className="p-8 border-t border-gray-50 bg-gray-50/20 flex items-center justify-between">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                Records {logs.length ? (page - 1) * 20 + 1 : 0} - {(page - 1) * 20 + logs.length} (Page {page})
+            <div className="p-8 border-t border-gray-50 bg-gray-50/30 flex items-center justify-between">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                Subset {logs.length ? (page - 1) * 20 + 1 : 0} - {(page - 1) * 20 + logs.length} (Index {page})
               </p>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-3 bg-white border border-gray-100 rounded-2xl disabled:opacity-30 hover:bg-gray-50 transition-all text-gray-600"
+                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all text-gray-500 shadow-sm"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-3 bg-white border border-gray-100 rounded-2xl disabled:opacity-30 hover:bg-gray-50 transition-all text-gray-600"
+                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all text-gray-500 shadow-sm"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>

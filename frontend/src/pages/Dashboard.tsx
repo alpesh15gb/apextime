@@ -21,24 +21,29 @@ import {
   Search,
   Filter,
 } from 'lucide-react';
-import { dashboardAPI } from '../services/api';
+import { dashboardAPI, employeesAPI } from '../services/api';
 import { DashboardStats } from '../types';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await dashboardAPI.getStats();
-      setStats(response.data);
+      const [statsRes, employeesRes] = await Promise.all([
+        dashboardAPI.getStats(),
+        employeesAPI.getAll()
+      ]);
+      setStats(statsRes.data);
+      setEmployees(employeesRes.data || []);
     } catch (err) {
       setError('Failed to load dashboard data');
     } finally {
@@ -50,71 +55,74 @@ export const Dashboard = () => {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
-        <p className="text-gray-400 font-bold tracking-widest text-[10px] uppercase">Loading Dashboard...</p>
+        <p className="text-gray-400 font-bold tracking-widest text-[10px] uppercase">Synchronizing Hub...</p>
       </div>
     );
   }
 
   const statCards = [
     {
-      title: 'Total Employees',
+      title: 'Total Personnel',
       value: stats?.counts.totalEmployees || 0,
       icon: Users,
-      trend: '13 new employees added',
+      trend: `${stats?.counts.activeEmployees} Active Nodes`,
       trendUp: true,
       color: 'bg-blue-50 text-blue-600',
     },
     {
-      title: 'Active Employees',
-      value: stats?.counts.activeEmployees || 0,
-      icon: Briefcase,
-      trend: '9 new applications received',
+      title: 'Presence Matrix',
+      value: stats?.today.present || 0,
+      icon: CheckCircle,
+      trend: stats?.today.present ? 'Stable Signal' : 'No Data yet',
       trendUp: true,
       color: 'bg-emerald-50 text-emerald-600',
     },
     {
-      title: 'Present Today',
-      value: stats?.today.present || 0,
-      icon: CheckCircle,
-      trend: 'Team growing stronger',
-      trendUp: true,
-      color: 'bg-indigo-50 text-indigo-600',
-    },
-    {
-      title: 'Late Clock-ins',
+      title: 'Precision Lag',
       value: stats?.today.lateArrivals || 0,
       icon: Clock,
-      trend: '10 recent issues recorded',
+      trend: 'Late Clock-ins',
       trendUp: false,
       color: 'bg-orange-50 text-orange-600',
     },
+    {
+      title: 'Signal Gaps (Absent)',
+      value: stats?.today.absent || 0,
+      icon: XCircle,
+      trend: 'Unaccounted for',
+      trendUp: false,
+      color: 'bg-red-50 text-red-600',
+    },
   ];
+
+  const displayedEmployees = employees.slice(0, 10);
 
   return (
     <div className="space-y-8">
       {/* Top Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((card, idx) => (
-          <div key={idx} className="app-card p-8 flex flex-col justify-between group hover:border-red-100 transition-all cursor-default">
-            <div className="flex justify-between items-start">
-              <div className={`p-2.5 rounded-xl ${card.color}`}>
+          <div key={idx} className="app-card p-8 flex flex-col justify-between group hover:border-red-100 transition-all cursor-default relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-gray-50/50 rounded-full blur-3xl -mr-10 -mt-10"></div>
+            <div className="flex justify-between items-start relative z-10">
+              <div className={`p-3 rounded-2xl ${card.color} shadow-sm`}>
                 <card.icon className="w-5 h-5" />
               </div>
               <button className="text-gray-300 hover:text-gray-500">
                 <MoreVertical className="w-4 h-4" />
               </button>
             </div>
-            <div className="mt-8">
-              <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">{card.value}</h3>
-              <p className="text-sm font-bold text-gray-400 mt-1">{card.title}</p>
+            <div className="mt-8 relative z-10">
+              <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{card.value}</h3>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{card.title}</p>
             </div>
-            <div className="mt-6 flex items-center space-x-1.5">
+            <div className="mt-6 flex items-center space-x-1.5 relative z-10">
               {card.trendUp ? (
-                <ArrowUp className="w-3 h-3 text-emerald-500" />
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
               ) : (
-                <ArrowDown className="w-3 h-3 text-red-500" />
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
               )}
-              <span className={`text-[10px] font-bold ${card.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`text-[10px] font-black tracking-widest uppercase ${card.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
                 {card.trend}
               </span>
             </div>
@@ -125,21 +133,23 @@ export const Dashboard = () => {
       {/* Middle Grid: Charts & Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Attendance Report Mock-up Chart */}
-        <div className="app-card p-8 lg:col-span-1">
+        <div className="app-card p-10 lg:col-span-1 border-none shadow-xl shadow-gray-100">
           <div className="flex justify-between items-center mb-10">
-            <h3 className="font-extrabold text-gray-800 tracking-tight">Attendance Report</h3>
+            <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
+              <Activity className="w-4 h-4 text-red-600" /> Weekly Frequency
+            </h3>
             <MoreVertical className="w-4 h-4 text-gray-300" />
           </div>
           <div className="flex items-end justify-between h-48 space-x-4">
             {[40, 60, 45, 80, 55, 75, 50].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center space-y-3">
-                <div className="w-full bg-gray-50 rounded-full h-40 relative group overflow-hidden">
+              <div key={i} className="flex-1 flex flex-col items-center space-y-4">
+                <div className="w-full bg-gray-50 rounded-2xl h-40 relative group overflow-hidden">
                   <div
-                    className={`absolute bottom-0 w-full transition-all duration-500 rounded-full group-hover:brightness-110 ${i === 3 ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                    className={`absolute bottom-0 w-full transition-all duration-700 rounded-2xl group-hover:brightness-110 ${i === 3 ? 'bg-red-600' : 'bg-gray-200'}`}
                     style={{ height: `${h}%` }}
                   ></div>
                 </div>
-                <span className="text-[10px] font-bold text-gray-400">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
                   {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'][i]}
                 </span>
               </div>
@@ -148,74 +158,55 @@ export const Dashboard = () => {
         </div>
 
         {/* Payroll Summary / Pay Runs */}
-        <div className="app-card p-8 lg:col-span-1">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="font-extrabold text-gray-800 tracking-tight">Pay Runs</h3>
-            <MoreVertical className="w-4 h-4 text-gray-300" />
+        <div className="app-card p-10 lg:col-span-1 bg-gray-900 text-white border-none shadow-2xl">
+          <div className="flex justify-between items-center mb-10">
+            <h3 className="font-black text-red-500 uppercase tracking-widest text-[10px] flex items-center gap-2">
+              <DollarSign className="w-4 h-4" /> Liquidity Pulse
+            </h3>
+            <div className="badge border border-white/10 text-white/40 text-[8px] font-black uppercase">Active</div>
           </div>
-          <div className="space-y-6">
-            <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+          <div className="space-y-10">
+            <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 font-mono">Current Liabilities</p>
+              <h4 className="text-3xl font-black tracking-tighter italic">₹42,84,200</h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment Period</p>
-                <p className="text-sm font-bold text-gray-700 mt-1">1 Oct - 30 Oct</p>
+                <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Tax Nodes</p>
+                <p className="text-xl font-black text-emerald-500">24/24</p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pay Day</p>
-                <p className="text-sm font-bold text-gray-700 mt-1">30 Oct, 2025</p>
+              <div>
+                <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Cycle Node</p>
+                <p className="text-xl font-black text-red-500">Oct 25</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-center py-4">
-              <div className="relative w-32 h-32 rounded-full border-[12px] border-emerald-500 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-[12px] border-gray-100 border-t-transparent border-l-transparent"></div>
-                <div className="text-center">
-                  <TrendingUp className="w-6 h-6 text-emerald-500 mx-auto" />
-                </div>
-              </div>
-              <div className="ml-8 space-y-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded bg-emerald-500"></div>
-                  <p className="text-xs font-bold text-gray-600">Total Pay: <span className="text-gray-900">$7.8M</span></p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded bg-gray-200"></div>
-                  <p className="text-xs font-bold text-gray-600">Deduction: <span className="text-gray-900">$68K</span></p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Employee</p>
-                <p className="text-lg font-extrabold text-gray-800">1,250</p>
-              </div>
-              <div className="badge badge-success text-[10px] uppercase tracking-widest py-1.5 px-4 font-black">
-                Paid
-              </div>
-            </div>
+            <button className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-red-900/40 hover:bg-red-700 transition-all">
+              Authorize Batch
+            </button>
           </div>
         </div>
 
-        {/* Length of Service Mock Chart */}
-        <div className="app-card p-8 lg:col-span-1">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="font-extrabold text-gray-800 tracking-tight">Length of Service</h3>
-            <MoreVertical className="w-4 h-4 text-gray-300" />
+        {/* Quick Insights List */}
+        <div className="app-card p-10 lg:col-span-1">
+          <div className="flex justify-between items-center mb-10">
+            <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-orange-500" /> Matrix Signals
+            </h3>
           </div>
-          <div className="flex items-end justify-between h-48 space-x-3">
-            {[15, 40, 48, 44, 28].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center space-y-3">
-                <div
-                  className={`w-full rounded-xl transition-all duration-500 hover:brightness-110 ${i === 0 ? 'bg-red-500' :
-                      i === 1 ? 'bg-lime-400' :
-                        i === 2 ? 'bg-emerald-500' :
-                          i === 3 ? 'bg-lime-600' : 'bg-orange-400'
-                    }`}
-                  style={{ height: `${h}%` }}
-                ></div>
-                <span className="text-[10px] font-bold text-gray-400">
-                  {['<1yr', '1-3', '4-5', '5-8', '10y+'][i]}
-                </span>
+          <div className="space-y-6">
+            {[
+              { label: 'Unmapped IDs', value: stats?.today.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
+              { label: 'Shift Overlaps', value: '04', color: 'text-orange-600', bg: 'bg-orange-50' },
+              { label: 'Statutory Marks', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
+            ].map((sig, i) => (
+              <div key={i} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-2xl transition-all group">
+                <div className="flex items-center space-x-4">
+                  <div className={`w-2 h-10 rounded-full ${sig.bg}`}></div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{sig.label}</p>
+                </div>
+                <p className={`text-xl font-black ${sig.color}`}>{sig.value}</p>
               </div>
             ))}
           </div>
@@ -224,80 +215,80 @@ export const Dashboard = () => {
 
       {/* Bottom Section: Employee Table */}
       <div className="app-card overflow-hidden">
-        <div className="p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h3 className="font-extrabold text-gray-800 tracking-tight">Employee Details & Payroll</h3>
+        <div className="p-10 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div>
+            <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Employee Registry & Financial Status</h3>
+            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase italic tracking-tighter">Real-time mapping of localized personnel</p>
+          </div>
           <div className="flex items-center space-x-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input type="text" placeholder="Search employee..." className="w-full pl-9 pr-4 py-2 bg-gray-50 border-none rounded-xl text-xs focus:ring-2 focus:ring-red-50" />
+            <div className="relative flex-1 sm:w-80">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+              <input type="text" placeholder="Scan identification matrix..." className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-red-50 transition-all" />
             </div>
-            <button className="p-2 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100">
-              <Filter className="w-4 h-4" />
+            <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all">
+              <Filter className="w-5 h-5" />
             </button>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50/30">
-                <th className="table-header w-16">No</th>
-                <th className="table-header">Employee Name</th>
-                <th className="table-header">Email</th>
-                <th className="table-header">Position</th>
-                <th className="table-header">Status</th>
-                <th className="table-header text-right">Transfer Schedule</th>
+              <tr className="bg-gray-50/20">
+                <th className="table-header w-20 px-10">Hash</th>
+                <th className="table-header">Identity Matrix</th>
+                <th className="table-header">Routing Path</th>
+                <th className="table-header">Status Signal</th>
+                <th className="table-header text-right px-10">Verification Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {(stats?.today.absentEmployees || []).slice(0, 5).map((emp, i) => (
+              {displayedEmployees.map((emp, i) => (
                 <tr key={emp.id} className="table-row group">
-                  <td className="px-6 py-4 text-xs font-bold text-gray-400">{String(i + 1).padStart(2, '0')}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-500 text-xs">
-                        {emp.firstName[0]}{emp.lastName[0]}
+                  <td className="px-10 py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{String(i + 1).padStart(3, '0')}</td>
+                  <td className="px-6 py-6 font-bold">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-inner">
+                        {emp.firstName?.[0]}{emp.lastName?.[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-800">{emp.firstName} {emp.lastName}</p>
-                        <p className="text-[10px] text-gray-400 font-bold">{emp.employeeCode}</p>
+                        <p className="text-sm font-black text-gray-800 tracking-tight">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-[9px] text-red-600 font-black uppercase tracking-[0.2em] mt-0.5">{emp.employeeCode}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-xs font-medium text-gray-500 lowercase">{emp.firstName.toLowerCase()}@apextime.in</td>
-                  <td className="px-6 py-4 text-xs font-bold text-gray-600">Senior Associate</td>
-                  <td className="px-6 py-4">
-                    <div className={`badge ${i % 2 === 0 ? 'badge-success' : 'badge-warning'} text-[10px] font-black uppercase tracking-widest`}>
-                      {i % 2 === 0 ? 'Active' : 'On Leave'}
+                  <td className="px-6 py-6">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Personnel Hub</p>
+                    <p className="text-xs font-bold text-gray-700">{emp.department?.name || 'Departmental Node'}</p>
+                  </td>
+                  <td className="px-6 py-6">
+                    <div className={`badge ${emp.isActive ? 'badge-success' : 'badge-warning'} text-[8px] font-black uppercase tracking-[0.2em] px-4 py-1.5`}>
+                      {emp.isActive ? 'Active' : 'Dormant'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-xs font-bold text-gray-900 text-right">30 Oct, 2025</td>
+                  <td className="px-10 py-6 text-xs font-black text-gray-900 text-right opacity-40 group-hover:opacity-100 transition-opacity">
+                    30 OCT, 2025
+                  </td>
                 </tr>
               ))}
-              {/* Fallback if no data */}
-              {(!stats?.today.absentEmployees || stats.today.absentEmployees.length === 0) && (
+
+              {displayedEmployees.length === 0 && (
                 [1, 2, 3, 4, 5].map(i => (
-                  <tr key={i} className="table-row group">
-                    <td className="px-6 py-4 text-xs font-bold text-gray-400">{String(i).padStart(2, '0')}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3 animate-pulse">
-                        <div className="w-9 h-9 rounded-xl bg-gray-100"></div>
-                        <div className="space-y-1">
-                          <div className="h-3 w-24 bg-gray-100 rounded"></div>
-                          <div className="h-2 w-12 bg-gray-50 rounded"></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium text-gray-400">user.email@company.com</td>
-                    <td className="px-6 py-4 text-xs font-bold text-gray-300">Department Lead</td>
-                    <td className="px-6 py-4">
-                      <div className="w-16 h-5 bg-gray-50 rounded-full"></div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-gray-200 text-right">Processing...</td>
+                  <tr key={i} className="table-row group animate-pulse">
+                    <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
+                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
+                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
+                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
+                    <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+        <div className="p-10 bg-gray-50/30 flex justify-center">
+          <button onClick={() => navigate('/employees')} className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em] hover:underline flex items-center gap-2">
+            Explore Full Registry <ArrowUpRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

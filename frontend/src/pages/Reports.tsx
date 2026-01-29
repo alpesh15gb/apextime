@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Download,
@@ -10,11 +11,17 @@ import {
   Clock,
   CheckCircle2,
   Building2,
-  Check
+  Check,
+  User,
+  History,
+  Activity,
+  ArrowUpRight,
+  Zap
 } from 'lucide-react';
 import { reportsAPI } from '../services/api';
 
 export const Reports = () => {
+  const navigate = useNavigate();
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [filters, setFilters] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -71,29 +78,46 @@ export const Reports = () => {
   };
 
   return (
-    <div className="space-y-8 pb-32">
+    <div className="space-y-10 pb-32">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Intelligence Hub</h1>
-          <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">Export organizational attendance and performance datasets</p>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter italic">Intelligence <span className="text-red-600">Hub</span></h1>
+          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.3em]">Cross-dimensional organizational datasets and export protocols</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/attendance')}
+            className="px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 shadow-sm"
+          >
+            <Zap className="w-4 h-4" /> Today's Pulse
+          </button>
+          <button
+            onClick={() => navigate('/monthly-report')}
+            className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl"
+          >
+            <Activity className="w-4 h-4 text-red-500" /> Matrix View
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Configuration Panel */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="app-card p-10 space-y-10">
-            <div className="flex flex-col space-y-6">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <div className="lg:col-span-2 space-y-10">
+          <div className="app-card p-12 space-y-12 bg-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+
+            <div className="flex flex-col space-y-8 relative z-10">
+              <h3 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] flex items-center gap-3">
                 <Target className="w-4 h-4 text-red-600" /> Resolution Logic
               </h3>
-              <div className="flex bg-gray-50 p-1.5 rounded-[24px] w-fit shadow-inner">
+              <div className="flex bg-gray-50 p-2 rounded-[32px] w-fit shadow-inner border border-gray-100">
                 {(['daily', 'weekly', 'monthly'] as const).map((type) => (
                   <button
                     key={type}
                     onClick={() => setReportType(type)}
-                    className={`px-8 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${reportType === type ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                    className={`px-10 py-4 rounded-[26px] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${reportType === type ? 'bg-white text-gray-900 shadow-xl border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     {type}
                   </button>
@@ -101,21 +125,21 @@ export const Reports = () => {
               </div>
             </div>
 
-            <div className="space-y-6">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <Filter className="w-4 h-4 text-red-600" /> Refined Filters
+            <div className="space-y-8 relative z-10">
+              <h3 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] flex items-center gap-3">
+                <Filter className="w-4 h-4 text-red-600" /> Refined Parameters
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                 {reportType === 'daily' && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Target Date</label>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Extraction Date</label>
                     <div className="relative">
-                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                      <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
                         type="date"
                         value={filters.date}
                         onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-                        className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-xs"
+                        className="w-full pl-14 pr-6 py-5 bg-gray-50/50 border border-transparent rounded-[20px] focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-gray-800 text-[11px]"
                       />
                     </div>
                   </div>
@@ -123,26 +147,26 @@ export const Reports = () => {
 
                 {reportType === 'monthly' && (
                   <>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Month Period</label>
+                    <div className="space-y-3">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Month Period</label>
                       <select
                         value={filters.month}
                         onChange={(e) => setFilters({ ...filters, month: e.target.value })}
-                        className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 text-xs appearance-none cursor-pointer"
+                        className="w-full px-6 py-5 bg-gray-50/50 border border-transparent rounded-[20px] font-black text-gray-800 text-[11px] appearance-none cursor-pointer focus:bg-white focus:border-red-100"
                       >
                         {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                           <option key={month} value={month}>
-                            {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
+                            {new Date(2000, month - 1).toLocaleString('default', { month: 'long' }).toUpperCase()}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fiscal Year</label>
+                    <div className="space-y-3">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Fiscal Anchor</label>
                       <select
                         value={filters.year}
                         onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-                        className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 text-xs appearance-none cursor-pointer"
+                        className="w-full px-6 py-5 bg-gray-50/50 border border-transparent rounded-[20px] font-black text-gray-800 text-[11px] appearance-none cursor-pointer focus:bg-white focus:border-red-100"
                       >
                         {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
                           <option key={year} value={year}>
@@ -156,26 +180,26 @@ export const Reports = () => {
               </div>
             </div>
 
-            <div className="pt-8 border-t border-gray-50 flex items-center justify-between">
+            <div className="pt-12 border-t border-gray-50 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
               <div>
-                <p className="text-sm font-extrabold text-gray-800">Operational Export</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Instant generation of local and cloud identifiers</p>
+                <p className="text-md font-black text-gray-900 tracking-tight italic">Compilation Protocol Ready</p>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1 italic">Authorized extraction of encrypted datasets</p>
               </div>
-              <div className="flex space-x-3">
+              <div className="flex space-x-3 w-full md:w-auto">
                 <button
                   onClick={() => handleDownload('excel')}
                   disabled={generating}
-                  className="px-6 py-4 bg-white border border-gray-100 text-emerald-600 font-black text-[10px] uppercase tracking-widest rounded-[20px] hover:bg-emerald-50 transition-all shadow-sm flex items-center space-x-2 disabled:opacity-50"
+                  className="flex-1 md:flex-none px-10 py-5 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase tracking-[0.2em] rounded-[24px] hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center space-x-3 disabled:opacity-50"
                 >
-                  <FileSpreadsheet className="w-4 h-4" />
+                  <FileSpreadsheet className="w-5 h-5" />
                   <span>{generating ? 'Processing...' : 'Excel Matrix'}</span>
                 </button>
                 <button
                   onClick={() => handleDownload('pdf')}
                   disabled={generating}
-                  className="px-6 py-4 bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-100 transition-all flex items-center space-x-2 disabled:opacity-50"
+                  className="flex-1 md:flex-none px-10 py-5 bg-red-600 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-[24px] hover:bg-red-700 shadow-2xl shadow-red-200 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
                 >
-                  <FilePdf className="w-4 h-4" />
+                  <FilePdf className="w-5 h-5" />
                   <span>{generating ? 'Processing...' : 'Official PDF'}</span>
                 </button>
               </div>
@@ -183,23 +207,23 @@ export const Reports = () => {
           </div>
 
           {/* Contents Guide */}
-          <div className="app-card p-10 bg-gray-900 border-none text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-red-600/20 rounded-full blur-[80px] -mr-20 -mt-20"></div>
-            <h3 className="text-xl font-extrabold italic mb-8 relative z-10">Dataset <span className="text-red-500">Inclusions</span></h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+          <div className="app-card p-12 bg-gray-900 border-none text-white overflow-hidden relative shadow-2xl">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
+            <h3 className="text-xl font-black italic mb-10 relative z-10">Verification <span className="text-red-500">Schema</span></h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
               {[
-                { icon: User, text: 'Personnel Identifiers' },
-                { icon: Building2, text: 'Departmental Routing' },
-                { icon: Clock, text: 'Time Window Sequences' },
-                { icon: FileText, text: 'Shift Roster Audit' },
-                { icon: Target, text: 'Late Arrival Signals' },
-                { icon: CheckCircle2, text: 'Final Verification' }
+                { icon: User, text: 'Personnel IDs' },
+                { icon: Building2, text: 'Unit Routing' },
+                { icon: Clock, text: 'Time Sequences' },
+                { icon: FileText, text: 'Roster Audits' },
+                { icon: Target, text: 'Lag Signals' },
+                { icon: CheckCircle2, text: 'Verification' }
               ].map((item, i) => (
-                <div key={i} className="flex items-center space-x-3 group">
-                  <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 group-hover:bg-red-600 group-hover:text-white transition-all">
-                    <item.icon className="w-4 h-4" />
+                <div key={i} className="flex items-center space-x-4 group">
+                  <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-gray-500 group-hover:bg-red-600 group-hover:text-white group-hover:scale-110 transition-all">
+                    <item.icon className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">{item.text}</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 group-hover:text-white transition-colors">{item.text}</span>
                 </div>
               ))}
             </div>
@@ -208,30 +232,31 @@ export const Reports = () => {
 
         {/* Tips Panel */}
         <div className="space-y-8">
-          <div className="app-card p-10 space-y-8 bg-red-50/20 border-red-50">
-            <div className="flex items-center space-x-3 text-red-600">
+          <div className="app-card p-12 space-y-8 bg-red-50/10 border-red-50 border-dashed border-2 relative overflow-hidden">
+            <div className="flex items-center space-x-3 text-red-600 relative z-10">
               <Target className="w-5 h-5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Precision Tip</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Compliance Note</span>
             </div>
-            <p className="text-xs font-bold text-gray-500 leading-relaxed">
-              Generating <strong className="text-gray-900">Monthly Reports</strong> after the <strong className="text-gray-900">25th</strong> ensures all late-cycle attendance corrections are captured for payroll finalization.
+            <p className="text-xs font-bold text-gray-500 leading-relaxed relative z-10">
+              Cross-verification with <strong className="text-gray-900">Branch Locators</strong> is recommended for high-accuracy regional extraction.
             </p>
-            <div className="flex items-center space-x-2 text-[10px] font-black text-red-600 uppercase tracking-widest">
-              <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></div>
-              <span>System Ready</span>
+            <div className="flex items-center space-x-3 text-[10px] font-black text-red-600 uppercase tracking-[0.2em] relative z-10">
+              <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+              <span>Extraction Nodes Active</span>
             </div>
           </div>
 
-          <div className="app-card p-10 space-y-6">
-            <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
-              <FileText className="w-6 h-6" />
+          <div className="app-card p-12 space-y-8 group hover:bg-gray-50 transition-all border-none shadow-xl shadow-gray-100">
+            <div className="w-14 h-14 bg-gray-50 rounded-[20px] flex items-center justify-center text-gray-300 group-hover:scale-110 transition-transform group-hover:text-red-600">
+              <History className="w-7 h-7" />
             </div>
-            <h4 className="text-sm font-extrabold text-gray-900">Archive Compliance</h4>
-            <p className="text-xs font-bold text-gray-400 italic">All exports are logged with administrative timestamps for internal audit compliance.</p>
+            <div>
+              <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-2">Audit Registry</h4>
+              <p className="text-xs font-bold text-gray-400 italic leading-relaxed">System logs all export attempts. Data sovereignty is maintained via local encryption hashes.</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
-import { User } from 'lucide-react';

@@ -70,9 +70,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {
         title: 'Reports & Sync',
         items: [
-          { path: '/monthly-report', icon: FileSpreadsheet, label: 'Reports' },
+          { path: '/reports', icon: FileSpreadsheet, label: 'Export Hub' },
+          { path: '/monthly-report', icon: LayoutDashboard, label: 'Monthly Matrix' },
           { path: '/ceo-vault', icon: ShieldCheck, label: 'Exec Vault' },
-          { path: '/sync-diagnostics', icon: RefreshCw, label: 'Sync' },
+          { path: '/sync-diagnostics', icon: RefreshCw, label: 'Sync Center' },
         ]
       },
       {
