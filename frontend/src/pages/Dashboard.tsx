@@ -118,29 +118,27 @@ export const Dashboard = () => {
       {/* Top Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((card, idx) => (
-          <div key={idx} className="app-card p-8 flex flex-col justify-between group hover:border-red-100 transition-all cursor-default relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gray-50/50 rounded-full blur-3xl -mr-10 -mt-10"></div>
-            <div className="flex justify-between items-start relative z-10">
-              <div className={`p-3 rounded-2xl ${card.color} shadow-sm`}>
-                <card.icon className="w-5 h-5" />
+          <div key={idx} className="app-card p-6 flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2.5 rounded-xl ${card.color.split(' ')[0]} bg-opacity-50`}>
+                  <card.icon className={`w-5 h-5 ${card.color.split(' ')[1]}`} />
+                </div>
+                <span className="text-gray-500 font-semibold text-sm">{card.title}</span>
               </div>
-              <button className="text-gray-300 hover:text-gray-500">
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <ArrowUpRight className="w-4 h-4 text-gray-300" />
             </div>
-            <div className="mt-8 relative z-10">
-              <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{card.value}</h3>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{card.title}</p>
+
+            <div className="mt-4">
+              <h3 className="text-3xl font-bold text-gray-900">{card.value}</h3>
             </div>
-            <div className="mt-6 flex items-center space-x-1.5 relative z-10">
-              {card.trendUp ? (
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              ) : (
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-              )}
-              <span className={`text-[10px] font-black tracking-widest uppercase ${card.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
-                {card.trend}
-              </span>
+
+            <div className="mt-auto pt-4 border-t border-gray-100/50 flex items-center justify-between">
+              <span className="text-xs text-gray-400 font-medium">Current Status</span>
+              <div className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-bold ${card.trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                {card.trendUp ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                <span>{card.trend}</span>
+              </div>
             </div>
           </div>
         ))}

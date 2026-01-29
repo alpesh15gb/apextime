@@ -97,14 +97,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col md:flex-row">
       {/* Sidebar */}
       <aside
-        className={`bg-white border-r border-gray-100 transition-all duration-300 fixed h-full z-20 print:hidden ${sidebarOpen ? 'w-64' : 'w-20'
-          } hidden md:block`}
+        className={`bg-[#1A1A1A] text-white transition-all duration-300 fixed h-full z-20 print:hidden ${sidebarOpen ? 'w-64' : 'w-20'
+          } hidden md:block shadow-2xl`}
       >
-        <div className="h-20 flex items-center px-8">
+        <div className="h-20 flex items-center px-6">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <img src="/logo.png" alt="Apextime" className="w-10 h-10 object-contain" />
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+              <img src="/logo.png" alt="Apextime" className="w-6 h-6 object-contain" />
+            </div>
             {sidebarOpen && (
-              <span className="font-extrabold text-xl text-gray-900 tracking-tight">Apextime</span>
+              <span className="font-bold text-lg tracking-wide text-white">Apextime</span>
             )}
           </div>
         </div>
@@ -112,8 +114,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <nav className="px-4 pb-20 space-y-8 overflow-y-auto h-[calc(100vh-80px)] custom-scrollbar">
           {menuGroups.map((group, idx) => (
             <div key={idx} className="space-y-2">
-              {sidebarOpen && (
-                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-loose">
+              {sidebarOpen && group.title && (
+                <p className="px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                   {group.title}
                 </p>
               )}
@@ -123,12 +125,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     key={item.path}
                     to={item.path}
                     className={({ isActive }) =>
-                      `flex items-center group transition-all duration-200 ${isActive ? 'nav-item-active' : 'nav-item'
+                      `flex items-center px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                        ? 'bg-white/10 text-white font-medium shadow-sm'
+                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
                       }`
                     }
                   >
-                    <item.icon className={`w-5 h-5 flex-shrink-0 ${sidebarOpen ? '' : 'mx-auto'}`} />
-                    {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                    <item.icon className={`w-5 h-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                    {sidebarOpen && <span className="text-sm">{item.label}</span>}
                   </NavLink>
                 ))}
               </div>
@@ -138,31 +142,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {/* Master Data as a special group for Admin */}
           {user?.role !== 'employee' && sidebarOpen && (
             <div className="space-y-2">
-              <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-loose">
-                Support Tool
+              <p className="px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Support
               </p>
-              <NavLink to="/locations" className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}>
-                <MapPin className="w-5 h-5" />
-                <span className="text-sm font-medium">Locations</span>
+              <NavLink to="/locations" className={({ isActive }) => `flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                <MapPin className="w-5 h-5 mr-3" />
+                <span className="text-sm">Locations</span>
               </NavLink>
-              <NavLink to="/shifts" className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}>
-                <Calendar className="w-5 h-5" />
-                <span className="text-sm font-medium">Work Calendar</span>
+              <NavLink to="/shifts" className={({ isActive }) => `flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                <Calendar className="w-5 h-5 mr-3" />
+                <span className="text-sm">Work Calendar</span>
               </NavLink>
+              <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-red-400 transition-all duration-200 mt-4">
+                <LogOut className="w-5 h-5 mr-3" />
+                <span className="text-sm">Logout</span>
+              </button>
             </div>
           )}
         </nav>
-
-        {/* User Sidebar Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-50">
-          <button
-            onClick={handleLogout}
-            className="w-full nav-item text-red-600 hover:bg-red-50"
-          >
-            <LogOut className="w-5 h-5" />
-            {sidebarOpen && <span className="text-sm font-bold">Logout Session</span>}
-          </button>
-        </div>
       </aside>
 
       {/* Main Area */}
