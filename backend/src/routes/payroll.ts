@@ -81,25 +81,56 @@ router.post('/generate', async (req, res) => {
         const results = [];
 
         for (const emp of employees) {
-            // Basic logic: Present days = present status + (lateArrival < 30 ? 1 : 0.5) etc
-            // For now, let's just count 'present' status
             const presentDays = emp.attendanceLogs.filter(l => l.status === 'present').length;
-            const lateDays = emp.attendanceLogs.filter(l => l.lateArrival > 0).length;
             const absentDays = daysInMonth - presentDays;
 
-            // Salary math
-            const perDaySalary = (emp.basicSalary + emp.hra + emp.totalAllowances) / daysInMonth;
+            // 1. Calculate OT Hours and Pay
+            let otHours = 0;
+            let otPay = 0;
+            if (emp.isOTEnabled) {
+                // Calculate hourly rate based on standard 8hr day
+                const monthlyFixedGross = emp.basicSalary + emp.hra + emp.totalAllowances;
+                const hourlyRate = monthlyFixedGross / (daysInMonth * 8);
+
+                emp.attendanceLogs.forEach(log => {
+                    if (log.workingHours && log.workingHours > 8) {
+                        const extra = log.workingHours - 8;
+                        otHours += extra;
+                    }
+                });
+                otPay = otHours * hourlyRate * (emp.otRateMultiplier || 1.5);
+            }
+
+            // 2. Base Salary Calculations (Pro-rata)
             const basicPaid = (emp.basicSalary / daysInMonth) * presentDays;
             const hraPaid = (emp.hra / daysInMonth) * presentDays;
             const allowancesPaid = (emp.totalAllowances / daysInMonth) * presentDays;
 
-            // Simple late deduction: $10 per late day (example)
-            const lateDeduction = lateDays * 10;
-            const totalDeductions = emp.standardDeductions + lateDeduction;
+            const grossSalary = basicPaid + hraPaid + allowancesPaid + otPay;
 
-            const netSalary = (basicPaid + hraPaid + allowancesPaid) - totalDeductions;
+            // 3. Statutory Deductions (Employee Share)
+            let pfDeduction = 0;
+            let esiDeduction = 0;
 
-            // Upsert payroll record
+            if (emp.isPFEnabled) {
+                // Standard 12% of Basic
+                pfDeduction = Math.min(basicPaid * 0.12, 1800); // Usually capped at 1800 (12% of 15000)
+            }
+
+            if (emp.isESIEnabled && grossSalary <= 21000) {
+                // Standard 0.75% of Gross
+                esiDeduction = Math.ceil(grossSalary * 0.0075);
+            }
+
+            // 4. Employer Contributions
+            let employerPF = emp.isPFEnabled ? Math.min(basicPaid * 0.12, 1800) : 0;
+            let employerESI = (emp.isESIEnabled && grossSalary <= 21000) ? Math.ceil(grossSalary * 0.0325) : 0;
+
+            // 5. Net Salary Calculation
+            // Net = Gross - PF - ESI - Other Standard Deductions
+            const totalDeductions = pfDeduction + esiDeduction + emp.standardDeductions;
+            const netSalary = grossSalary - totalDeductions;
+
             const payroll = await prisma.payroll.upsert({
                 where: {
                     employeeId_month_year: {
@@ -112,11 +143,16 @@ router.post('/generate', async (req, res) => {
                     totalWorkingDays: daysInMonth,
                     presentDays,
                     absentDays,
-                    lateDays,
                     basicPaid,
                     hraPaid,
                     allowancesPaid,
-                    deductions: totalDeductions,
+                    otHours,
+                    otPay,
+                    pfDeduction,
+                    esiDeduction,
+                    employerPF,
+                    employerESI,
+                    grossSalary,
                     netSalary: netSalary > 0 ? netSalary : 0,
                     status: 'generated',
                 },
@@ -127,11 +163,16 @@ router.post('/generate', async (req, res) => {
                     totalWorkingDays: daysInMonth,
                     presentDays,
                     absentDays,
-                    lateDays,
                     basicPaid,
                     hraPaid,
                     allowancesPaid,
-                    deductions: totalDeductions,
+                    otHours,
+                    otPay,
+                    pfDeduction,
+                    esiDeduction,
+                    employerPF,
+                    employerESI,
+                    grossSalary,
                     netSalary: netSalary > 0 ? netSalary : 0,
                     status: 'generated',
                 }
@@ -150,7 +191,16 @@ router.post('/generate', async (req, res) => {
 router.put('/salary/:employeeId', async (req, res) => {
     try {
         const { employeeId } = req.params;
-        const { basicSalary, hra, totalAllowances, standardDeductions } = req.body;
+        const {
+            basicSalary,
+            hra,
+            totalAllowances,
+            standardDeductions,
+            isPFEnabled,
+            isESIEnabled,
+            isOTEnabled,
+            otRateMultiplier
+        } = req.body;
 
         await prisma.employee.update({
             where: { id: employeeId },
@@ -159,6 +209,10 @@ router.put('/salary/:employeeId', async (req, res) => {
                 hra: parseFloat(hra),
                 totalAllowances: parseFloat(totalAllowances),
                 standardDeductions: parseFloat(standardDeductions),
+                isPFEnabled: Boolean(isPFEnabled),
+                isESIEnabled: Boolean(isESIEnabled),
+                isOTEnabled: Boolean(isOTEnabled),
+                otRateMultiplier: parseFloat(otRateMultiplier || '1.5'),
             }
         });
 

@@ -163,6 +163,10 @@ router.post(
         hra,
         totalAllowances,
         standardDeductions,
+        isPFEnabled,
+        isESIEnabled,
+        isOTEnabled,
+        otRateMultiplier,
       } = req.body;
 
       // Check if employee code already exists
@@ -192,6 +196,10 @@ router.post(
           hra: hra ? parseFloat(hra) : 0,
           totalAllowances: totalAllowances ? parseFloat(totalAllowances) : 0,
           standardDeductions: standardDeductions ? parseFloat(standardDeductions) : 0,
+          isPFEnabled: isPFEnabled === true || isPFEnabled === 'true',
+          isESIEnabled: isESIEnabled === true || isESIEnabled === 'true',
+          isOTEnabled: isOTEnabled === true || isOTEnabled === 'true',
+          otRateMultiplier: otRateMultiplier ? parseFloat(otRateMultiplier) : 1.5,
         },
         include: {
           department: true,
@@ -233,6 +241,10 @@ router.put('/:id', async (req, res) => {
       hra,
       totalAllowances,
       standardDeductions,
+      isPFEnabled,
+      isESIEnabled,
+      isOTEnabled,
+      otRateMultiplier,
     } = req.body;
 
     const employee = await prisma.employee.update({
@@ -255,6 +267,10 @@ router.put('/:id', async (req, res) => {
         hra: hra ? parseFloat(hra) : undefined,
         totalAllowances: totalAllowances ? parseFloat(totalAllowances) : undefined,
         standardDeductions: standardDeductions ? parseFloat(standardDeductions) : undefined,
+        isPFEnabled: isPFEnabled !== undefined ? (isPFEnabled === true || isPFEnabled === 'true') : undefined,
+        isESIEnabled: isESIEnabled !== undefined ? (isESIEnabled === true || isESIEnabled === 'true') : undefined,
+        isOTEnabled: isOTEnabled !== undefined ? (isOTEnabled === true || isOTEnabled === 'true') : undefined,
+        otRateMultiplier: otRateMultiplier ? parseFloat(otRateMultiplier) : undefined,
       },
       include: {
         department: true,

@@ -26,6 +26,10 @@ export const EmployeeForm = () => {
     hra: 0,
     totalAllowances: 0,
     standardDeductions: 0,
+    isPFEnabled: false,
+    isESIEnabled: false,
+    isOTEnabled: false,
+    otRateMultiplier: 1.5,
   });
 
   const [departments, setDepartments] = useState([]);
@@ -81,6 +85,10 @@ export const EmployeeForm = () => {
         hra: employee.hra || 0,
         totalAllowances: employee.totalAllowances || 0,
         standardDeductions: employee.standardDeductions || 0,
+        isPFEnabled: employee.isPFEnabled || false,
+        isESIEnabled: employee.isESIEnabled || false,
+        isOTEnabled: employee.isOTEnabled || false,
+        otRateMultiplier: employee.otRateMultiplier || 1.5,
       });
     } catch (error) {
       console.error('Failed to fetch employee:', error);
@@ -345,6 +353,53 @@ export const EmployeeForm = () => {
                   min="0"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isPFEnabled"
+                  checked={formData.isPFEnabled}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <label className="ml-2 text-sm text-gray-700">Enable PF (12%)</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isESIEnabled"
+                  checked={formData.isESIEnabled}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <label className="ml-2 text-sm text-gray-700">Enable ESI (0.75%)</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isOTEnabled"
+                  checked={formData.isOTEnabled}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <label className="ml-2 text-sm text-gray-700">Enable OT Calculation</label>
+              </div>
+              {formData.isOTEnabled && (
+                <div>
+                  <label className="form-label">OT Multiplier (e.g. 1.5)</label>
+                  <input
+                    type="number"
+                    name="otRateMultiplier"
+                    value={formData.otRateMultiplier}
+                    onChange={handleChange}
+                    className="form-input"
+                    step="0.1"
+                    min="1"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

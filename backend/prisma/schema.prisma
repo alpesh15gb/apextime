@@ -108,10 +108,16 @@ model Employee {
   payrolls        Payroll[]
   
   // Salary Fields
-  basicSalary     Float            @default(0)
-  hra             Float            @default(0)
-  totalAllowances Float            @default(0)
-  standardDeductions Float         @default(0)
+  basicSalary       Float            @default(0)
+  hra               Float            @default(0)
+  totalAllowances   Float            @default(0)
+  standardDeductions Float           @default(0)
+  
+  // Advanced Payroll Configuration
+  isPFEnabled       Boolean          @default(false)
+  isESIEnabled      Boolean          @default(false)
+  isOTEnabled       Boolean          @default(false)
+  otRateMultiplier  Float            @default(1.5) // e.g., 1.5x hourly rate
 }
 
 model Shift {
@@ -282,8 +288,23 @@ model Payroll {
   basicPaid         Float
   hraPaid           Float
   allowancesPaid    Float
-  deductions        Float
+  
+  // Overtime
+  otHours           Float            @default(0)
+  otPay             Float            @default(0)
+  
+  // Statutory Deductions (Employee Share)
+  pfDeduction       Float            @default(0)
+  esiDeduction      Float            @default(0)
+  tdsDeduction      Float            @default(0)
+  otherDeductions   Float            @default(0)
+  
+  // Employer Contributions (Cost to Company - CTC)
+  employerPF        Float            @default(0)
+  employerESI       Float            @default(0)
+  
   netSalary         Float
+  grossSalary       Float
   
   status            String    @default("draft") // draft, generated, paid
   paidAt            DateTime?
