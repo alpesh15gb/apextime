@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer, Share2, Filter, MoreVertical, LayoutGrid } from 'lucide-react';
+import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer, Share2, Filter, MoreVertical, LayoutGrid, Briefcase } from 'lucide-react';
 import { attendanceAPI, departmentsAPI, branchesAPI } from '../services/api';
 
 interface DailyData {
