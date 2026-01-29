@@ -43,7 +43,7 @@ export const Dashboard = () => {
         employeesAPI.getAll()
       ]);
       setStats(statsRes.data);
-      setEmployees(employeesRes.data || []);
+      setEmployees(statsRes.data?.employees || employeesRes.data?.employees || []);
     } catch (err) {
       setError('Failed to load dashboard data');
     } finally {
@@ -63,23 +63,23 @@ export const Dashboard = () => {
   const statCards = [
     {
       title: 'Total Personnel',
-      value: stats?.counts.totalEmployees || 0,
+      value: stats?.counts?.totalEmployees || 0,
       icon: Users,
-      trend: `${stats?.counts.activeEmployees} Active Nodes`,
+      trend: `${stats?.counts?.activeEmployees || 0} Active Nodes`,
       trendUp: true,
       color: 'bg-blue-50 text-blue-600',
     },
     {
       title: 'Presence Matrix',
-      value: stats?.today.present || 0,
+      value: stats?.today?.present || 0,
       icon: CheckCircle,
-      trend: stats?.today.present ? 'Stable Signal' : 'No Data yet',
+      trend: stats?.today?.present ? 'Stable Signal' : 'No Data yet',
       trendUp: true,
       color: 'bg-emerald-50 text-emerald-600',
     },
     {
       title: 'Precision Lag',
-      value: stats?.today.lateArrivals || 0,
+      value: stats?.today?.lateArrivals || 0,
       icon: Clock,
       trend: 'Late Clock-ins',
       trendUp: false,
@@ -87,7 +87,7 @@ export const Dashboard = () => {
     },
     {
       title: 'Signal Gaps (Absent)',
-      value: stats?.today.absent || 0,
+      value: stats?.today?.absent || 0,
       icon: XCircle,
       trend: 'Unaccounted for',
       trendUp: false,
@@ -95,7 +95,7 @@ export const Dashboard = () => {
     },
   ];
 
-  const displayedEmployees = employees.slice(0, 10);
+  const displayedEmployees = Array.isArray(employees) ? employees.slice(0, 10) : [];
 
   return (
     <div className="space-y-8">
