@@ -139,6 +139,8 @@ export const MonthlyReport = () => {
   };
 
   const getCellContent = (data: DailyData) => {
+    if (!data) return <span className="text-gray-300">-</span>;
+
     if (data.isOffDay) {
       if (data.firstIn || data.lastOut) {
         return (
@@ -158,17 +160,18 @@ export const MonthlyReport = () => {
 
     return (
       <div className="text-[7px] font-black leading-tight text-gray-900 group-hover:scale-110 transition-transform">
-        <div className={data.lateArrival > 0 ? 'text-orange-500' : ''}>{formatTime(data.firstIn)}</div>
-        <div className={data.earlyDeparture > 0 ? 'text-orange-500' : ''}>{formatTime(data.lastOut)}</div>
+        <div className={(data.lateArrival || 0) > 0 ? 'text-orange-500' : ''}>{formatTime(data.firstIn)}</div>
+        <div className={(data.earlyDeparture || 0) > 0 ? 'text-orange-500' : ''}>{formatTime(data.lastOut)}</div>
       </div>
     );
   };
 
   const getCellClass = (data: DailyData) => {
+    if (!data) return 'bg-gray-50';
     if (data.isHoliday) return 'bg-blue-50/50';
     if (data.isSunday) return 'bg-gray-50/50';
     if (data.status === 'absent') return 'bg-red-50/20';
-    if (data.lateArrival > 0) return 'bg-orange-50/20';
+    if ((data.lateArrival || 0) > 0) return 'bg-orange-50/20';
     return 'bg-white';
   };
 
@@ -326,20 +329,20 @@ export const MonthlyReport = () => {
                 </thead>
                 <tbody>
                   {report?.reportData?.map((row, idx) => (
-                    <tr key={row.employee.id} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
+                    <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
                       <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
-                        <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row.employee.name}</div>
-                        <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row.employee.employeeCode}</div>
+                        <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row?.employee?.name || 'Unknown'}</div>
+                        <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row?.employee?.employeeCode || '-'}</div>
                       </td>
-                      {row.dailyData?.map(dayInfo => (
-                        <td key={dayInfo.day} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
+                      {row?.dailyData?.map((dayInfo, i) => (
+                        <td key={dayInfo?.day || i} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
                           {getCellContent(dayInfo)}
                         </td>
                       ))}
-                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary?.presentDays}</td>
-                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary?.absentDays}</td>
-                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary?.lateDays}</td>
-                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row.summary?.totalWorkingHours || 0).toFixed(0)}</td>
+                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row?.summary?.presentDays || 0}</td>
+                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row?.summary?.absentDays || 0}</td>
+                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row?.summary?.lateDays || 0}</td>
+                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row?.summary?.totalWorkingHours || 0).toFixed(0)}</td>
                     </tr>
                   ))}
                 </tbody>
