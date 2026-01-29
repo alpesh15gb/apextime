@@ -42,10 +42,25 @@ export const Dashboard = () => {
         dashboardAPI.getStats(),
         employeesAPI.getAll()
       ]);
-      setStats(statsRes.data);
-      setEmployees(statsRes.data?.employees || employeesRes.data?.employees || []);
+
+      setStats(statsRes.data || {});
+
+      let empData = employeesRes.data;
+      if (empData && typeof empData === 'object' && 'employees' in empData) {
+        empData = empData.employees;
+      }
+
+      if (Array.isArray(empData)) {
+        // Filter out invalid employee objects
+        setEmployees(empData.filter((e: any) => e && typeof e === 'object' && e.id));
+      } else {
+        setEmployees([]);
+      }
     } catch (err) {
+      console.error('Dashboard data load error:', err);
       setError('Failed to load dashboard data');
+      setEmployees([]);
+      setStats({} as any);
     } finally {
       setLoading(false);
     }
