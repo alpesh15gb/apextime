@@ -78,27 +78,27 @@ export const Attendance = () => {
     if (log.status === 'absent') {
       return (
         <div className="badge border border-red-100 bg-red-50 text-red-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
-          Absent Node
+          Absent
         </div>
       );
     }
     if (log.lateArrival > 0) {
       return (
         <div className="badge border border-orange-100 bg-orange-50 text-orange-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
-          Lag ({log.lateArrival}m)
+          Late ({log.lateArrival}m)
         </div>
       );
     }
     if (log.earlyDeparture > 0) {
       return (
         <div className="badge border border-yellow-100 bg-yellow-50 text-yellow-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
-          Early Exit ({log.earlyDeparture}m)
+          Left Early ({log.earlyDeparture}m)
         </div>
       );
     }
     return (
       <div className="badge border border-emerald-100 bg-emerald-50 text-emerald-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
-        Verified
+        Present
       </div>
     );
   };
@@ -108,12 +108,12 @@ export const Attendance = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter italic">Daily <span className="text-red-600">Pulse</span></h1>
-          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.3em]">Real-time Chronometric Identifiers</p>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter italic">Daily <span className="text-red-600">Attendance</span></h1>
+          <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.3em]">Daily attendance logs</p>
         </div>
 
         <button className="px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105">
-          <Download className="w-4 h-4" /> Export Sequence
+          <Download className="w-4 h-4" /> Export
         </button>
       </div>
 
@@ -123,7 +123,7 @@ export const Attendance = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
           <div className="space-y-4">
             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <Calendar className="w-3 h-3 text-red-500" /> Timeframe Start
+              <Calendar className="w-3 h-3 text-red-500" /> Start Date
             </label>
             <input
               type="date"
@@ -135,7 +135,7 @@ export const Attendance = () => {
 
           <div className="space-y-4">
             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <Calendar className="w-3 h-3 text-red-500" /> Timeframe End
+              <Calendar className="w-3 h-3 text-red-500" /> End Date
             </label>
             <input
               type="date"
@@ -146,14 +146,14 @@ export const Attendance = () => {
           </div>
 
           <div className="space-y-4">
-            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Personnel Filter</label>
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee</label>
             <div className="relative">
               <select
                 value={filters.employeeId}
                 onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
                 className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
               >
-                <option value="">Global Roster</option>
+                <option value="">All Employees</option>
                 {employees.map((emp: any) => (
                   <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
                 ))}
@@ -170,7 +170,7 @@ export const Attendance = () => {
                 onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
                 className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
               >
-                <option value="">All Units</option>
+                <option value="">All Departments</option>
                 {departments.map((dept: any) => (
                   <option key={dept.id} value={dept.id}>{dept.name}</option>
                 ))}
@@ -189,7 +189,7 @@ export const Attendance = () => {
               <div className="w-16 h-16 border-4 border-gray-100 rounded-full"></div>
               <div className="w-16 h-16 border-4 border-red-600 rounded-full border-t-transparent animate-spin absolute top-0 left-0"></div>
             </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] animate-pulse">Synchronizing Chronometry...</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] animate-pulse">Loading...</p>
           </div>
         ) : (
           <>
@@ -197,12 +197,12 @@ export const Attendance = () => {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50/40 border-b border-gray-50">
-                    <th className="table-header px-8 w-1/4">Personnel Node</th>
-                    <th className="table-header w-1/6">Log Date</th>
-                    <th className="table-header">Initial Signal</th>
-                    <th className="table-header">Terminal Signal</th>
+                    <th className="table-header px-8 w-1/4">Employee</th>
+                    <th className="table-header w-1/6">Date</th>
+                    <th className="table-header">Check In</th>
+                    <th className="table-header">Check Out</th>
                     <th className="table-header">Duration</th>
-                    <th className="table-header text-right px-8">Audit Status</th>
+                    <th className="table-header text-right px-8">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">

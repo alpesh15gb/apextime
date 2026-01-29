@@ -179,8 +179,8 @@ export const MonthlyReport = () => {
       {/* Premium Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 print:hidden">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Monthly Insights</h1>
-          <p className="text-sm font-bold text-gray-400 mt-1">Cross-departmental attendance matrix</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Monthly Report</h1>
+          <p className="text-sm font-bold text-gray-400 mt-1">Department-wise attendance report</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
@@ -193,7 +193,7 @@ export const MonthlyReport = () => {
                 onChange={(e) => setSelectedBranch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
               >
-                <option value="">All Regions</option>
+                <option value="">All Branches</option>
                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
@@ -204,7 +204,7 @@ export const MonthlyReport = () => {
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
               >
-                <option value="">All Teams</option>
+                <option value="">All Departments</option>
                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
@@ -234,7 +234,7 @@ export const MonthlyReport = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Generating Register Matrix...</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading Report...</p>
         </div>
       ) : (
         <div className="flex flex-col xl:flex-row gap-8 print:block">
@@ -262,94 +262,95 @@ export const MonthlyReport = () => {
             </div>
 
             <div className="app-card p-6">
-              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 px-1">Indicator Key</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 rounded bg-red-400/20 border border-red-100"></div>
-                  <span className="text-[10px] font-bold text-gray-500">Employee Absent</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 rounded bg-blue-50 border border-blue-100"></div>
-                  <span className="text-[10px] font-bold text-gray-500">Official Holiday</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 rounded bg-gray-50 border border-gray-100"></div>
-                  <span className="text-[10px] font-bold text-gray-500">Weekly Off (Sun)</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 rounded bg-orange-400/20 border border-orange-100"></div>
-                  <span className="text-[10px] font-bold text-gray-500">Late Arrival</span>
+              <div className="app-card p-6">
+                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 px-1">Legend</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-4 h-4 rounded bg-red-400/20 border border-red-100"></div>
+                    <span className="text-[10px] font-bold text-gray-500">Employee Absent</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-4 h-4 rounded bg-blue-50 border border-blue-100"></div>
+                    <span className="text-[10px] font-bold text-gray-500">Official Holiday</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-4 h-4 rounded bg-gray-50 border border-gray-100"></div>
+                    <span className="text-[10px] font-bold text-gray-500">Weekly Off (Sun)</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-4 h-4 rounded bg-orange-400/20 border border-orange-100"></div>
+                    <span className="text-[10px] font-bold text-gray-500">Late Arrival</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* The Big Matrix */}
-          <div className="flex-1 app-card overflow-hidden print:border-none print:shadow-none">
-            <div className="p-8 border-b border-gray-50 flex justify-between items-center print:p-2 print:border-none">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
-                  <LayoutGrid className="w-5 h-5 text-gray-400" />
+            {/* The Big Matrix */}
+            <div className="flex-1 app-card overflow-hidden print:border-none print:shadow-none">
+              <div className="p-8 border-b border-gray-50 flex justify-between items-center print:p-2 print:border-none">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+                    <LayoutGrid className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-gray-900 tracking-tight">Attendance Report</h3>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{monthName} {year}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-gray-900 tracking-tight">Attendance Matrix</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{monthName} {year}</p>
+                <div className="flex items-center space-x-3 print:hidden">
+                  <Share2 className="w-4 h-4 text-gray-300 pointer-events-none" />
+                  <MoreVertical className="w-4 h-4 text-gray-300" />
                 </div>
               </div>
-              <div className="flex items-center space-x-3 print:hidden">
-                <Share2 className="w-4 h-4 text-gray-300 pointer-events-none" />
-                <MoreVertical className="w-4 h-4 text-gray-300" />
-              </div>
-            </div>
 
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full text-[10px] border-collapse">
-                <thead>
-                  <tr className="bg-gray-50/50">
-                    <th className="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-48 shadow-[1px_0_0_rgba(0,0,0,0.05)]">Team Member</th>
-                    {days.map(day => {
-                      const date = new Date(year, month - 1, day);
-                      const isSun = date.getDay() === 0;
-                      const isHol = report?.holidays.some(h => h.day === day);
-                      return (
-                        <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[32px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
-                          <div className={`text-[10px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
-                          <div className="text-[7px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
-                        </th>
-                      );
-                    })}
-                    <th className="px-2 py-3 text-center font-black text-emerald-600 border-l border-gray-100 bg-emerald-50/30">P</th>
-                    <th className="px-2 py-3 text-center font-black text-red-600 border-x border-gray-100 bg-red-50/30">A</th>
-                    <th className="px-2 py-3 text-center font-black text-orange-600 border-r border-gray-100 bg-orange-50/30">L</th>
-                    <th className="px-2 py-3 text-center font-black text-gray-800 bg-gray-50/50">Hrs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report?.reportData.map((row, idx) => (
-                    <tr key={row.employee.id} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
-                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
-                        <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row.employee.name}</div>
-                        <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row.employee.employeeCode}</div>
-                      </td>
-                      {row.dailyData.map(dayInfo => (
-                        <td key={dayInfo.day} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
-                          {getCellContent(dayInfo)}
-                        </td>
-                      ))}
-                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary.presentDays}</td>
-                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary.absentDays}</td>
-                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary.lateDays}</td>
-                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{row.summary.totalWorkingHours.toFixed(0)}</td>
+              <div className="overflow-x-auto print:overflow-visible">
+                <table className="w-full text-[10px] border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50/50">
+                      <th className="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-48 shadow-[1px_0_0_rgba(0,0,0,0.05)]">Employee</th>
+                      {days.map(day => {
+                        const date = new Date(year, month - 1, day);
+                        const isSun = date.getDay() === 0;
+                        const isHol = report?.holidays.some(h => h.day === day);
+                        return (
+                          <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[32px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
+                            <div className={`text-[10px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
+                            <div className="text-[7px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
+                          </th>
+                        );
+                      })}
+                      <th className="px-2 py-3 text-center font-black text-emerald-600 border-l border-gray-100 bg-emerald-50/30">Pres</th>
+                      <th className="px-2 py-3 text-center font-black text-red-600 border-x border-gray-100 bg-red-50/30">Abs</th>
+                      <th className="px-2 py-3 text-center font-black text-orange-600 border-r border-gray-100 bg-orange-50/30">Late</th>
+                      <th className="px-2 py-3 text-center font-black text-gray-800 bg-gray-50/50">Hrs</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {report?.reportData.map((row, idx) => (
+                      <tr key={row.employee.id} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
+                        <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                          <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row.employee.name}</div>
+                          <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row.employee.employeeCode}</div>
+                        </td>
+                        {row.dailyData.map(dayInfo => (
+                          <td key={dayInfo.day} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
+                            {getCellContent(dayInfo)}
+                          </td>
+                        ))}
+                        <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary.presentDays}</td>
+                        <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary.absentDays}</td>
+                        <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary.lateDays}</td>
+                        <td className="text-center font-black text-gray-800 bg-gray-50/20">{row.summary.totalWorkingHours.toFixed(0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
       )}
 
-      <style>{`
+          <style>{`
         @media print {
           @page { size: landscape; margin: 5mm; }
           body { background: white !important; }
@@ -366,6 +367,6 @@ export const MonthlyReport = () => {
           .bg-red-50 { background-color: #fef2f2 !important; -webkit-print-color-adjust: exact; }
         }
       `}</style>
-    </div>
-  );
+        </div>
+      );
 };
