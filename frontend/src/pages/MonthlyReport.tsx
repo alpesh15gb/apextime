@@ -57,6 +57,7 @@ export const MonthlyReport = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const printRef = useRef<HTMLDivElement>(null);
 
   const month = currentDate.getMonth() + 1;
@@ -93,6 +94,7 @@ export const MonthlyReport = () => {
   const fetchReport = async () => {
     try {
       setLoading(true);
+      setError('');
       const params: Record<string, string> = {
         month: month.toString(),
         year: year.toString(),
@@ -107,6 +109,7 @@ export const MonthlyReport = () => {
       setReport(response.data);
     } catch (error) {
       console.error('Failed to fetch monthly report:', error);
+      setError('Failed to load report data. Please check your connection or try again.');
     } finally {
       setLoading(false);
     }
@@ -234,7 +237,15 @@ export const MonthlyReport = () => {
       </div>
 
       {/* Main Container */}
-      {loading ? (
+      {error ? (
+        <div className="flex flex-col items-center justify-center py-32 space-y-4">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+            <Filter className="w-8 h-8 text-red-500" />
+          </div>
+          <p className="text-sm font-bold text-red-600">{error}</p>
+          <button onClick={fetchReport} className="text-xs font-black text-gray-500 underline uppercase tracking-widest hover:text-gray-800">Retry</button>
+        </div>
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading Report...</p>
