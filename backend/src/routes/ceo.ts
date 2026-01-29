@@ -92,7 +92,7 @@ router.get('/ceo-vault', authorize('admin'), async (req, res) => {
             criticalLogs: criticalLogs.map(l => ({
                 id: l.id,
                 action: l.action,
-                user: l.user.username,
+                user: l.user?.username || 'System',
                 description: l.description,
                 time: l.createdAt
             }))

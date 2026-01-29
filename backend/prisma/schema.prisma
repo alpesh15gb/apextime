@@ -16,6 +16,7 @@ model User {
   employee   Employee? @relation(fields: [employeeId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  auditLogs  AuditLog[]
 }
 
 model Location {
@@ -164,16 +165,20 @@ model CompanyProfile {
 
 model AuditLog {
   id                String   @id @default(uuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id])
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id])
   action            String   // e.g., 'SALARY_UPDATE', 'LEAVE_APPROVE', 'PUNCH_OVERRIDE'
   entityId          String?  // ID of the employee/leave/payroll being touched
   entityType        String   // 'Employee', 'LeaveEntry', etc.
   description       String
   metadata          String?  // JSON string of before/after values
+  oldValue          String?
+  newValue          String?
   ipAddress         String?
   userAgent         String?
   createdAt         DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Shift {
@@ -327,20 +332,6 @@ model SyncStatus {
   createdAt     DateTime @default(now())
 }
 
-model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String?
-  action      String
-  entityType  String
-  entityId    String?
-  oldValue    String?
-  newValue    String?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-
-  @@index([createdAt])
-}
 model Payroll {
   id                String    @id @default(uuid())
   employeeId        String
