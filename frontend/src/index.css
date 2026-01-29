@@ -5,11 +5,8 @@
 @layer base {
   :root {
     --primary: 220 38 38;
-    /* Red for active state */
     --primary-light: 254 242 242;
-    /* Light peach for background */
     --bg-main: 249 250 251;
-    /* #F9FAFB */
     --sidebar-w: 260px;
     --sidebar-collapsed-w: 80px;
   }
@@ -22,7 +19,8 @@
 
 @layer components {
   .app-card {
-    @apply bg-white rounded-[24px] border border-gray-100 shadow-[0_2px_12px_rgba(0, 0, 0, 0.04)];
+    @apply bg-white rounded-[24px] border border-gray-100;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   }
 
   .nav-item {
@@ -70,7 +68,6 @@
   }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
