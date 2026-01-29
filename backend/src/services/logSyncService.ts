@@ -237,48 +237,85 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
         logger.info(`Created ${employeesCreated} new employees`);
       }
 
-      // Process attendance
-      const processedAttendance = await processAttendanceLogs(Array.from(uniqueLogs.values()));
+      // Process attendance - NEW HOLISTIC STRATEGY
+      // 1. Identify all (UserId, Date) pairs affected by these new logs
+      const affectedPairs = new Set<string>();
+      for (const log of uniqueLogs.values()) {
+        const dateStr = log.LogDate.toISOString().split('T')[0];
+        affectedPairs.add(`${log.UserId}|${dateStr}`);
+      }
 
-      // Save processed attendance
-      for (const attendance of processedAttendance) {
+      logger.info(`Processing attendance for ${affectedPairs.size} employee-day pairs...`);
+
+      for (const pair of affectedPairs) {
         try {
-          await prisma.attendanceLog.upsert({
+          const [uId, dStr] = pair.split('|');
+          const targetDate = new Date(dStr);
+          const nextDay = new Date(targetDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+
+          // Get ALL raw logs for this user on this day from database (including previous syncs)
+          const allRawLogsMatch = await prisma.rawDeviceLog.findMany({
             where: {
-              employeeId_date: {
-                employeeId: attendance.employeeId,
-                date: attendance.date,
-              },
+              userId: uId,
+              punchTime: {
+                gte: targetDate,
+                lt: nextDay
+              }
             },
-            update: {
-              firstIn: attendance.firstIn,
-              lastOut: attendance.lastOut,
-              workingHours: attendance.workingHours,
-              totalPunches: attendance.totalPunches,
-              shiftStart: attendance.shiftStart,
-              shiftEnd: attendance.shiftEnd,
-              lateArrival: attendance.lateArrival,
-              earlyDeparture: attendance.earlyDeparture,
-              status: attendance.status,
-            },
-            create: {
-              employeeId: attendance.employeeId,
-              date: attendance.date,
-              firstIn: attendance.firstIn,
-              lastOut: attendance.lastOut,
-              workingHours: attendance.workingHours,
-              totalPunches: attendance.totalPunches,
-              shiftStart: attendance.shiftStart,
-              shiftEnd: attendance.shiftEnd,
-              lateArrival: attendance.lateArrival,
-              earlyDeparture: attendance.earlyDeparture,
-              status: attendance.status,
-            },
+            orderBy: { punchTime: 'asc' }
           });
 
-          recordsSynced++;
+          if (allRawLogsMatch.length === 0) continue;
+
+          // Convert to RawLog format for processor
+          const formattedLogs: RawLog[] = allRawLogsMatch.map(rl => ({
+            DeviceLogId: parseInt(rl.id),
+            DeviceId: parseInt(rl.deviceId),
+            UserId: rl.userId,
+            LogDate: rl.punchTime
+          }));
+
+          // Process this specific day for this specific employee
+          const processingResults = await processAttendanceLogs(formattedLogs);
+
+          for (const attendance of processingResults) {
+            await prisma.attendanceLog.upsert({
+              where: {
+                employeeId_date: {
+                  employeeId: attendance.employeeId,
+                  date: attendance.date,
+                },
+              },
+              update: {
+                firstIn: attendance.firstIn,
+                lastOut: attendance.lastOut,
+                workingHours: attendance.workingHours,
+                totalPunches: attendance.totalPunches,
+                shiftStart: attendance.shiftStart,
+                shiftEnd: attendance.shiftEnd,
+                lateArrival: attendance.lateArrival,
+                earlyDeparture: attendance.earlyDeparture,
+                status: attendance.status,
+              },
+              create: {
+                employeeId: attendance.employeeId,
+                date: attendance.date,
+                firstIn: attendance.firstIn,
+                lastOut: attendance.lastOut,
+                workingHours: attendance.workingHours,
+                totalPunches: attendance.totalPunches,
+                shiftStart: attendance.shiftStart,
+                shiftEnd: attendance.shiftEnd,
+                lateArrival: attendance.lateArrival,
+                earlyDeparture: attendance.earlyDeparture,
+                status: attendance.status,
+              },
+            });
+            recordsSynced++;
+          }
         } catch (error) {
-          logger.error(`Failed to save attendance for ${attendance.employeeId}:`, error);
+          logger.error(`Failed to process/save attendance for pair ${pair}:`, error);
         }
       }
 
@@ -642,7 +679,8 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
       const firstIn = dateLogs[0].LogDate;
-      const lastOut = dateLogs[dateLogs.length - 1].LogDate;
+      // If only one punch exists, lastOut should be null to avoid 0-duration confusion
+      const lastOut = dateLogs.length > 1 ? dateLogs[dateLogs.length - 1].LogDate : null;
 
       // Calculate working hours
       let workingHours: number | null = null;

@@ -167,7 +167,17 @@ router.post(
         isESIEnabled,
         isOTEnabled,
         otRateMultiplier,
+        bankName,
+        accountNumber,
+        ifscCode,
+        panNumber,
+        aadhaarNumber,
       } = req.body;
+
+      const sanitizeNumber = (val: any) => {
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? 0 : parsed;
+      };
 
       // Check if employee code already exists
       const existing = await prisma.employee.findUnique({
@@ -192,14 +202,19 @@ router.post(
           shiftId,
           deviceUserId,
           dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
-          basicSalary: basicSalary ? parseFloat(basicSalary) : 0,
-          hra: hra ? parseFloat(hra) : 0,
-          totalAllowances: totalAllowances ? parseFloat(totalAllowances) : 0,
-          standardDeductions: standardDeductions ? parseFloat(standardDeductions) : 0,
+          basicSalary: sanitizeNumber(basicSalary),
+          hra: sanitizeNumber(hra),
+          totalAllowances: sanitizeNumber(totalAllowances),
+          standardDeductions: sanitizeNumber(standardDeductions),
           isPFEnabled: isPFEnabled === true || isPFEnabled === 'true',
           isESIEnabled: isESIEnabled === true || isESIEnabled === 'true',
           isOTEnabled: isOTEnabled === true || isOTEnabled === 'true',
-          otRateMultiplier: otRateMultiplier ? parseFloat(otRateMultiplier) : 1.5,
+          otRateMultiplier: sanitizeNumber(otRateMultiplier || 1.5),
+          bankName,
+          accountNumber,
+          ifscCode,
+          panNumber,
+          aadhaarNumber,
         },
         include: {
           department: true,
@@ -245,7 +260,17 @@ router.put('/:id', async (req, res) => {
       isESIEnabled,
       isOTEnabled,
       otRateMultiplier,
+      bankName,
+      accountNumber,
+      ifscCode,
+      panNumber,
+      aadhaarNumber
     } = req.body;
+
+    const sanitizeNumber = (val: any) => {
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? 0 : parsed;
+    };
 
     const employee = await prisma.employee.update({
       where: { id },
@@ -262,15 +287,20 @@ router.put('/:id', async (req, res) => {
         shiftId,
         deviceUserId,
         dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
-        isActive,
-        basicSalary: basicSalary ? parseFloat(basicSalary) : undefined,
-        hra: hra ? parseFloat(hra) : undefined,
-        totalAllowances: totalAllowances ? parseFloat(totalAllowances) : undefined,
-        standardDeductions: standardDeductions ? parseFloat(standardDeductions) : undefined,
+        isActive: isActive !== undefined ? (isActive === true || isActive === 'true') : undefined,
+        basicSalary: sanitizeNumber(basicSalary),
+        hra: sanitizeNumber(hra),
+        totalAllowances: sanitizeNumber(totalAllowances),
+        standardDeductions: sanitizeNumber(standardDeductions),
         isPFEnabled: isPFEnabled !== undefined ? (isPFEnabled === true || isPFEnabled === 'true') : undefined,
         isESIEnabled: isESIEnabled !== undefined ? (isESIEnabled === true || isESIEnabled === 'true') : undefined,
         isOTEnabled: isOTEnabled !== undefined ? (isOTEnabled === true || isOTEnabled === 'true') : undefined,
-        otRateMultiplier: otRateMultiplier ? parseFloat(otRateMultiplier) : undefined,
+        otRateMultiplier: sanitizeNumber(otRateMultiplier || 1.5),
+        bankName,
+        accountNumber,
+        ifscCode,
+        panNumber,
+        aadhaarNumber,
       },
       include: {
         department: true,

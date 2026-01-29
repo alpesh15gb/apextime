@@ -18,6 +18,8 @@ import { Holidays } from './pages/Holidays';
 import { Payroll } from './pages/Payroll';
 import { Leaves } from './pages/Leaves';
 import { EmployeePortal } from './pages/EmployeePortal';
+import { Settings } from './pages/Settings';
+import { CEOAnalytics } from './pages/CEOAnalytics';
 
 function App() {
   return (
@@ -48,6 +50,8 @@ function App() {
                     <Route path="/payroll" element={<Payroll />} />
                     <Route path="/leaves" element={<Leaves />} />
                     <Route path="/portal" element={<EmployeePortal />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/ceo-vault" element={<CEOAnalytics />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

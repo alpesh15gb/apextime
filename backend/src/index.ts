@@ -2,11 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import path from 'path';
 
 import { prisma } from './config/database';
 import logger from './config/logger';
 import { startLogSync } from './services/logSyncService';
+import { reconcileAttendance } from './services/attendanceReconciliationService';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -26,6 +26,7 @@ import updateNamesRoutes from './routes/updateNames';
 import manualUpdateNamesRoutes from './routes/manualUpdateNames';
 import payrollRoutes from './routes/payroll';
 import leaveRoutes from './routes/leaves';
+import ceoRoutes from './routes/ceo';
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use('/api/update-names', updateNamesRoutes);
 app.use('/api/manual-update-names', manualUpdateNamesRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/leaves', leaveRoutes);
+app.use('/api/ceo', ceoRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -89,6 +91,16 @@ cron.schedule('*/15 * * * *', async () => {
     await startLogSync();
   } catch (error) {
     logger.error('Scheduled log sync failed:', error);
+  }
+});
+
+// Nightly Attendance Reconciliation (at 23:30)
+cron.schedule('30 23 * * *', async () => {
+  logger.info('Starting nightly attendance reconciliation...');
+  try {
+    await reconcileAttendance();
+  } catch (error) {
+    logger.error('Nightly reconciliation failed:', error);
   }
 });
 

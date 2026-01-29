@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-apextime}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    expose:
-      - "5432"
+    ports:
+      - "15432:5432"
     networks:
       - apextime-network
     restart: unless-stopped

@@ -129,12 +129,51 @@ model Employee {
   otherAllowances   Float            @default(0)
   standardDeductions Float           @default(0)
   
+  // Banking Details
+  bankName          String?
+  accountNumber     String?
+  ifscCode          String?
+  panNumber         String?
+  aadhaarNumber     String?
+
   // Advanced Payroll Configuration
   isPFEnabled       Boolean          @default(false)
   isESIEnabled      Boolean          @default(false)
   isPTEnabled       Boolean          @default(true) // Professional Tax
   isOTEnabled       Boolean          @default(false)
   otRateMultiplier  Float            @default(1.5)
+}
+
+model CompanyProfile {
+  id                String   @id @default(uuid())
+  name              String
+  legalName         String?
+  address           String?
+  logo              String?
+  gstin             String?
+  pan               String?
+  pfCode            String?
+  esiCode           String?
+  tan               String?
+  bankName          String?
+  accountNumber     String?
+  ifscCode          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AuditLog {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  action            String   // e.g., 'SALARY_UPDATE', 'LEAVE_APPROVE', 'PUNCH_OVERRIDE'
+  entityId          String?  // ID of the employee/leave/payroll being touched
+  entityType        String   // 'Employee', 'LeaveEntry', etc.
+  description       String
+  metadata          String?  // JSON string of before/after values
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
 }
 
 model Shift {

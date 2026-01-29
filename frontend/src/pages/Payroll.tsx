@@ -371,8 +371,8 @@ export const Payroll = () => {
                                 onClick={handleProcessPay}
                                 disabled={processing || stats.totalCount === 0 || stats.paidCount === stats.totalCount}
                                 className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg ${processing || stats.totalCount === 0 || stats.paidCount === stats.totalCount
-                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                        : 'bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700 active:scale-95'
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    : 'bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700 active:scale-95'
                                     }`}
                             >
                                 {processing ? <RefreshCw className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
@@ -467,8 +467,8 @@ export const Payroll = () => {
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
                                                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${p.status === 'paid'
-                                                            ? 'bg-emerald-100 text-emerald-700'
-                                                            : 'bg-amber-100 text-amber-700'
+                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                        : 'bg-amber-100 text-amber-700'
                                                         }`}>
                                                         {p.status}
                                                     </span>
@@ -575,10 +575,40 @@ export const Payroll = () => {
                                                 <input type="number" className="input-premium" value={editingEmployee.specialAllowance} onChange={(e) => setEditingEmployee({ ...editingEmployee, specialAllowance: parseFloat(e.target.value) })} />
                                             </div>
                                         </div>
+
+                                        <h4 className="font-black text-xs text-emerald-500 uppercase tracking-widest border-b pb-2 pt-4">Banking & Disbursement</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Bank Name</label>
+                                                <input type="text" className="input-premium" placeholder="e.g. HDFC Bank" value={editingEmployee.bankName || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bankName: e.target.value })} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Account Number</label>
+                                                    <input type="text" className="input-premium" value={editingEmployee.accountNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, accountNumber: e.target.value })} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">IFSC Code</label>
+                                                    <input type="text" className="input-premium" value={editingEmployee.ifscCode || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, ifscCode: e.target.value })} />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-6">
-                                        <h4 className="font-black text-xs text-rose-500 uppercase tracking-widest border-b pb-2">Statutory & Overtime</h4>
+                                        <h4 className="font-black text-xs text-amber-500 uppercase tracking-widest border-b pb-2">Statutory Identity</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">PAN Number</label>
+                                                <input type="text" className="input-premium uppercase" value={editingEmployee.panNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, panNumber: e.target.value.toUpperCase() })} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Aadhaar Number</label>
+                                                <input type="text" className="input-premium" value={editingEmployee.aadhaarNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, aadhaarNumber: e.target.value })} />
+                                            </div>
+                                        </div>
+
+                                        <h4 className="font-black text-xs text-rose-500 uppercase tracking-widest border-b pb-2 pt-4">Compliance Status</h4>
                                         <div className="space-y-6 pt-2">
                                             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                                                 <div>
@@ -687,9 +717,17 @@ export const Payroll = () => {
                         <div id="payslip-print" className="p-12 bg-white flex flex-col h-[700px] overflow-y-auto">
                             {/* Company Header */}
                             <div className="border-b-[3px] border-indigo-600 pb-8 mb-10 flex justify-between items-end">
-                                <div>
-                                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter leading-none">APEX<span className="text-indigo-600">TIME</span></h2>
-                                    <p className="text-slate-400 uppercase text-[10px] font-black tracking-[0.3em] mt-2">Enterprise Resource Planning</p>
+                                <div className="flex gap-4 items-center">
+                                    <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl italic shadow-lg shadow-indigo-100 uppercase">
+                                        {profile.name?.[0] || 'A'}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none uppercase">{profile.name || 'APEXTIME ENTERPRISE'}</h2>
+                                        <div className="flex gap-4 mt-2">
+                                            <p className="text-slate-400 uppercase text-[8px] font-black tracking-widest leading-none">GSTIN: {profile.gstin || 'PENDING'}</p>
+                                            <p className="text-slate-400 uppercase text-[8px] font-black tracking-widest leading-none">PAN: {profile.pan || 'PENDING'}</p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-3xl font-black text-slate-800 leading-none uppercase">{monthName}</p>

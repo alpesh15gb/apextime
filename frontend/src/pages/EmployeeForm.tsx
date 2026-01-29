@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, DollarSign } from 'lucide-react';
+import { ArrowLeft, Save, DollarSign, Building2 } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 
 export const EmployeeForm = () => {
@@ -30,6 +30,11 @@ export const EmployeeForm = () => {
     isESIEnabled: false,
     isOTEnabled: false,
     otRateMultiplier: 1.5,
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
+    panNumber: '',
+    aadhaarNumber: '',
   });
 
   const [departments, setDepartments] = useState([]);
@@ -89,6 +94,11 @@ export const EmployeeForm = () => {
         isESIEnabled: employee.isESIEnabled || false,
         isOTEnabled: employee.isOTEnabled || false,
         otRateMultiplier: employee.otRateMultiplier || 1.5,
+        bankName: employee.bankName || '',
+        accountNumber: employee.accountNumber || '',
+        ifscCode: employee.ifscCode || '',
+        panNumber: employee.panNumber || '',
+        aadhaarNumber: employee.aadhaarNumber || '',
       });
     } catch (error) {
       console.error('Failed to fetch employee:', error);
@@ -386,20 +396,72 @@ export const EmployeeForm = () => {
                 />
                 <label className="ml-2 text-sm text-gray-700">Enable OT Calculation</label>
               </div>
-              {formData.isOTEnabled && (
-                <div>
-                  <label className="form-label">OT Multiplier (e.g. 1.5)</label>
-                  <input
-                    type="number"
-                    name="otRateMultiplier"
-                    value={formData.otRateMultiplier}
-                    onChange={handleChange}
-                    className="form-input"
-                    step="0.1"
-                    min="1"
-                  />
-                </div>
               )}
+            </div>
+          </div>
+
+          {/* Banking & Identity Section */}
+          <div className="pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-blue-600" />
+              Banking & Identity
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div>
+                <label className="form-label">Bank Name</label>
+                <input
+                  type="text"
+                  name="bankName"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="e.g. HDFC Bank"
+                />
+              </div>
+              <div>
+                <label className="form-label">Account Number</label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={formData.accountNumber}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter A/C Number"
+                />
+              </div>
+              <div>
+                <label className="form-label">IFSC Code</label>
+                <input
+                  type="text"
+                  name="ifscCode"
+                  value={formData.ifscCode}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Enter IFSC"
+                />
+              </div>
+              <div>
+                <label className="form-label">PAN Number</label>
+                <input
+                  type="text"
+                  name="panNumber"
+                  value={formData.panNumber}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="ABCDE1234F"
+                />
+              </div>
+              <div>
+                <label className="form-label">Aadhaar Number</label>
+                <input
+                  type="text"
+                  name="aadhaarNumber"
+                  value={formData.aadhaarNumber}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="1234 5678 9012"
+                />
+              </div>
             </div>
           </div>
 
