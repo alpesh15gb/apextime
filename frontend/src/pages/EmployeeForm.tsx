@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, DollarSign } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 
 export const EmployeeForm = () => {
@@ -22,6 +22,10 @@ export const EmployeeForm = () => {
     deviceUserId: '',
     dateOfJoining: '',
     isActive: true,
+    basicSalary: 0,
+    hra: 0,
+    totalAllowances: 0,
+    standardDeductions: 0,
   });
 
   const [departments, setDepartments] = useState([]);
@@ -73,6 +77,10 @@ export const EmployeeForm = () => {
           ? new Date(employee.dateOfJoining).toISOString().split('T')[0]
           : '',
         isActive: employee.isActive,
+        basicSalary: employee.basicSalary || 0,
+        hra: employee.hra || 0,
+        totalAllowances: employee.totalAllowances || 0,
+        standardDeductions: employee.standardDeductions || 0,
       });
     } catch (error) {
       console.error('Failed to fetch employee:', error);
@@ -283,6 +291,60 @@ export const EmployeeForm = () => {
                 className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
               />
               <label className="ml-2 text-sm text-gray-700">Active</label>
+            </div>
+          </div>
+
+          {/* Salary Structure Section */}
+          <div className="pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              Salary Structure
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="form-label">Basic Salary</label>
+                <input
+                  type="number"
+                  name="basicSalary"
+                  value={formData.basicSalary}
+                  onChange={handleChange}
+                  className="form-input"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="form-label">HRA</label>
+                <input
+                  type="number"
+                  name="hra"
+                  value={formData.hra}
+                  onChange={handleChange}
+                  className="form-input"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="form-label">Other Allowances</label>
+                <input
+                  type="number"
+                  name="totalAllowances"
+                  value={formData.totalAllowances}
+                  onChange={handleChange}
+                  className="form-input"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="form-label">Standard Deductions</label>
+                <input
+                  type="number"
+                  name="standardDeductions"
+                  value={formData.standardDeductions}
+                  onChange={handleChange}
+                  className="form-input"
+                  min="0"
+                />
+              </div>
             </div>
           </div>
 

@@ -105,6 +105,13 @@ model Employee {
   attendanceLogs  AttendanceLog[]
   leaveEntries    LeaveEntry[]
   employeeShifts  EmployeeShift[]
+  payrolls        Payroll[]
+  
+  // Salary Fields
+  basicSalary     Float            @default(0)
+  hra             Float            @default(0)
+  totalAllowances Float            @default(0)
+  standardDeductions Float         @default(0)
 }
 
 model Shift {
@@ -260,4 +267,28 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
+}
+model Payroll {
+  id                String    @id @default(uuid())
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id])
+  month             Int
+  year              Int
+  totalWorkingDays  Int
+  presentDays       Float
+  absentDays        Float
+  lateDays          Int       @default(0)
+  
+  basicPaid         Float
+  hraPaid           Float
+  allowancesPaid    Float
+  deductions        Float
+  netSalary         Float
+  
+  status            String    @default("draft") // draft, generated, paid
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([employeeId, month, year])
 }

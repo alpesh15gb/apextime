@@ -15,6 +15,7 @@ import { Reports } from './pages/Reports';
 import { MonthlyReport } from './pages/MonthlyReport';
 import { SyncDiagnostics } from './pages/SyncDiagnostics';
 import { Holidays } from './pages/Holidays';
+import { Payroll } from './pages/Payroll';
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
                     <Route path="/monthly-report" element={<MonthlyReport />} />
                     <Route path="/holidays" element={<Holidays />} />
                     <Route path="/sync-diagnostics" element={<SyncDiagnostics />} />
+                    <Route path="/payroll" element={<Payroll />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

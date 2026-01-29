@@ -197,4 +197,10 @@ export const syncAPI = {
   mergeDuplicates: () => api.post('/fix-duplicates'),
 };
 
+export const payrollAPI = {
+  get: (params: any) => api.get('/payroll', { params }),
+  generate: (data: any) => api.post('/payroll/generate', data),
+  updateSalary: (employeeId: string, data: any) => api.put(`/payroll/salary/${employeeId}`, data),
+};
+
 export default api;

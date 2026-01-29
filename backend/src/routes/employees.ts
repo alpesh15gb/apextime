@@ -159,6 +159,10 @@ router.post(
         shiftId,
         deviceUserId,
         dateOfJoining,
+        basicSalary,
+        hra,
+        totalAllowances,
+        standardDeductions,
       } = req.body;
 
       // Check if employee code already exists
@@ -184,6 +188,10 @@ router.post(
           shiftId,
           deviceUserId,
           dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
+          basicSalary: basicSalary ? parseFloat(basicSalary) : 0,
+          hra: hra ? parseFloat(hra) : 0,
+          totalAllowances: totalAllowances ? parseFloat(totalAllowances) : 0,
+          standardDeductions: standardDeductions ? parseFloat(standardDeductions) : 0,
         },
         include: {
           department: true,
@@ -221,6 +229,10 @@ router.put('/:id', async (req, res) => {
       deviceUserId,
       dateOfJoining,
       isActive,
+      basicSalary,
+      hra,
+      totalAllowances,
+      standardDeductions,
     } = req.body;
 
     const employee = await prisma.employee.update({
@@ -239,6 +251,10 @@ router.put('/:id', async (req, res) => {
         deviceUserId,
         dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
         isActive,
+        basicSalary: basicSalary ? parseFloat(basicSalary) : undefined,
+        hra: hra ? parseFloat(hra) : undefined,
+        totalAllowances: totalAllowances ? parseFloat(totalAllowances) : undefined,
+        standardDeductions: standardDeductions ? parseFloat(standardDeductions) : undefined,
       },
       include: {
         department: true,

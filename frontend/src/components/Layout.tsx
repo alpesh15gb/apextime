@@ -16,6 +16,7 @@ import {
   ChevronDown,
   RefreshCw,
   Sparkles,
+  DollarSign,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -36,6 +37,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { path: '/attendance', icon: Clock, label: 'Attendance' },
     { path: '/monthly-report', icon: FileSpreadsheet, label: 'Monthly Report' },
     { path: '/reports', icon: FileText, label: 'Reports' },
+    { path: '/payroll', icon: DollarSign, label: 'Payroll' },
     { path: '/sync-diagnostics', icon: RefreshCw, label: 'Sync Diagnostics' },
   ];
 
@@ -51,9 +53,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside
-        className={`bg-gray-900 text-white transition-all duration-300 fixed h-full z-20 print:hidden ${
-          sidebarOpen ? 'w-64' : 'w-16'
-        }`}
+        className={`bg-gray-900 text-white transition-all duration-300 fixed h-full z-20 print:hidden ${sidebarOpen ? 'w-64' : 'w-16'
+          }`}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
           {sidebarOpen ? (
@@ -79,10 +80,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                `flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`
               }
             >
@@ -115,10 +115,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     key={item.path}
                     to={item.path}
                     className={({ isActive }) =>
-                      `flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-primary-600 text-white'
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      `flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                       }`
                     }
                   >
@@ -153,9 +152,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Main Content */}
       <main
-        className={`flex-1 transition-all duration-300 print:m-0 print:p-0 ${
-          sidebarOpen ? 'ml-64' : 'ml-16'
-        }`}
+        className={`flex-1 transition-all duration-300 print:m-0 print:p-0 ${sidebarOpen ? 'ml-64' : 'ml-16'
+          }`}
       >
         <div className="p-6 print:p-0 print:m-0">{children}</div>
       </main>
