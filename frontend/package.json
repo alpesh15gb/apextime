@@ -10,6 +10,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@fontsource/roboto": "^5.2.9",
     "axios": "^1.6.2",
     "chart.js": "^4.4.1",
     "date-fns": "^3.0.0",

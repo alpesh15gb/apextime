@@ -38,15 +38,15 @@ export const Login = () => {
         {/* Left Side: Brand Experience */}
         <div className="hidden lg:flex flex-col justify-between p-16 bg-red-600 text-white relative">
           <div className="relative z-10">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-10 shadow-lg">
-              <ShieldCheck className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-10 shadow-lg p-4">
+              <img src="/logo.png" alt="Apextime" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-5xl font-extrabold tracking-tighter leading-tight mb-6">
-              Modern Identity<br />
-              for Modern Teams.
+              Apextime<br />
+              Attendance.
             </h2>
             <p className="text-red-100 text-lg font-bold opacity-80 max-w-sm">
-              Access the core HR management matrix with industry-standard security and precision.
+              Manage your workforce efficiently with our advanced attendance system.
             </p>
           </div>
 
@@ -55,13 +55,13 @@ export const Login = () => {
               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                 <CheckCircle2 className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm font-black uppercase tracking-widest opacity-80">Real-time Synchronization</span>
+              <span className="text-sm font-bold uppercase tracking-widest opacity-80">Real-time Sync</span>
             </div>
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm font-black uppercase tracking-widest opacity-80">Instant Financial Analysis</span>
+              <span className="text-sm font-bold uppercase tracking-widest opacity-80">Instant Reports</span>
             </div>
           </div>
 
@@ -74,8 +74,8 @@ export const Login = () => {
         {/* Right Side: Logic */}
         <div className="p-12 lg:p-20 flex flex-col justify-center">
           <div className="mb-12">
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Initialize Session</h1>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Enter administrative credentials</p>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Sign In</h1>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Enter your credentials</p>
           </div>
 
           {error && (
@@ -89,21 +89,21 @@ export const Login = () => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <User className="w-3 h-3" /> Identity Handle
+                  <User className="w-3 h-3" /> Username
                 </label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-6 py-5 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
-                  placeholder="e.g. admin_hq"
+                  placeholder="admin"
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Lock className="w-3 h-3" /> Secure Access Key
+                  <Lock className="w-3 h-3" /> Password
                 </label>
                 <div className="relative">
                   <input
@@ -134,10 +134,10 @@ export const Login = () => {
                 {isLoading ? (
                   <div className="flex items-center space-x-3">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Verifying Identity...</span>
+                    <span>Verifying...</span>
                   </div>
                 ) : (
-                  <span>Grant Access</span>
+                  <span>Login</span>
                 )}
               </button>
             </div>
@@ -145,9 +145,8 @@ export const Login = () => {
 
           <div className="mt-16 flex items-center justify-between">
             <p className="text-[10px] font-black text-gray-300 uppercase tracking-tighter italic">
-              Apextime Enterprise v4.0
+              Apextime v4.0
             </p>
-            <a href="#" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-red-600 transition-colors">Emergency Recovery</a>
           </div>
         </div>
       </div>

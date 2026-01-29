@@ -331,15 +331,15 @@ export const MonthlyReport = () => {
                         <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row.employee.name}</div>
                         <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row.employee.employeeCode}</div>
                       </td>
-                      {row.dailyData.map(dayInfo => (
+                      {row.dailyData?.map(dayInfo => (
                         <td key={dayInfo.day} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
                           {getCellContent(dayInfo)}
                         </td>
                       ))}
-                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary.presentDays}</td>
-                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary.absentDays}</td>
-                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary.lateDays}</td>
-                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row.summary.totalWorkingHours || 0).toFixed(0)}</td>
+                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary?.presentDays}</td>
+                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary?.absentDays}</td>
+                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary?.lateDays}</td>
+                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row.summary?.totalWorkingHours || 0).toFixed(0)}</td>
                     </tr>
                   ))}
                 </tbody>
