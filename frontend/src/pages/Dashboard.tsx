@@ -197,7 +197,7 @@ export const Dashboard = () => {
           </div>
           <div className="space-y-6">
             {[
-              { label: 'Unmapped IDs', value: stats?.today.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
+              { label: 'Unmapped IDs', value: (stats as any)?.today?.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
               { label: 'Shift Overlaps', value: '04', color: 'text-orange-600', bg: 'bg-orange-50' },
               { label: 'Statutory Marks', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
             ].map((sig, i) => (
