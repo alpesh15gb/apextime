@@ -678,9 +678,21 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       // Sort logs by time
       dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
-      const firstIn = dateLogs[0].LogDate;
-      // If only one punch exists, lastOut should be null to avoid 0-duration confusion
-      const lastOut = dateLogs.length > 1 ? dateLogs[dateLogs.length - 1].LogDate : null;
+      // DEDUPLICATE: Remove logs with identical timestamps for this user on this day
+      // This prevents "0-minute duration" issues if multiple logs exist for exact same time
+      const uniqueTimedLogs: RawLog[] = [];
+      const seenTimes = new Set<number>();
+      for (const log of dateLogs) {
+        const timeVal = log.LogDate.getTime();
+        if (!seenTimes.has(timeVal)) {
+          uniqueTimedLogs.push(log);
+          seenTimes.add(timeVal);
+        }
+      }
+
+      const firstIn = uniqueTimedLogs[0].LogDate;
+      // If only one unique punch time exists, lastOut must be null
+      const lastOut = uniqueTimedLogs.length > 1 ? uniqueTimedLogs[uniqueTimedLogs.length - 1].LogDate : null;
 
       // Calculate working hours
       let workingHours: number | null = null;
@@ -842,6 +854,114 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
     throw error;
   } finally {
     deviceUserInfoCache.clear();
+  }
+}
+// Historical recovery function - re-processes existing raw logs with improved logic
+export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, employeeId?: string): Promise<{ pairsProcessed: number; recordsUpdated: number }> {
+  try {
+    logger.info(`Starting historical re-processing... ${employeeId ? `Employee: ${employeeId}` : 'All employees'}`);
+
+    const where: any = {};
+    if (startDate || endDate) {
+      where.punchTime = {};
+      if (startDate) where.punchTime.gte = startDate;
+      if (endDate) where.punchTime.lte = endDate;
+    }
+    if (employeeId) {
+      const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { deviceUserId: true } });
+      if (emp?.deviceUserId) where.userId = emp.deviceUserId;
+    }
+
+    // Get unique userId + Date pairs from RawDeviceLog
+    const logs = await prisma.rawDeviceLog.findMany({
+      where,
+      select: { userId: true, punchTime: true },
+      orderBy: { punchTime: 'asc' }
+    });
+
+    const affectedPairs = new Set<string>();
+    for (const log of logs) {
+      const dStr = log.punchTime.toISOString().split('T')[0];
+      affectedPairs.add(`${log.userId}|${dStr}`);
+    }
+
+    logger.info(`Found ${affectedPairs.size} employee-day pairs to re-process`);
+
+    let pairsProcessed = 0;
+    let recordsUpdated = 0;
+
+    for (const pair of affectedPairs) {
+      try {
+        const [uId, dStr] = pair.split('|');
+        const targetDate = new Date(dStr);
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        const dayLogs = await prisma.rawDeviceLog.findMany({
+          where: {
+            userId: uId,
+            punchTime: { gte: targetDate, lt: nextDay }
+          },
+          orderBy: { punchTime: 'asc' }
+        });
+
+        if (dayLogs.length === 0) continue;
+
+        const formattedLogs: RawLog[] = dayLogs.map(rl => ({
+          DeviceLogId: 0, // Not used by processor
+          DeviceId: parseInt(rl.deviceId) || 0,
+          UserId: rl.userId,
+          LogDate: rl.punchTime
+        }));
+
+        const results = await processAttendanceLogs(formattedLogs);
+
+        for (const attendance of results) {
+          await prisma.attendanceLog.upsert({
+            where: {
+              employeeId_date: {
+                employeeId: attendance.employeeId,
+                date: attendance.date,
+              },
+            },
+            update: {
+              firstIn: attendance.firstIn,
+              lastOut: attendance.lastOut,
+              workingHours: attendance.workingHours,
+              totalPunches: attendance.totalPunches,
+              shiftStart: attendance.shiftStart,
+              shiftEnd: attendance.shiftEnd,
+              lateArrival: attendance.lateArrival,
+              earlyDeparture: attendance.earlyDeparture,
+              status: attendance.status,
+            },
+            create: {
+              employeeId: attendance.employeeId,
+              date: attendance.date,
+              firstIn: attendance.firstIn,
+              lastOut: attendance.lastOut,
+              workingHours: attendance.workingHours,
+              totalPunches: attendance.totalPunches,
+              shiftStart: attendance.shiftStart,
+              shiftEnd: attendance.shiftEnd,
+              lateArrival: attendance.lateArrival,
+              earlyDeparture: attendance.earlyDeparture,
+              status: attendance.status,
+            },
+          });
+          recordsUpdated++;
+        }
+        pairsProcessed++;
+      } catch (err) {
+        logger.error(`Failed to re-process pair ${pair}:`, err);
+      }
+    }
+
+    logger.info(`Reprocessing complete. Pairs: ${pairsProcessed}, Records: ${recordsUpdated}`);
+    return { pairsProcessed, recordsUpdated };
+  } catch (error) {
+    logger.error('Historical re-processing failed:', error);
+    throw error;
   }
 }
 

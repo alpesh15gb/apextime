@@ -413,4 +413,28 @@ router.get('/monthly-report', async (req, res) => {
   }
 });
 
+// Administrative route to re-process historical logs with latest logic
+router.post('/reprocess', async (req, res) => {
+  try {
+    const { startDate, endDate, employeeId } = req.body;
+
+    // Dynamic import to avoid circular dependency
+    const { reprocessHistoricalLogs } = await import('../services/logSyncService');
+
+    const result = await reprocessHistoricalLogs(
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      employeeId
+    );
+
+    res.json({
+      message: 'Historical re-processing completed successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Reprocess attendance error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Historical re-processing failed' });
+  }
+});
+
 export default router;
