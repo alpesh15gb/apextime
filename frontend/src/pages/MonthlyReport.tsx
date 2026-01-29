@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer, Share2, Filter, MoreVertical, LayoutGrid } from 'lucide-react';
 import { attendanceAPI, departmentsAPI, branchesAPI } from '../services/api';
 
 interface DailyData {
@@ -139,450 +139,231 @@ export const MonthlyReport = () => {
   };
 
   const getCellContent = (data: DailyData) => {
-    // If off day (Sunday or Holiday)
     if (data.isOffDay) {
-      // If employee worked, show timings
       if (data.firstIn || data.lastOut) {
         return (
-          <div className="text-[9px] leading-tight">
+          <div className="text-[7px] font-black leading-tight text-gray-700">
             <div>{formatTime(data.firstIn)}</div>
             <div>{formatTime(data.lastOut)}</div>
-            {data.lateArrival > 0 && <span className="text-red-500 text-[8px]">L</span>}
           </div>
         );
       }
-      // Show H for holiday, S for Sunday
-      if (data.isHoliday) {
-        return <span className="text-blue-500 font-bold text-xs">H</span>;
-      }
-      return <span className="text-gray-400">-</span>;
+      if (data.isHoliday) return <span className="text-blue-500 font-black text-[9px]">H</span>;
+      return <span className="text-gray-300 font-black text-[9px]">S</span>;
     }
 
-    // Regular day
-    if (data.status === 'absent') {
-      return <span className="text-red-500 font-bold text-xs">A</span>;
-    }
+    if (data.status === 'absent') return <span className="text-red-500 font-black text-[9px]">A</span>;
 
-    if (!data.firstIn && !data.lastOut) {
-      return <span className="text-gray-400">-</span>;
-    }
+    if (!data.firstIn && !data.lastOut) return <span className="text-gray-300 font-bold">-</span>;
 
     return (
-      <div className="text-[9px] leading-tight">
-        <div>{formatTime(data.firstIn)}</div>
-        <div>{formatTime(data.lastOut)}</div>
-        {data.lateArrival > 0 && <span className="text-red-500 text-[8px]">L</span>}
+      <div className="text-[7px] font-black leading-tight text-gray-900 group-hover:scale-110 transition-transform">
+        <div className={data.lateArrival > 0 ? 'text-orange-500' : ''}>{formatTime(data.firstIn)}</div>
+        <div className={data.earlyDeparture > 0 ? 'text-orange-500' : ''}>{formatTime(data.lastOut)}</div>
       </div>
     );
   };
 
   const getCellClass = (data: DailyData) => {
-    if (data.isHoliday) {
-      if (data.firstIn || data.lastOut) return 'bg-blue-100'; // Worked on holiday
-      return 'bg-blue-50';
-    }
-    if (data.isSunday) {
-      if (data.firstIn || data.lastOut) return 'bg-purple-100'; // Worked on Sunday
-      return 'bg-gray-100';
-    }
-    if (data.status === 'absent') return 'bg-red-50';
-    if (data.lateArrival > 0) return 'bg-yellow-50';
+    if (data.isHoliday) return 'bg-blue-50/50';
+    if (data.isSunday) return 'bg-gray-50/50';
+    if (data.status === 'absent') return 'bg-red-50/20';
+    if (data.lateArrival > 0) return 'bg-orange-50/20';
     return 'bg-white';
   };
 
-  // Generate array of days 1-31
   const days = Array.from({ length: report?.daysInMonth || 31 }, (_, i) => i + 1);
 
   return (
-    <div className="print:w-full print:max-w-none print:m-0 print:p-0">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 print:hidden print:mb-0 print:hidden">
-        <h1 className="text-2xl font-bold text-gray-800">Monthly Attendance Report</h1>
+    <div className="space-y-8 print:p-0 print:m-0 print:bg-white">
+      {/* Premium Header */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 print:hidden">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Monthly Insights</h1>
+          <p className="text-sm font-bold text-gray-400 mt-1">Cross-departmental attendance matrix</p>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Branch Filter */}
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
-          >
-            <option value="">All Branches</option>
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>{branch.name}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+          {/* Branch & Dept Selects */}
+          <div className="flex items-center space-x-3 flex-1 xl:flex-none">
+            <div className="relative flex-1 xl:w-48">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
+              >
+                <option value="">All Regions</option>
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div className="relative flex-1 xl:w-48">
+              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
+              >
+                <option value="">All Teams</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+          </div>
 
-          {/* Department Filter */}
-          <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
-          >
-            <option value="">All Departments</option>
-            {departments.map((dept) => (
-              <option key={dept.id} value={dept.id}>{dept.name}</option>
-            ))}
-          </select>
-
-          {/* Month Navigation */}
-          <div className="flex items-center bg-white rounded-lg border shadow-sm">
-            <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-l-lg">
+          {/* Month Stepper */}
+          <div className="flex items-center bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            <button onClick={prevMonth} className="p-2.5 hover:bg-gray-50 transition-colors text-gray-400">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className="px-4 py-2 font-medium min-w-[140px] text-center">
+            <div className="px-6 py-2.5 font-black text-xs uppercase tracking-widest text-gray-900 min-w-[140px] text-center border-x border-gray-50">
               {monthName} {year}
             </div>
-            <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-r-lg">
+            <button onClick={nextMonth} className="p-2.5 hover:bg-gray-50 transition-colors text-gray-400">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Actions */}
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Print</span>
+          <button onClick={handlePrint} className="btn-app bg-white border border-gray-100 text-gray-600 hover:bg-gray-50">
+            <Printer className="w-5 h-5" />
+            <span className="text-xs">Print Report</span>
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Container */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      ) : report?.reportData.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-          <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <p>No attendance data found for this month</p>
+        <div className="flex flex-col items-center justify-center py-32 space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Generating Register Matrix...</p>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-6 print:block">
-          {/* Left Panel - Holidays */}
-          <div className="w-full lg:w-48 print:hidden print:m-0 print:p-0">
-            <div className="bg-white rounded-lg shadow p-4 sticky top-4">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+        <div className="flex flex-col xl:flex-row gap-8 print:block">
+          {/* Sidebar Stats & Legend */}
+          <div className="xl:w-64 space-y-8 print:hidden">
+            <div className="app-card p-6">
+              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 px-1 flex items-center justify-between">
                 Holidays
+                <Calendar className="w-3 h-3" />
               </h3>
-              {report?.holidays && report.holidays.length > 0 ? (
-                <ul className="space-y-2 text-sm">
-                  {report.holidays.map((holiday) => (
-                    <li key={holiday.day} className="flex items-start gap-2">
-                      <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                        {holiday.day}
-                      </span>
-                      <span className="text-gray-700">{holiday.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-sm">No holidays this month</p>
-              )}
+              <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                {report?.holidays && report.holidays.length > 0 ? (
+                  report.holidays.map(h => (
+                    <div key={h.day} className="flex items-center space-x-3 group">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        {h.day}
+                      </div>
+                      <p className="text-xs font-bold text-gray-700 truncate">{h.name}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[10px] font-bold text-gray-300 italic">No public holidays</p>
+                )}
+              </div>
+            </div>
 
-              <div className="mt-4 pt-4 border-t">
-                <h4 className="font-medium text-gray-700 mb-2 text-sm">Legend</h4>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-blue-50 border block"></span>
-                    <span>Holiday</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-gray-100 border block"></span>
-                    <span>Sunday</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-red-50 border block"></span>
-                    <span>Absent</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-yellow-50 border block"></span>
-                    <span>Late</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-red-500 text-xs">A</span>
-                    <span>Absent</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-blue-500 text-xs">H</span>
-                    <span>Holiday</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-purple-500 text-xs">S</span>
-                    <span>Worked on Sunday</span>
-                  </div>
+            <div className="app-card p-6">
+              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 px-1">Indicator Key</h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 rounded bg-red-400/20 border border-red-100"></div>
+                  <span className="text-[10px] font-bold text-gray-500">Employee Absent</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 rounded bg-blue-50 border border-blue-100"></div>
+                  <span className="text-[10px] font-bold text-gray-500">Official Holiday</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 rounded bg-gray-50 border border-gray-100"></div>
+                  <span className="text-[10px] font-bold text-gray-500">Weekly Off (Sun)</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 rounded bg-orange-400/20 border border-orange-100"></div>
+                  <span className="text-[10px] font-bold text-gray-500">Late Arrival</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Report Table */}
-          <div ref={printRef} className="flex-1 bg-white rounded-lg shadow overflow-hidden print:shadow-none print:w-full print:m-0 print:p-0">
-            {/* Print Header */}
-            <div className="p-4 border-b print:p-2">
-              <div className="text-center">
-                <h2 className="text-xl font-bold print:text-lg">Monthly Attendance Register</h2>
-                <p className="text-gray-600 mt-1 print:text-sm">
-                  {monthName} {year} | {selectedDepartment ? departments.find(d => d.id === selectedDepartment)?.name || 'Department' : 'All Departments'}
-                </p>
+          {/* The Big Matrix */}
+          <div className="flex-1 app-card overflow-hidden print:border-none print:shadow-none">
+            <div className="p-8 border-b border-gray-50 flex justify-between items-center print:p-2 print:border-none">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+                  <LayoutGrid className="w-5 h-5 text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 tracking-tight">Attendance Matrix</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{monthName} {year}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 print:hidden">
+                <Share2 className="w-4 h-4 text-gray-300 pointer-events-none" />
+                <MoreVertical className="w-4 h-4 text-gray-300" />
               </div>
             </div>
 
-            {/* Groups by Branch/Location */}
-            {(() => {
-              const groupedData: Record<string, EmployeeReport[]> = {};
-              report?.reportData.forEach(row => {
-                const groupKey = row.employee.branch || 'N/A';
-                if (!groupedData[groupKey]) groupedData[groupKey] = [];
-                groupedData[groupKey].push(row);
-              });
-
-              return Object.entries(groupedData).map(([branchName, employees], groupIndex) => (
-                <div key={branchName} className={groupIndex > 0 ? "mt-8 print:mt-0 print:break-before-page" : ""}>
-                  <div className="bg-gray-100 p-2 border-b print:bg-gray-50 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      {branchName}
-                    </h3>
-                    <span className="text-xs text-gray-500">{employees.length} Employees</span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[10px] print:text-[8px]">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="text-left py-2 px-1 font-semibold sticky left-0 bg-gray-50 z-10 min-w-[120px] print:static print:min-w-[80px] print:text-[7px]">
-                            Employee
-                          </th>
-                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[30px] print:text-[7px]">Code</th>
-                          {days.map((day) => {
-                            const date = new Date(year, month - 1, day);
-                            const isSunday = date.getDay() === 0;
-                            const isHoliday = report?.holidays.some(h => h.day === day);
-                            return (
-                              <th
-                                key={day}
-                                className={`text-center py-1 px-[2px] font-semibold min-w-[24px] print:min-w-[16px] print:px-[1px] print:text-[6px] ${isSunday ? 'bg-gray-200' : isHoliday ? 'bg-blue-100' : ''
-                                  }`}
-                              >
-                                <div>{day}</div>
-                                <div className="text-[8px] text-gray-500 font-normal">
-                                  {getDayShortName(day)}
-                                </div>
-                              </th>
-                            );
-                          })}
-                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">P</th>
-                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">A</th>
-                          <th className="text-center py-2 px-1 font-semibold min-w-[40px] print:min-w-[25px] print:text-[7px]">L</th>
-                          <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">WO</th>
-                          <th className="text-center py-2 px-1 font-semibold min-w-[50px] print:min-w-[30px] print:text-[7px]">Hrs</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {employees.map((row, index) => (
-                          <tr key={row.employee.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                            <td className="py-1 px-1 sticky left-0 bg-inherit z-10 border-r print:static">
-                              <div className="font-medium text-xs truncate max-w-[120px]">{row.employee.name}</div>
-                              <div className="text-[9px] text-gray-500">{row.employee.department}</div>
-                            </td>
-                            <td className="py-1 px-1 text-center font-mono text-xs">
-                              {row.employee.employeeCode}
-                            </td>
-                            {row.dailyData.map((data) => (
-                              <td
-                                key={data.day}
-                                className={`py-1 px-[2px] text-center border-r border-gray-100 min-w-[24px] h-8 print:min-w-[16px] print:px-[1px] print:h-6 ${getCellClass(data)}`}
-                              >
-                                {getCellContent(data)}
-                              </td>
-                            ))}
-                            <td className="py-1 px-1 text-center font-medium text-green-600">
-                              {row.summary.presentDays}
-                            </td>
-                            <td className="py-1 px-1 text-center font-medium text-red-600">
-                              {row.summary.absentDays}
-                            </td>
-                            <td className="py-1 px-1 text-center font-medium text-yellow-600">
-                              {row.summary.lateDays}
-                            </td>
-                            <td className="py-1 px-1 text-center font-medium text-purple-600">
-                              {row.summary.workedOnOffDay}
-                            </td>
-                            <td className="py-1 px-1 text-center font-mono text-xs">
-                              {row.summary.totalWorkingHours.toFixed(1)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ));
-            })()}
-
-            {/* Print Footer - Legend */}
-            <div className="hidden print:block p-4 border-t text-xs">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-red-500">A</span>
-                  <span>Absent</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-blue-500">H</span>
-                  <span>Holiday</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[8px] text-red-500 font-bold">L</span>
-                  <span>Late</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-purple-100 border block"></span>
-                  <span>Worked on Sunday</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-blue-100 border block"></span>
-                  <span>Worked on Holiday</span>
-                </div>
-              </div>
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full text-[10px] border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50">
+                    <th className="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-48 shadow-[1px_0_0_rgba(0,0,0,0.05)]">Team Member</th>
+                    {days.map(day => {
+                      const date = new Date(year, month - 1, day);
+                      const isSun = date.getDay() === 0;
+                      const isHol = report?.holidays.some(h => h.day === day);
+                      return (
+                        <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[32px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
+                          <div className={`text-[10px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
+                          <div className="text-[7px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
+                        </th>
+                      );
+                    })}
+                    <th className="px-2 py-3 text-center font-black text-emerald-600 border-l border-gray-100 bg-emerald-50/30">P</th>
+                    <th className="px-2 py-3 text-center font-black text-red-600 border-x border-gray-100 bg-red-50/30">A</th>
+                    <th className="px-2 py-3 text-center font-black text-orange-600 border-r border-gray-100 bg-orange-50/30">L</th>
+                    <th className="px-2 py-3 text-center font-black text-gray-800 bg-gray-50/50">Hrs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report?.reportData.map((row, idx) => (
+                    <tr key={row.employee.id} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
+                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                        <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row.employee.name}</div>
+                        <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row.employee.employeeCode}</div>
+                      </td>
+                      {row.dailyData.map(dayInfo => (
+                        <td key={dayInfo.day} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
+                          {getCellContent(dayInfo)}
+                        </td>
+                      ))}
+                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row.summary.presentDays}</td>
+                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row.summary.absentDays}</td>
+                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row.summary.lateDays}</td>
+                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{row.summary.totalWorkingHours.toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
 
-      {/* Print Styles */}
       <style>{`
         @media print {
-          @page {
-            size: landscape;
-            margin: 2mm 3mm;
-          }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          /* Remove all margins from parent containers */
-          #root, main, .min-h-screen, .bg-gray-50, .flex-1 {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-          .print\\:shadow-none {
-            box-shadow: none !important;
-          }
-          .print\\:static {
-            position: static !important;
-          }
-          .print\\:block {
-            display: block !important;
-          }
-          .print\\:p-2 {
-            padding: 0.25rem !important;
-          }
-          .print\\:text-lg {
-            font-size: 1rem !important;
-          }
-          .print\\:text-sm {
-            font-size: 0.75rem !important;
-          }
-          .print\\:text\\[8px\\] {
-            font-size: 7px !important;
-          }
-          .print\\:min-w\\[20px\\] {
-            min-width: 16px !important;
-          }
-          .print\\:w-full {
-            width: 100% !important;
-            max-width: 100% !important;
-            flex: none !important;
-          }
-          .print\\:max-w-none {
-            max-width: none !important;
-          }
-          .print\\:m-0 {
-            margin: 0 !important;
-          }
-          .print\\:mb-0 {
-            margin-bottom: 0 !important;
-          }
-          .print\\:p-0 {
-            padding: 0 !important;
-          }
-          * {
-            box-sizing: border-box !important;
-          }
-          table {
-            width: 100% !important;
-            max-width: 100% !important;
-            table-layout: fixed;
-            border-collapse: collapse;
-          }
-          th, td {
-            padding: 1px 2px !important;
-            font-size: 7px !important;
-          }
-          th:first-child {
-            width: 90px !important;
-          }
-          th:nth-child(2) {
-            width: 32px !important;
-          }
-          th:last-child, th:nth-last-child(2), th:nth-last-child(3), th:nth-last-child(4), th:nth-last-child(5) {
-            width: 28px !important;
-          }
-          th {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          td {
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-          .overflow-x-auto {
-            overflow: visible !important;
-          }
-          .rounded-lg {
-            border-radius: 0 !important;
-          }
-          .shadow {
-            box-shadow: none !important;
-          }
-          .gap-6 {
-            gap: 0 !important;
-          }
-          .flex-col, .lg\\:flex-row {
-            flex-direction: column !important;
-          }
-          /* Force main container to full width */
-          main > div {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-          /* Remove margin-left from sidebar offset */
-          .ml-64, .ml-16 {
-            margin-left: 0 !important;
-          }
-          /* Ensure print container is full width */
-          .print\\:w-full {
-            width: 100vw !important;
-            max-width: 100vw !important;
-          }
-          .print\\:break-before-page {
-            break-before: page !important;
-            margin-top: 0 !important;
-          }
+          @page { size: landscape; margin: 5mm; }
+          body { background: white !important; }
+          .print\\:hidden { display: none !important; }
+          .min-h-screen, main { margin: 0 !important; padding: 0 !important; }
+          .ml-64, .ml-20 { margin-left: 0 !important; }
+          header { display: none !important; }
+          .app-card { border: 1px solid #eee !important; box-shadow: none !important; border-radius: 0 !important; }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th, td { border: 0.5px solid #eee !important; padding: 2px !important; font-size: 7px !important; }
+          .sticky { position: static !important; }
+          .bg-gray-100, .bg-gray-50 { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; }
+          .bg-emerald-50 { background-color: #ecfdf5 !important; -webkit-print-color-adjust: exact; }
+          .bg-red-50 { background-color: #fef2f2 !important; -webkit-print-color-adjust: exact; }
         }
       `}</style>
     </div>

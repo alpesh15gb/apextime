@@ -5,6 +5,9 @@ import {
   Trash2,
   X,
   MapPin,
+  Globe,
+  Navigation,
+  Check,
 } from 'lucide-react';
 import { locationsAPI } from '../services/api';
 
@@ -79,173 +82,157 @@ export const Locations = () => {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Locations</h1>
+    <div className="space-y-8 pb-32">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Geospatial Registry</h1>
+          <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">Coordinate headquarters and regional nodes</p>
+        </div>
+
         <button
           onClick={() => {
             setEditingId(null);
             setFormData({ name: '', address: '', city: '', state: '', country: '', zipCode: '' });
             setShowModal(true);
           }}
-          className="btn-primary flex items-center space-x-2"
+          className="btn-app btn-app-primary"
         >
           <Plus className="w-5 h-5" />
-          <span>Add Location</span>
+          <span>Map New Node</span>
         </button>
       </div>
 
-      <div className="card overflow-hidden">
+      {/* List / Table */}
+      <div className="app-card overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Triangulating Nodes...</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Address</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">City/State</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Country</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {locations.map((location: any) => (
-                <tr key={location.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center">
-                      <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="font-medium">{location.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-sm">{location.address || '-'}</td>
-                  <td className="py-3 px-4 text-sm">
-                    {location.city || '-'} {location.state ? `, ${location.state}` : ''}
-                  </td>
-                  <td className="py-3 px-4 text-sm">{location.country || '-'}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        location.isActive
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {location.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(location)}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(location.id)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50/30">
+                  <th className="table-header">Location Name</th>
+                  <th className="table-header">Physical Address</th>
+                  <th className="table-header">Region/State</th>
+                  <th className="table-header">Nation</th>
+                  <th className="table-header">Operational</th>
+                  <th className="table-header text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {locations.map((loc: any) => (
+                  <tr key={loc.id} className="table-row group">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-red-50 group-hover:text-red-600 transition-all shadow-sm">
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <span className="text-sm font-extrabold text-gray-800">{loc.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="text-xs font-bold text-gray-500 max-w-[200px] block truncate">{loc.address || 'Address unspecified'}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2 text-xs font-black text-gray-700 uppercase tracking-tighter">
+                        <Navigation className="w-3.5 h-3.5 text-gray-300" />
+                        <span>{loc.city || 'TBA'}{loc.state ? `, ${loc.state}` : ''}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>{loc.country || 'Global'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className={`badge ${loc.isActive ? 'badge-success' : 'badge-warning'} uppercase text-[9px] font-black tracking-widest`}>
+                        {loc.isActive ? 'Verified' : 'Standby'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button onClick={() => handleEdit(loc)} className="p-2 text-gray-400 hover:bg-gray-100 hover:text-blue-600 rounded-xl transition-all"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(loc.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modern Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">
-                {editingId ? 'Edit Location' : 'Add Location'}
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-10 border-b border-gray-50 flex justify-between items-center">
+              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+                {editingId ? 'Edit Node' : 'New Node'}
               </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all">
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="form-label">Name *</label>
+            <form onSubmit={handleSubmit} className="p-10 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Official Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="form-input"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  placeholder="e.g. Haryana Corporate Hub"
                   required
                 />
               </div>
-              <div>
-                <label className="form-label">Address</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Physical Address</label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="form-input"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  placeholder="Enter full street address"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">City</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="form-input"
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">City</label>
+                  <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 text-sm" />
                 </div>
-                <div>
-                  <label className="form-label">State</label>
-                  <input
-                    type="text"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    className="form-input"
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">State</label>
+                  <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 text-sm" />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Country</label>
-                  <input
-                    type="text"
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    className="form-input"
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Country</label>
+                  <input type="text" value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 text-sm" />
                 </div>
-                <div>
-                  <label className="form-label">ZIP Code</label>
-                  <input
-                    type="text"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                    className="form-input"
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Zip Code</label>
+                  <input type="text" value={formData.zipCode} onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 text-sm" />
                 </div>
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
+
+              <div className="pt-6 flex flex-col space-y-3">
+                <button type="submit" className="w-full py-4 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center justify-center space-x-2">
+                  <Check className="w-4 h-4" />
+                  <span>{editingId ? 'Modify Matrix' : 'Initialize Node'}</span>
                 </button>
-                <button type="submit" className="btn-primary">
-                  {editingId ? 'Update' : 'Create'}
+                <button type="button" onClick={() => setShowModal(false)} className="w-full py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">
+                  Dismiss
                 </button>
               </div>
             </form>

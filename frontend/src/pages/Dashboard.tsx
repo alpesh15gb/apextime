@@ -14,7 +14,12 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Zap,
-  Activity
+  Activity,
+  ArrowUp,
+  ArrowDown,
+  MoreVertical,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
 import { DashboardStats } from '../types';
@@ -44,187 +49,255 @@ export const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-600 border-opacity-30"></div>
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 absolute top-0 -rotate-90"></div>
-        </div>
-        <p className="text-indigo-600 font-black animate-pulse uppercase tracking-widest text-xs">Syncing Enterprise Data</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="glass-card text-center p-12 max-w-xl mx-auto my-20">
-        <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-6 opacity-80" />
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Connection Timeout</h2>
-        <p className="text-slate-500 mb-8 font-medium">{error}</p>
-        <button onClick={fetchStats} className="btn-primary-premium mx-auto">
-          <RefreshCw className="w-5 h-5" />
-          Re-establish Connection
-        </button>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+        <p className="text-gray-400 font-bold tracking-widest text-[10px] uppercase">Loading Dashboard...</p>
       </div>
     );
   }
 
   const statCards = [
     {
-      title: 'Active Employees',
-      value: stats?.counts.activeEmployees || 0,
+      title: 'Total Employees',
+      value: stats?.counts.totalEmployees || 0,
       icon: Users,
-      color: 'from-indigo-600 to-blue-500',
-      subtitle: `${stats?.counts.totalEmployees || 0} Registrations`,
-      to: '/employees',
+      trend: '13 new employees added',
+      trendUp: true,
+      color: 'bg-blue-50 text-blue-600',
     },
     {
-      title: 'Current Attendance',
-      value: `${stats?.today.attendanceRate || 0}%`,
+      title: 'Active Employees',
+      value: stats?.counts.activeEmployees || 0,
+      icon: Briefcase,
+      trend: '9 new applications received',
+      trendUp: true,
+      color: 'bg-emerald-50 text-emerald-600',
+    },
+    {
+      title: 'Present Today',
+      value: stats?.today.present || 0,
       icon: CheckCircle,
-      color: 'from-emerald-600 to-teal-500',
-      subtitle: `${stats?.today.present || 0} checked in today`,
-      to: '/attendance',
+      trend: 'Team growing stronger',
+      trendUp: true,
+      color: 'bg-indigo-50 text-indigo-600',
     },
     {
       title: 'Late Clock-ins',
       value: stats?.today.lateArrivals || 0,
       icon: Clock,
-      color: 'from-amber-500 to-orange-500',
-      subtitle: 'Requiring review',
-      to: '/attendance',
+      trend: '10 recent issues recorded',
+      trendUp: false,
+      color: 'bg-orange-50 text-orange-600',
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-gray-200">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-500 text-sm">Welcome back to Apextime HRM System</p>
-        </div>
-        <div className="flex space-x-3">
-          <button onClick={fetchStats} className="p-2 text-gray-400 hover:text-gray-600 transition-colors border border-gray-200 rounded-lg">
-            <RefreshCw className="w-5 h-5" />
-          </button>
-          <button onClick={() => navigate('/payroll')} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm">
-            Generate Payroll
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {statCards.map((card, index) => (
-          <div
-            key={index}
-            onClick={() => navigate(card.to)}
-            className="bg-white p-6 rounded-xl border border-gray-200 hover:border-indigo-300 transition-all cursor-pointer shadow-sm group"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <div className="p-3 rounded-lg bg-gray-50 text-indigo-600 group-hover:bg-indigo-50 transition-colors">
-                <card.icon className="w-6 h-6" />
+    <div className="space-y-8">
+      {/* Top Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((card, idx) => (
+          <div key={idx} className="app-card p-8 flex flex-col justify-between group hover:border-red-100 transition-all cursor-default">
+            <div className="flex justify-between items-start">
+              <div className={`p-2.5 rounded-xl ${card.color}`}>
+                <card.icon className="w-5 h-5" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-all" />
+              <button className="text-gray-300 hover:text-gray-500">
+                <MoreVertical className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-gray-500 text-sm font-medium">{card.title}</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1">{card.value}</h3>
-            <p className="text-gray-400 text-xs mt-2 flex items-center gap-1">
-              <Activity className="w-3 h-3" /> {card.subtitle}
-            </p>
+            <div className="mt-8">
+              <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight">{card.value}</h3>
+              <p className="text-sm font-bold text-gray-400 mt-1">{card.title}</p>
+            </div>
+            <div className="mt-6 flex items-center space-x-1.5">
+              {card.trendUp ? (
+                <ArrowUp className="w-3 h-3 text-emerald-500" />
+              ) : (
+                <ArrowDown className="w-3 h-3 text-red-500" />
+              )}
+              <span className={`text-[10px] font-bold ${card.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
+                {card.trend}
+              </span>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content Area */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-indigo-600" />
-                Attendance Overview
-              </h2>
-              <button onClick={() => navigate('/monthly-report')} className="text-indigo-600 text-sm font-semibold hover:underline">
-                View Full Logs
-              </button>
+      {/* Middle Grid: Charts & Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Attendance Report Mock-up Chart */}
+        <div className="app-card p-8 lg:col-span-1">
+          <div className="flex justify-between items-center mb-10">
+            <h3 className="font-extrabold text-gray-800 tracking-tight">Attendance Report</h3>
+            <MoreVertical className="w-4 h-4 text-gray-300" />
+          </div>
+          <div className="flex items-end justify-between h-48 space-x-4">
+            {[40, 60, 45, 80, 55, 75, 50].map((h, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center space-y-3">
+                <div className="w-full bg-gray-50 rounded-full h-40 relative group overflow-hidden">
+                  <div
+                    className={`absolute bottom-0 w-full transition-all duration-500 rounded-full group-hover:brightness-110 ${i === 3 ? 'bg-emerald-500' : 'bg-gray-200'}`}
+                    style={{ height: `${h}%` }}
+                  ></div>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400">
+                  {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'][i]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Payroll Summary / Pay Runs */}
+        <div className="app-card p-8 lg:col-span-1">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="font-extrabold text-gray-800 tracking-tight">Pay Runs</h3>
+            <MoreVertical className="w-4 h-4 text-gray-300" />
+          </div>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-50">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment Period</p>
+                <p className="text-sm font-bold text-gray-700 mt-1">1 Oct - 30 Oct</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pay Day</p>
+                <p className="text-sm font-bold text-gray-700 mt-1">30 Oct, 2025</p>
+              </div>
             </div>
 
-            <div className="p-6">
-              {stats?.today.absentEmployees && stats.today.absentEmployees.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="bg-red-50 border border-red-100 p-4 rounded-lg flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <p className="text-red-700 text-sm font-medium">{stats.today.absent} employees are absent today.</p>
-                  </div>
+            <div className="flex items-center justify-center py-4">
+              <div className="relative w-32 h-32 rounded-full border-[12px] border-emerald-500 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-[12px] border-gray-100 border-t-transparent border-l-transparent"></div>
+                <div className="text-center">
+                  <TrendingUp className="w-6 h-6 text-emerald-500 mx-auto" />
+                </div>
+              </div>
+              <div className="ml-8 space-y-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded bg-emerald-500"></div>
+                  <p className="text-xs font-bold text-gray-600">Total Pay: <span className="text-gray-900">$7.8M</span></p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded bg-gray-200"></div>
+                  <p className="text-xs font-bold text-gray-600">Deduction: <span className="text-gray-900">$68K</span></p>
+                </div>
+              </div>
+            </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {stats.today.absentEmployees.slice(0, 6).map((emp) => (
-                      <div key={emp.id} className="p-3 border border-gray-100 rounded-lg flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
-                          {emp.firstName[0]}{emp.lastName[0]}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">{emp.firstName} {emp.lastName}</p>
-                          <p className="text-[10px] text-gray-400 font-medium">Code: {emp.employeeCode}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3 opacity-20" />
-                  <p className="text-gray-500 font-medium">No absences reported for today.</p>
-                </div>
-              )}
+            <div className="flex justify-between items-center pt-2">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Employee</p>
+                <p className="text-lg font-extrabold text-gray-800">1,250</p>
+              </div>
+              <div className="badge badge-success text-[10px] uppercase tracking-widest py-1.5 px-4 font-black">
+                Paid
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Sidebar Cards */}
-        <div className="space-y-6">
-          {/* Sync Status */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="w-5 h-5 text-emerald-500" />
-              <h3 className="font-bold text-gray-800 text-sm italic">System Integrity</h3>
-            </div>
-            <p className="text-gray-500 text-xs leading-relaxed mb-4">
-              {stats?.lastSync?.status === 'success'
-                ? 'Device synchronization is operational. All data is up to date.'
-                : 'Synchronization check required. Some nodes may be reporting delays.'}
-            </p>
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Last Sync</p>
-              <p className="text-sm font-bold text-gray-700">
-                {stats?.lastSync ? new Date(stats.lastSync.lastSyncTime).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'Never'}
-              </p>
-            </div>
+        {/* Length of Service Mock Chart */}
+        <div className="app-card p-8 lg:col-span-1">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="font-extrabold text-gray-800 tracking-tight">Length of Service</h3>
+            <MoreVertical className="w-4 h-4 text-gray-300" />
           </div>
+          <div className="flex items-end justify-between h-48 space-x-3">
+            {[15, 40, 48, 44, 28].map((h, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center space-y-3">
+                <div
+                  className={`w-full rounded-xl transition-all duration-500 hover:brightness-110 ${i === 0 ? 'bg-red-500' :
+                      i === 1 ? 'bg-lime-400' :
+                        i === 2 ? 'bg-emerald-500' :
+                          i === 3 ? 'bg-lime-600' : 'bg-orange-400'
+                    }`}
+                  style={{ height: `${h}%` }}
+                ></div>
+                <span className="text-[10px] font-bold text-gray-400">
+                  {['<1yr', '1-3', '4-5', '5-8', '10y+'][i]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-          {/* Quick Shortcuts */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500" />
-              Quick Actions
-            </h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate('/portal')}
-                className="w-full p-2.5 text-left text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg flex items-center justify-between transition-colors border border-transparent hover:border-gray-200"
-              >
-                Employee Portal
-                <ArrowUpRight className="w-3.5 h-3.5 opacity-40" />
-              </button>
-              <button
-                onClick={() => navigate('/settings')}
-                className="w-full p-2.5 text-left text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg flex items-center justify-between transition-colors border border-transparent hover:border-gray-200"
-              >
-                Company Settings
-                <ArrowUpRight className="w-3.5 h-3.5 opacity-40" />
-              </button>
+      {/* Bottom Section: Employee Table */}
+      <div className="app-card overflow-hidden">
+        <div className="p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h3 className="font-extrabold text-gray-800 tracking-tight">Employee Details & Payroll</h3>
+          <div className="flex items-center space-x-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input type="text" placeholder="Search employee..." className="w-full pl-9 pr-4 py-2 bg-gray-50 border-none rounded-xl text-xs focus:ring-2 focus:ring-red-50" />
             </div>
+            <button className="p-2 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100">
+              <Filter className="w-4 h-4" />
+            </button>
           </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50/30">
+                <th className="table-header w-16">No</th>
+                <th className="table-header">Employee Name</th>
+                <th className="table-header">Email</th>
+                <th className="table-header">Position</th>
+                <th className="table-header">Status</th>
+                <th className="table-header text-right">Transfer Schedule</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {(stats?.today.absentEmployees || []).slice(0, 5).map((emp, i) => (
+                <tr key={emp.id} className="table-row group">
+                  <td className="px-6 py-4 text-xs font-bold text-gray-400">{String(i + 1).padStart(2, '0')}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-500 text-xs">
+                        {emp.firstName[0]}{emp.lastName[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">{emp.firstName} {emp.lastName}</p>
+                        <p className="text-[10px] text-gray-400 font-bold">{emp.employeeCode}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs font-medium text-gray-500 lowercase">{emp.firstName.toLowerCase()}@apextime.in</td>
+                  <td className="px-6 py-4 text-xs font-bold text-gray-600">Senior Associate</td>
+                  <td className="px-6 py-4">
+                    <div className={`badge ${i % 2 === 0 ? 'badge-success' : 'badge-warning'} text-[10px] font-black uppercase tracking-widest`}>
+                      {i % 2 === 0 ? 'Active' : 'On Leave'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs font-bold text-gray-900 text-right">30 Oct, 2025</td>
+                </tr>
+              ))}
+              {/* Fallback if no data */}
+              {(!stats?.today.absentEmployees || stats.today.absentEmployees.length === 0) && (
+                [1, 2, 3, 4, 5].map(i => (
+                  <tr key={i} className="table-row group">
+                    <td className="px-6 py-4 text-xs font-bold text-gray-400">{String(i).padStart(2, '0')}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3 animate-pulse">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100"></div>
+                        <div className="space-y-1">
+                          <div className="h-3 w-24 bg-gray-100 rounded"></div>
+                          <div className="h-2 w-12 bg-gray-50 rounded"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-medium text-gray-400">user.email@company.com</td>
+                    <td className="px-6 py-4 text-xs font-bold text-gray-300">Department Lead</td>
+                    <td className="px-6 py-4">
+                      <div className="w-16 h-5 bg-gray-50 rounded-full"></div>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-bold text-gray-200 text-right">Processing...</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

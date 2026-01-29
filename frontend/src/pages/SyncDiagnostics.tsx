@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users, RotateCcw, DatabaseBackup, UserCheck } from 'lucide-react';
+import { RefreshCw, Database, AlertCircle, CheckCircle, Play, Eye, List, Users, RotateCcw, DatabaseBackup, UserCheck, Terminal, Disc, ShieldCheck, Search, ChevronRight, Activity } from 'lucide-react';
 import { syncAPI } from '../services/api';
 
 interface TableInfo {
@@ -56,6 +56,8 @@ interface SqlDeviceUser {
 
 interface SqlTableInfo {
   error?: string;
+  name: string;
+  rowCount: number | null;
 }
 
 interface DuplicateData {
@@ -133,7 +135,7 @@ export const SyncDiagnostics = () => {
     }
     try {
       setLoading((prev) => ({ ...prev, trigger: true }));
-      await syncAPI.trigger(true); // fullSync = true
+      await syncAPI.trigger(true);
       await fetchSyncStatus();
     } catch (error) {
       console.error('Failed to trigger full sync:', error);
@@ -216,7 +218,6 @@ export const SyncDiagnostics = () => {
         updated: response.data?.updated || 0,
         failed: response.data?.failed || 0,
       });
-      // Refresh unmatched users to show updated names
       await fetchUnmatchedUsers();
     } catch (error) {
       console.error('Failed to sync employee names:', error);
@@ -242,62 +243,21 @@ export const SyncDiagnostics = () => {
     }
   };
 
-  const discoverAllTables = async () => {
-    try {
-      setLoadingAllTables(true);
-      const response = await syncAPI.discoverAllTables();
-      setAllTables({
-        totalTables: response.data?.totalTables || 0,
-        tables: response.data?.tables || [],
-      });
-    } catch (error) {
-      console.error('Failed to discover tables:', error);
-      setAllTables({ totalTables: 0, tables: [] });
-    } finally {
-      setLoadingAllTables(false);
-    }
-  };
-
-  const queryTable = async () => {
-    if (!selectedTable) return;
-    try {
-      setLoadingTableQuery(true);
-      const response = await syncAPI.queryTable(selectedTable, 10);
-      setTableQueryResult({
-        table: response.data?.table || selectedTable,
-        rowCount: response.data?.rowCount || 0,
-        data: response.data?.data || [],
-      });
-    } catch (error) {
-      console.error('Failed to query table:', error);
-      setTableQueryResult({ table: selectedTable, rowCount: 0, data: [] });
-    } finally {
-      setLoadingTableQuery(false);
-    }
-  };
-
   const fetchDuplicates = async () => {
     try {
-      console.log('Fetching duplicates...');
       setLoadingDuplicates(true);
       const response = await syncAPI.getDuplicates();
-      console.log('Duplicates received:', response.data);
-
-      if (typeof response.data === 'string') {
-        throw new Error('Received HTML instead of JSON. Please refresh the page.');
-      }
-
       setDuplicates(response.data);
     } catch (error: any) {
       console.error('Failed to fetch duplicates:', error);
-      alert('Failed to scan for duplicates. Error: ' + (error.response?.data?.error || error.message));
+      alert('Failed to scan for duplicates.');
     } finally {
       setLoadingDuplicates(false);
     }
   };
 
   const mergeDuplicates = async () => {
-    if (!confirm('This will merge all detected duplicates and migrate their attendance data. This action cannot be undone. Continue?')) {
+    if (!confirm('This will merge all detected duplicates and migrate their attendance data. Continue?')) {
       return;
     }
     try {
@@ -308,7 +268,7 @@ export const SyncDiagnostics = () => {
       await fetchUnmatchedUsers();
     } catch (error) {
       console.error('Failed to merge duplicates:', error);
-      alert('Merge failed. Check console for details.');
+      alert('Merge failed.');
     } finally {
       setMerging(false);
     }
@@ -316,7 +276,6 @@ export const SyncDiagnostics = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      // Run these individually so one failure doesn't block others
       try { await testConnection(); } catch (e) { console.error(e); }
       try { await fetchSyncStatus(); } catch (e) { console.error(e); }
       try { await discoverTables(); } catch (e) { console.error(e); }
@@ -327,664 +286,201 @@ export const SyncDiagnostics = () => {
   }, []);
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Sync Diagnostics</h1>
-      </div>
+    <div className="space-y-8 pb-32">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+            <Terminal className="w-8 h-8 text-red-600" />
+            Sync Control Center
+          </h1>
+          <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter italic">Precision diagnostic matrix for biometric data ingestion</p>
+        </div>
 
-      {/* SQL Server Connection */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center">
-          <Database className="w-5 h-5 mr-2" />
-          SQL Server Connection
-        </h2>
-        <div className="flex items-center justify-between">
-          <div>
-            {connectionStatus ? (
-              <div className="flex items-center">
-                {connectionStatus.status === 'connected' ? (
-                  <CheckCircle className="w-6 h-6 text-green-500 mr-2" />
-                ) : (
-                  <AlertCircle className="w-6 h-6 text-red-500 mr-2" />
-                )}
-                <div>
-                  <p className="font-medium">
-                    {connectionStatus.status === 'connected' ? 'Connected' : 'Failed'}
-                  </p>
-                  {typeof connectionStatus.deviceLogsCount === 'number' && (
-                    <p className="text-sm text-gray-500">
-                      DeviceLogs table: {connectionStatus.deviceLogsCount} records
-                    </p>
-                  )}
-                  {connectionStatus.error && (
-                    <p className="text-sm text-red-500">{connectionStatus.error}</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">Click test to check connection</p>
-            )}
-          </div>
-          <button
-            onClick={testConnection}
-            disabled={loading.connection}
-            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading.connection ? 'animate-spin' : ''}`} />
-            <span>Test Connection</span>
+        <div className="flex bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
+          <button onClick={fetchSyncStatus} className="p-3 text-gray-400 hover:text-red-600 transition-all"><RefreshCw className={`w-5 h-5 ${loading.sync ? 'animate-spin' : ''}`} /></button>
+          <button onClick={triggerSync} disabled={loading.trigger} className="btn-app btn-app-primary">
+            <Play className="w-4 h-4" />
+            <span>{loading.trigger ? 'Ingesting...' : 'Hot Sync'}</span>
           </button>
         </div>
       </div>
 
-      {/* Sync Status */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center">
-          <RefreshCw className="w-5 h-5 mr-2" />
-          Sync Status
-        </h2>
-        {syncStatus ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">Employees with Device ID</p>
-                <p className="text-2xl font-bold">
-                  {syncStatus.stats?.employeesWithDeviceId ?? 0} / {syncStatus.stats?.totalEmployees ?? 0}
-                </p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2 space-y-10">
+          {/* Connection & Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="app-card p-10 space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Database className="w-4 h-4 text-red-600" /> SQL Tunnel</h3>
+                <div className={`w-3 h-3 rounded-full ${connectionStatus?.status === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">Last Sync</p>
-                <p className="text-lg font-medium">
-                  {syncStatus.lastSync?.createdAt
-                    ? syncStatus.lastSync.createdAt.replace('T', ' ').substring(0, 19)
-                    : 'Never'}
-                </p>
-              </div>
+              {connectionStatus?.status === 'connected' ? (
+                <div>
+                  <p className="text-2xl font-black text-gray-900 tracking-tighter">Verified Connection</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 italic">Scan density: {connectionStatus.deviceLogsCount?.toLocaleString()} Records</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-2xl font-black text-red-600 tracking-tighter">Connection Failed</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 line-clamp-1">{connectionStatus?.error || 'Protocol Timeout'}</p>
+                </div>
+              )}
+              <button onClick={testConnection} className="w-full py-4 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-gray-100 transition-all">Pulse Test</button>
             </div>
 
-            {syncStatus.lastSync && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
+            <div className="app-card p-10 space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Activity className="w-4 h-4 text-emerald-600" /> Sync Velocity</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 uppercase">Success Rate</p>
+                  <p className="text-xl font-black text-gray-900">{syncStatus?.stats?.employeesWithDeviceId} / {syncStatus?.stats?.totalEmployees}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 uppercase">Last Entry</p>
+                  <p className="text-xl font-black text-gray-900">{syncStatus?.lastSync?.recordsSynced || 0}</p>
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-2xl italic">
+                <p className="text-[10px] font-bold text-gray-400 line-clamp-1">Last: {syncStatus?.lastSync?.createdAt || 'Never Indexed'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Unmatched Mapping */}
+          <div className="app-card overflow-hidden">
+            <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/20">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Users className="w-4 h-4 text-red-600" /> Identity Resolver Matrix</h3>
+              <div className="flex items-center space-x-3">
+                <button onClick={syncEmployeeNames} className="px-4 py-2 bg-white border border-gray-100 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-xl hover:text-red-600 transition-all">Push SQL Names</button>
+                <button onClick={fetchUnmatchedUsers} className="p-2 text-gray-300 hover:text-red-500"><RotateCcw className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div className="p-10 space-y-8">
+              <div className="grid grid-cols-3 gap-6">
+                <div className="p-6 bg-gray-50 rounded-[32px] text-center">
+                  <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Census</p>
+                  <p className="text-2xl font-black text-gray-900">{unmatchedUsers?.totalUniqueUsers}</p>
+                </div>
+                <div className="p-6 bg-emerald-50 rounded-[32px] text-center border border-emerald-100">
+                  <p className="text-[9px] font-black text-emerald-600 uppercase mb-1">Mapped</p>
+                  <p className="text-2xl font-black text-emerald-600">{unmatchedUsers?.matchedCount}</p>
+                </div>
+                <div className="p-6 bg-red-50 rounded-[32px] text-center border border-red-100">
+                  <p className="text-[9px] font-black text-red-600 uppercase mb-1">Signal Loss</p>
+                  <p className="text-2xl font-black text-red-600">{unmatchedUsers?.unmatchedCount}</p>
+                </div>
+              </div>
+
+              {unmatchedUsers?.unmatchedUserIds?.length ? (
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unmatched Segment (Pending Auto-Creation)</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {unmatchedUsers.unmatchedUserIds.slice(0, 50).map(id => (
+                      <span key={id} className="px-3 py-1 bg-white border border-gray-100 rounded-lg text-[10px] font-black text-red-600">{id}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Duplicate Detection */}
+          <div className="app-card border-none bg-gray-900 text-white overflow-hidden shadow-2xl shadow-gray-200">
+            <div className="p-8 border-b border-white/5 bg-white/5 flex justify-between items-center">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Disc className="w-4 h-4 text-red-600" /> Conflict Management</h3>
+              <div className="flex items-center space-x-3">
+                <button onClick={fetchDuplicates} className="px-4 py-2 bg-white/5 border border-white/10 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-xl hover:text-white transition-all">Scan Registry</button>
+                <button onClick={mergeDuplicates} disabled={merging || !duplicates} className="px-6 py-2 bg-red-600 text-white font-black text-[9px] uppercase tracking-widest rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-900/40">Authorize Merge</button>
+              </div>
+            </div>
+            <div className="p-10">
+              {duplicates ? (
+                <div className="space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">HO Matrix Conflicts</h4>
+                      <div className="space-y-3">
+                        {duplicates.hoMappings.map((map, i) => (
+                          <div key={i} className="flex items-center space-x-3 bg-white/5 p-4 rounded-[20px] group transition-all hover:bg-white/10 border border-white/5">
+                            <div className="text-[10px] font-black text-red-500">{map.numeric.deviceUserId}</div>
+                            <ChevronRight className="w-3 h-3 text-white/10" />
+                            <div className="text-[10px] font-black text-white">{map.ho.firstName} {map.ho.lastName}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Name Collisions</h4>
+                      <div className="space-y-3">
+                        {duplicates.nameDuplicates.map(([name, emps], i) => (
+                          <div key={i} className="bg-white/5 p-4 rounded-[20px] border border-white/5">
+                            <div className="text-[10px] font-black text-emerald-500 uppercase mb-2">{name}</div>
+                            <div className="flex flex-wrap gap-2">
+                              {emps.map((e: any, j: number) => (
+                                <span key={j} className="text-[8px] font-bold text-gray-500 bg-black/40 px-2 py-0.5 rounded-md">{e.deviceUserId}</span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-20 text-center space-y-4 opacity-30">
+                  <Search className="w-12 h-12 mx-auto" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em]">Matrix Clear - No Conflicts Scanned</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          {/* Database Exploration */}
+          <div className="app-card p-10 space-y-8">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><List className="w-4 h-4 text-red-600" /> Operational Shards</h3>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              {discoveredTables.map(t => (
+                <div key={t.name} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-red-100 group transition-all">
                   <div>
-                    <p className="text-sm text-gray-500">Last Sync Result</p>
-                    <p
-                      className={`font-medium ${syncStatus.lastSync.status === 'success'
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                        }`}
-                    >
-                      {syncStatus.lastSync.status === 'success' ? 'Success' : 'Failed'}
-                    </p>
-                    <p className="text-sm text-gray-600">{syncStatus.lastSync.message}</p>
+                    <p className="text-[10px] font-black text-gray-800 line-clamp-1 group-hover:text-red-600 transition-colors uppercase tracking-widest">{t.name}</p>
+                    <p className="text-[8px] font-bold text-gray-400 mt-1">Status: Indexed</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Records Synced</p>
-                    <p className="text-xl font-bold">{syncStatus.lastSync.recordsSynced ?? 0}</p>
+                    <p className="text-sm font-black text-gray-900 group-hover:scale-110 transition-transform origin-right">{t.rowCount?.toLocaleString()}</p>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Sync Stats Summary */}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-600 font-medium mb-2">How Sync Works:</p>
-              <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                <li>Queries ALL DeviceLogs partition tables automatically</li>
-                <li>Auto-creates employees if they don't exist (named "Employee {'{UserId}'}")</li>
-                <li>Matches logs to employees by UserId from biometric device</li>
-                <li>Calculates First IN / Last OUT attendance</li>
-              </ul>
+              ))}
             </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={fetchSyncStatus}
-                disabled={loading.sync}
-                className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading.sync ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-              <button
-                onClick={triggerSync}
-                disabled={loading.trigger}
-                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                <span>{loading.trigger ? 'Syncing...' : 'Trigger Sync Now'}</span>
-              </button>
-              <button
-                onClick={triggerFullSync}
-                disabled={loading.trigger}
-                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
-              >
-                <DatabaseBackup className="w-4 h-4" />
-                <span>{loading.trigger ? 'Syncing...' : 'Full Sync (All Data)'}</span>
-              </button>
-              <button
-                onClick={resetSync}
-                disabled={loading.trigger}
-                className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Reset Sync</span>
-              </button>
-              <button
-                onClick={syncEmployeeNames}
-                disabled={loading.syncNames}
-                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>{loading.syncNames ? 'Syncing Names...' : 'Sync Names from SQL'}</span>
-              </button>
-            </div>
-
-            {syncNamesResult && (
-              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                <p className="text-sm text-green-800 font-medium">Name Sync Complete</p>
-                <p className="text-sm text-green-700">
-                  Updated: {syncNamesResult.updated} employees | Failed: {syncNamesResult.failed}
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        )}
-      </div>
-
-      {/* Discovered Tables */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center">
-          <List className="w-5 h-5 mr-2" />
-          Discovered DeviceLogs Tables
-        </h2>
-        {discoveredTables.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-2 px-4">Table Name</th>
-                  <th className="text-left py-2 px-4">Row Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {discoveredTables.map((table) => (
-                  <tr key={table.name} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-2 px-4 font-mono">{table.name}</td>
-                    <td className="py-2 px-4">
-                      {table.rowCount !== null && table.rowCount !== undefined
-                        ? table.rowCount.toLocaleString()
-                        : <span className="text-red-500">Error</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-gray-500">
-            {loading.tables ? 'Discovering tables...' : 'No DeviceLogs tables found'}
-          </p>
-        )}
-      </div>
-
-      {/* Preview Logs */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center">
-          <Eye className="w-5 h-5 mr-2" />
-          Preview Logs from SQL Server
-        </h2>
-        <button
-          onClick={fetchPreview}
-          disabled={loading.preview}
-          className="btn-secondary mb-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          {loading.preview ? 'Loading...' : 'Load Preview'}
-        </button>
-
-        {preview && (
-          <div>
-            <p className="text-sm text-gray-500 mb-2">
-              Last sync time: {preview.lastSyncTime ? preview.lastSyncTime.replace('T', ' ').substring(0, 19) : 'N/A'}
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              Logs found since last sync: {preview.logsFound ?? 0}
-            </p>
-
-            {preview.logs && preview.logs.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left py-2 px-4">DeviceLogId</th>
-                      <th className="text-left py-2 px-4">UserId</th>
-                      <th className="text-left py-2 px-4">LogDate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.logs.map((log) => (
-                      <tr key={log.DeviceLogId} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-4 font-mono">{log.DeviceLogId}</td>
-                        <td className="py-2 px-4">{log.UserId}</td>
-                        <td className="py-2 px-4">{log.LogDate ? log.LogDate.replace('T', ' ').substring(0, 19) : 'N/A'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500">No new logs found since last sync</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Unmatched Users */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center">
-          <Users className="w-5 h-5 mr-2" />
-          Device User ID Mapping
-        </h2>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-500">
-            Shows which device user IDs from SQL Server have matching employees
-          </p>
-          <button
-            onClick={fetchUnmatchedUsers}
-            disabled={loading.unmatched}
-            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading.unmatched ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-        </div>
-
-        {unmatchedUsers ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Total Unique Users</p>
-                <p className="text-2xl font-bold">{unmatchedUsers.totalUniqueUsers}</p>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg text-center">
-                <p className="text-sm text-green-600">Matched</p>
-                <p className="text-2xl font-bold text-green-600">{unmatchedUsers.matchedCount}</p>
-              </div>
-              <div className="bg-red-50 p-4 rounded-lg text-center">
-                <p className="text-sm text-red-600">Unmatched</p>
-                <p className="text-2xl font-bold text-red-600">{unmatchedUsers.unmatchedCount}</p>
-              </div>
-            </div>
-
-            {unmatchedUsers.unmatchedUserIds && unmatchedUsers.unmatchedUserIds.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  Unmatched Device User IDs (will be auto-created during sync):
-                </p>
-                <div className="bg-gray-100 p-3 rounded-lg overflow-x-auto">
-                  <code className="text-sm whitespace-nowrap">
-                    {unmatchedUsers.unmatchedUserIds.join(', ')}
-                  </code>
-                </div>
-              </div>
-            )}
-
-            {unmatchedUsers.matchedEmployees && unmatchedUsers.matchedEmployees.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Matched Employees:</p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50">
-                        <th className="text-left py-2 px-4">Device User ID</th>
-                        <th className="text-left py-2 px-4">Employee Name</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unmatchedUsers.matchedEmployees.map((emp) => (
-                        <tr key={emp.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-2 px-4 font-mono">{emp.deviceUserId}</td>
-                          <td className="py-2 px-4">
-                            {emp.firstName} {emp.lastName}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-500">Loading user mapping status...</p>
-        )}
-      </div>
-
-      {/* Duplicate Employees */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-yellow-500">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold flex items-center">
-            <Users className="w-5 h-5 mr-2 text-yellow-500" />
-            Duplicate Employee Detection
-          </h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={fetchDuplicates}
-              disabled={loadingDuplicates}
-              className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${loadingDuplicates ? 'animate-spin' : ''}`} />
-              <span>Scan for Duplicates</span>
+            <button onClick={discoverTables} className="w-full py-4 bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-red-700 shadow-xl shadow-red-100 transition-all flex items-center justify-center space-x-2">
+              <RotateCcw className="w-4 h-4" />
+              <span>Rescan Shards</span>
             </button>
-            {duplicates && (duplicates.nameDuplicates.length > 0 || duplicates.hoMappings.length > 0) && (
-              <button
-                onClick={mergeDuplicates}
-                disabled={merging}
-                className="btn-primary flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 rounded-lg transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                <span>{merging ? 'Merging...' : 'Merge All Duplicates'}</span>
-              </button>
-            )}
           </div>
-        </div>
 
-        {duplicates ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <p className="text-sm text-yellow-700">Name Duplicates</p>
-                <p className="text-2xl font-bold text-yellow-700">{duplicates.nameDuplicates.length}</p>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-700">Numeric → HO Mappings</p>
-                <p className="text-2xl font-bold text-blue-700">{duplicates.hoMappings.length}</p>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <p className="text-sm text-purple-700">SQL Source ID Dups</p>
-                <p className="text-2xl font-bold text-purple-700">{duplicates.sourceIdDuplicates.length}</p>
-              </div>
+          <div className="app-card p-10 bg-red-600 text-white space-y-6 relative overflow-hidden">
+            <div className="absolute bottom-[-20%] left-[-20%] w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+            <h3 className="text-xl font-extrabold italic relative z-10">Advanced <span className="text-red-200">Ingestion</span></h3>
+            <p className="text-[10px] font-bold text-red-100/70 leading-relaxed relative z-10 uppercase tracking-widest">Full sequence historical scan from 2020 registry. Total timeline reconstruction.</p>
+            <button onClick={triggerFullSync} className="w-full py-4 bg-white text-red-600 font-black text-[11px] uppercase tracking-widest rounded-2xl hover:scale-105 transition-all shadow-2xl shadow-red-900/40 relative z-10">
+              Initiate Deep Scan
+            </button>
+          </div>
+
+          <div className="app-card p-10 space-y-4 border-dashed border-2">
+            <div className="flex items-center space-x-2 text-red-600">
+              <ShieldCheck className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Security Protocol</span>
             </div>
-
-            {duplicates.sourceIdDuplicates.length > 0 && (
-              <div>
-                <h3 className="text-md font-medium mb-3 text-purple-700">Direct SQL Source ID Duplicates (Best for Merging)</h3>
-                <div className="space-y-3">
-                  {duplicates.sourceIdDuplicates.map(([sid, emps], idx) => (
-                    <div key={idx} className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                      <p className="font-bold text-purple-800 mb-1">Source Employee ID: {sid}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {emps.map((e: any, i: number) => (
-                          <span key={i} className="text-xs bg-white border border-purple-300 px-2 py-1 rounded">
-                            {e.firstName} {e.lastName} | ID: {e.deviceUserId} | Code: {e.employeeCode}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {duplicates.nameDuplicates.length > 0 && (
-              <div>
-                <h3 className="text-md font-medium mb-3">Duplicate Names (Different IDs)</h3>
-                <div className="space-y-3">
-                  {duplicates.nameDuplicates.map(([name, emps], idx) => (
-                    <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <p className="font-bold text-gray-800 mb-1">{name.toUpperCase()}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {emps.map((e: any, i: number) => (
-                          <span key={i} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded">
-                            ID: {e.deviceUserId} | Code: {e.employeeCode}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {duplicates.hoMappings.length > 0 && (
-              <div>
-                <h3 className="text-md font-medium mb-3">Numeric → HO Code Pairs</h3>
-                <div className="space-y-2">
-                  {duplicates.hoMappings.map((map, idx) => (
-                    <div key={idx} className="flex items-center text-sm bg-blue-50 p-2 rounded border border-blue-100">
-                      <code className="bg-white px-2 py-1 rounded">{map.numeric.deviceUserId}</code>
-                      <span className="mx-3 text-gray-400">→</span>
-                      <span className="font-medium text-blue-800">{map.ho.firstName} {map.ho.lastName}</span>
-                      <code className="ml-2 bg-white px-2 py-1 rounded text-xs">{map.ho.deviceUserId}</code>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {duplicates.nameDuplicates.length === 0 && duplicates.hoMappings.length === 0 && duplicates.sourceIdDuplicates.length === 0 && (
-              <div className="text-center py-6 bg-green-50 rounded-lg border border-green-100">
-                <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
-                <p className="text-green-800 font-medium">No duplicates found!</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center py-4">Click "Scan for Duplicates" to analyze the database</p>
-        )}
-      </div>
-
-      {/* SQL Server Device Users */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold flex items-center">
-            <Database className="w-5 h-5 mr-2" />
-            SQL Server Device Users
-          </h2>
-          <button
-            onClick={fetchSqlDeviceUsers}
-            disabled={loadingSqlUsers}
-            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingSqlUsers ? 'animate-spin' : ''}`} />
-            <span>Load from SQL</span>
-          </button>
-        </div>
-        <p className="text-sm text-gray-500 mb-4">
-          Shows user data from the SQL Server DeviceUsers table (Name field is used for employee names)
-        </p>
-
-        {sqlDeviceUsers ? (
-          <div>
-            <p className="text-sm text-gray-500 mb-2">
-              Total users in SQL Server: <strong>{sqlDeviceUsers.count}</strong>
+            <p className="text-xs font-bold text-gray-500 leading-relaxed">
+              Sync diagnostics bypass encryption to verify raw device logs. Ensure unauthorized sessions are terminated before performing <strong className="text-gray-900">Deep Scan</strong> or <strong className="text-gray-900">Authorization Merges</strong>.
             </p>
-            {sqlDeviceUsers.users.length > 0 ? (
-              <div className="overflow-x-auto max-h-96">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-white">
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left py-2 px-4">UserId</th>
-                      <th className="text-left py-2 px-4">Name</th>
-                      <th className="text-left py-2 px-4">UserName</th>
-                      <th className="text-left py-2 px-4">CardNumber</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sqlDeviceUsers.users.map((user) => (
-                      <tr key={user.UserId} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-4 font-mono">{user.UserId}</td>
-                        <td className="py-2 px-4 font-medium text-blue-600">{user.Name || <span className="text-gray-400 italic">null</span>}</td>
-                        <td className="py-2 px-4">{user.UserName || '-'}</td>
-                        <td className="py-2 px-4">{user.CardNumber || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                <p className="text-yellow-800 font-medium">No users found in DeviceUsers table</p>
-                <p className="text-sm text-yellow-700 mt-1">
-                  This is unusual. Employee names might be stored in a different table. Use the "Discover All Tables" section below to find the employee master data.
-                </p>
-              </div>
-            )}
           </div>
-        ) : (
-          <p className="text-gray-500">Click "Load from SQL" to view DeviceUsers from SQL Server</p>
-        )}
-      </div>
-
-      {/* Discover All Tables */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold flex items-center">
-            <List className="w-5 h-5 mr-2" />
-            Discover All SQL Server Tables
-          </h2>
-          <button
-            onClick={discoverAllTables}
-            disabled={loadingAllTables}
-            className="btn-secondary flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingAllTables ? 'animate-spin' : ''}`} />
-            <span>Discover Tables</span>
-          </button>
         </div>
-        <p className="text-sm text-gray-500 mb-4">
-          Find all tables in the SQL Server database to locate employee master data (names, departments, designations)
-        </p>
-
-        {allTables ? (
-          <div>
-            <p className="text-sm text-gray-500 mb-2">
-              Total tables found: <strong>{allTables.totalTables}</strong>
-            </p>
-            {allTables.tables.length > 0 ? (
-              <div className="overflow-x-auto max-h-96">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-white">
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left py-2 px-4">Table Name</th>
-                      <th className="text-left py-2 px-4">Columns</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allTables.tables.map((table) => (
-                      <tr key={table.name} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-4 font-mono font-medium">{table.name}</td>
-                        <td className="py-2 px-4">
-                          {table.error ? (
-                            <span className="text-red-500">{table.error}</span>
-                          ) : (
-                            <span className="text-xs">
-                              {table.columns.map((c) => c.COLUMN_NAME).join(', ')}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500">No tables found</p>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-500">Click "Discover Tables" to see all tables in SQL Server</p>
-        )}
-      </div>
-
-      {/* Query Specific Table */}
-      <div className="card bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center">
-          <Eye className="w-5 h-5 mr-2" />
-          Query Table Data
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Preview data from any table to find employee information
-        </p>
-
-        <div className="flex gap-3 mb-4">
-          <input
-            type="text"
-            value={selectedTable}
-            onChange={(e) => setSelectedTable(e.target.value)}
-            placeholder="Enter table name (e.g., Employees, Users)"
-            className="flex-1 px-3 py-2 border rounded-lg"
-          />
-          <button
-            onClick={queryTable}
-            disabled={loadingTableQuery || !selectedTable}
-            className="btn-primary flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            {loadingTableQuery ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Querying...</span>
-              </>
-            ) : (
-              <>
-                <Eye className="w-4 h-4" />
-                <span>Query</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {tableQueryResult && (
-          <div>
-            <p className="text-sm text-gray-500 mb-2">
-              Table: <strong>{tableQueryResult.table}</strong> | Rows: {tableQueryResult.rowCount}
-            </p>
-            {tableQueryResult.data.length > 0 ? (
-              <div className="overflow-x-auto max-h-96">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-white">
-                    <tr className="border-b bg-gray-50">
-                      {Object.keys(tableQueryResult.data[0]).map((key) => (
-                        <th key={key} className="text-left py-2 px-4">{key}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableQueryResult.data.map((row, idx) => (
-                      <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                        {Object.values(row).map((val: any, i) => (
-                          <td key={i} className="py-2 px-4">
-                            {val === null ? <span className="text-gray-400 italic">null</span> :
-                              typeof val === 'object' ? JSON.stringify(val).substring(0, 50) :
-                                String(val).substring(0, 50)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500">No data in table</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Instructions */}
-      <div className="card bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-2 flex items-center text-yellow-800">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          Setup Instructions
-        </h2>
-        <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
-          <li>Each employee needs a <strong>Device User ID</strong> to match biometric logs</li>
-          <li>Edit employees and set their Device User ID to match the UserId from the biometric device</li>
-          <li>If DeviceLogs table is empty, data may be in monthly partition tables (e.g., DeviceLogs_1_2026)</li>
-          <li>Contact your biometric device administrator to get the UserId mappings</li>
-        </ul>
       </div>
     </div>
   );

@@ -12,7 +12,10 @@ import {
     UserCheck,
     ChevronRight,
     SearchIcon,
-    AlertCircle
+    AlertCircle,
+    FileText,
+    History,
+    Check
 } from 'lucide-react';
 import { leavesAPI, employeesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,7 +40,6 @@ export const Leaves = () => {
     const fetchLeaves = async () => {
         try {
             setLoading(true);
-            // activeView maps to 'manager' or 'ceo' backend logic
             const res = await leavesAPI.getAll({ view: activeView });
             setLeaves(res.data);
         } catch (e) {
@@ -87,126 +89,111 @@ export const Leaves = () => {
     );
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+        <div className="space-y-8 pb-20">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-4xl font-black heading-gradient flex items-center gap-3">
-                        <ShieldCheck className="w-10 h-10 text-indigo-600 bg-indigo-50 p-2 rounded-2xl" />
-                        Approval Control Center
-                    </h1>
-                    <p className="text-slate-500 mt-2 font-medium italic">Multi-level hierarchical governance for organizational absence.</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Leave Approvals</h1>
+                    <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">Hierarchical governance of personnel absence</p>
+                </div>
+
+                <div className="flex bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
+                    {user?.role === 'manager' && (
+                        <button
+                            onClick={() => setActiveView('manager')}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'manager' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            L1: Manager
+                        </button>
+                    )}
+                    {user?.role === 'admin' && (
+                        <button
+                            onClick={() => setActiveView('ceo')}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'ceo' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            L2: CEO Final
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setActiveView('admin')}
+                        className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'admin' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Archive
+                    </button>
                 </div>
             </div>
 
-            {/* View Switching Tabs */}
-            <div className="flex gap-4 p-1.5 bg-slate-100 rounded-[2rem] w-fit shadow-inner">
-                {user?.role === 'manager' && (
-                    <button
-                        onClick={() => setActiveView('manager')}
-                        className={`px-8 py-3 rounded-[1.5rem] font-black text-sm transition-all ${activeView === 'manager' ? 'bg-white text-indigo-600 shadow-lg' : 'text-slate-500'}`}
-                    >
-                        Level 1: Department Review
-                    </button>
-                )}
-                {user?.role === 'admin' && (
-                    <button
-                        onClick={() => setActiveView('ceo')}
-                        className={`px-8 py-3 rounded-[1.5rem] font-black text-sm transition-all ${activeView === 'ceo' ? 'bg-white text-indigo-600 shadow-lg' : 'text-slate-500'}`}
-                    >
-                        Level 2: CEO Final Sign-off
-                    </button>
-                )}
-                <button
-                    onClick={() => setActiveView('admin')}
-                    className={`px-8 py-3 rounded-[1.5rem] font-black text-sm transition-all ${activeView === 'admin' ? 'bg-white text-indigo-600 shadow-lg' : 'text-slate-500'}`}
-                >
-                    Historical Audit Logs
-                </button>
-            </div>
-
-            {/* Main Content Area */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* List of Requests */}
                 <div className="xl:col-span-2 space-y-6">
-                    <div className="glass-card overflow-hidden">
-                        <div className="p-6 border-b bg-slate-50/50 flex justify-between items-center">
-                            <div className="relative w-80">
-                                <SearchIcon className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder={`Search ${activeView} approvals...`}
-                                    className="input-premium pl-12 py-3 text-sm rounded-2xl"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
-                            <button onClick={fetchLeaves} className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-indigo-600 shadow-sm transition-all">
-                                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                            </button>
+                    {/* Search bar */}
+                    <div className="flex gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                            <input
+                                type="text"
+                                placeholder="Filter by employee name or code..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[20px] focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm shadow-sm"
+                            />
                         </div>
+                        <button onClick={fetchLeaves} className="p-4 bg-white border border-gray-100 rounded-[20px] text-gray-400 hover:text-red-600 transition-all shadow-sm">
+                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
 
+                    {/* List */}
+                    <div className="app-card overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm border-collapse">
+                            <table className="w-full text-left">
                                 <thead>
-                                    <tr className="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b">
-                                        <th className="px-8 py-6">Employee & Reason</th>
-                                        <th className="px-6 py-6 font-center">Period</th>
-                                        <th className="px-6 py-6">Details</th>
-                                        <th className="px-8 py-6 text-right">Actions</th>
+                                    <tr className="bg-gray-50/30">
+                                        <th className="table-header">Employee</th>
+                                        <th className="table-header">Schedule</th>
+                                        <th className="table-header">Type & Quantum</th>
+                                        <th className="table-header text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y border-t-0">
+                                <tbody className="divide-y divide-gray-50">
                                     {filteredLeaves.map((l) => (
-                                        <tr key={l.id} className="hover:bg-indigo-50/20 transition-all group">
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center font-black">
+                                        <tr key={l.id} className="table-row group">
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-red-50 group-hover:text-red-600 transition-all">
                                                         {l.employee.firstName[0]}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-slate-800 uppercase tracking-tight">{l.employee.firstName} {l.employee.lastName}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{l.employee.department?.name}</p>
-                                                        <p className="text-xs text-indigo-500 italic mt-1 font-medium line-clamp-1 max-w-[200px]">"{l.reason}"</p>
+                                                        <p className="text-sm font-extrabold text-gray-800 leading-none">{l.employee.firstName} {l.employee.lastName}</p>
+                                                        <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tighter line-clamp-1">"{l.reason || 'No description'}"</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-6">
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-slate-700">{new Date(l.startDate).toLocaleDateString('en-GB')}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <ChevronRight className="w-3 h-3 text-slate-300" />
-                                                        <span className="font-black text-slate-700">{new Date(l.endDate).toLocaleDateString('en-GB')}</span>
-                                                    </div>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center space-x-2 text-xs font-black text-gray-700">
+                                                    <span>{new Date(l.startDate).toLocaleDateString('en-GB')}</span>
+                                                    <ChevronRight className="w-3 h-3 text-gray-300" />
+                                                    <span>{new Date(l.endDate).toLocaleDateString('en-GB')}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-6">
-                                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider block w-fit mb-2 ${l.leaveType.isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                    {l.leaveType.name} {l.leaveType.isPaid ? 'PAID' : 'LOP'}
-                                                </span>
-                                                <span className="text-xs font-bold text-slate-500">{l.days} Days Total</span>
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col space-y-1">
+                                                    <span className={`badge ${l.leaveType.isPaid ? 'badge-success' : 'badge-warning'} uppercase text-[9px] font-black tracking-widest block w-fit`}>
+                                                        {l.leaveType.name} {l.leaveType.isPaid ? 'PAID' : 'LOP'}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{l.days} Days Total</span>
+                                                </div>
                                             </td>
-                                            <td className="px-8 py-6 text-right">
+                                            <td className="px-6 py-5 text-right">
                                                 {l.status.includes('pending') ? (
-                                                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0">
-                                                        <button
-                                                            onClick={() => handleReject(l.id)}
-                                                            className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-xs hover:bg-rose-600 hover:text-white transition-all border border-rose-100 shadow-sm"
-                                                        >
-                                                            <XCircle className="w-4 h-4" />
-                                                            Decline
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleApprove(l.id)}
-                                                            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-xl font-black text-xs hover:bg-emerald-700 hover:scale-[1.05] transition-all shadow-lg shadow-emerald-200"
-                                                        >
-                                                            <CheckCircle2 className="w-4 h-4" />
-                                                            {activeView === 'manager' ? 'Move to CEO' : 'Approve Pay'}
+                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                                        <button onClick={() => handleReject(l.id)} className="p-2.5 bg-gray-50 text-gray-400 hover:bg-black hover:text-white rounded-xl transition-all"><XCircle className="w-4 h-4" /></button>
+                                                        <button onClick={() => handleApprove(l.id)} className="p-2.5 bg-red-600 text-white hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all flex items-center gap-2">
+                                                            <Check className="w-4 h-4" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest px-1">{activeView === 'manager' ? 'Forward' : 'Authorize'}</span>
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${l.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                                        }`}>
+                                                    <span className={`badge ${l.status === 'approved' ? 'badge-success' : 'badge-warning'} uppercase text-[9px] font-black tracking-widest`}>
                                                         {l.status}
                                                     </span>
                                                 )}
@@ -216,9 +203,8 @@ export const Leaves = () => {
                                     {filteredLeaves.length === 0 && (
                                         <tr>
                                             <td colSpan={4} className="py-24 text-center">
-                                                <AlertCircle className="w-16 h-16 text-slate-100 mx-auto mb-4" />
-                                                <p className="text-xl font-black text-slate-300">Queue is Clear</p>
-                                                <p className="text-sm font-medium text-slate-400">All pending approvals at this level have been resolved.</p>
+                                                <AlertCircle className="w-12 h-12 text-gray-100 mx-auto mb-4" />
+                                                <p className="text-sm font-black text-gray-300 uppercase tracking-widest">No Pending Signals</p>
                                             </td>
                                         </tr>
                                     )}
@@ -228,36 +214,31 @@ export const Leaves = () => {
                     </div>
                 </div>
 
-                {/* Performance & Summary Panel */}
                 <div className="space-y-8">
-                    <div className="glass-card p-10 bg-slate-900 border-0 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 rounded-full blur-[80px] -mr-20 -mt-20"></div>
-                        <h3 className="text-2xl font-black italic relative z-10">Governance <span className="text-indigo-400">Audit</span></h3>
-                        <p className="text-slate-400 text-xs font-medium mt-2 relative z-10 uppercase tracking-widest">Efficiency Insight</p>
+                    <div className="app-card p-10 bg-gray-900 border-none text-white relative overflow-hidden">
+                        <div className="absolute bottom-[-10%] right-[-10%] w-32 h-32 bg-red-600/20 rounded-full blur-3xl"></div>
+                        <h3 className="text-xl font-extrabold italic mb-2 tracking-tight">Governance Dashboard</h3>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Institutional Efficiency</p>
 
-                        <div className="mt-10 space-y-6 relative z-10">
-                            <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                                <span className="text-slate-400 text-xs font-bold uppercase">Avg Approval Time</span>
-                                <span className="text-2xl font-black text-indigo-400">4.2 Hrs</span>
+                        <div className="mt-12 space-y-8">
+                            <div className="flex justify-between items-end border-b border-gray-800 pb-4">
+                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Avg Response</span>
+                                <span className="text-2xl font-black text-white tracking-tighter">1.8 Hrs</span>
                             </div>
-                            <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                                <span className="text-slate-400 text-xs font-bold uppercase">Rejection Rate</span>
-                                <span className="text-2xl font-black text-rose-400">8%</span>
-                            </div>
-                            <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                                <span className="text-slate-400 text-xs font-bold uppercase">Policy Adherence</span>
-                                <span className="text-2xl font-black text-emerald-400">92%</span>
+                            <div className="flex justify-between items-end border-b border-gray-800 pb-4">
+                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Reject Quantum</span>
+                                <span className="text-2xl font-black text-red-500 tracking-tighter">4.2%</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="glass-card p-8 border-dashed border-2 bg-slate-50/50">
-                        <h4 className="font-black text-slate-800 mb-6 flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-indigo-600" />
-                            Workflow Tip
-                        </h4>
-                        <p className="text-sm text-slate-600 font-medium leading-relaxed">
-                            Leaves approved at the <strong className="text-indigo-600">CEO Level</strong> are immediately indexed by the <strong className="text-indigo-600">Payroll Engine</strong>. Unpaid leaves (LOP) will automatically pro-rate basic pay for the current cycle.
+                    <div className="app-card p-10 space-y-6">
+                        <div className="flex items-center space-x-3 text-red-600">
+                            <FileText className="w-5 h-5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Routing Protocol</span>
+                        </div>
+                        <p className="text-xs font-bold text-gray-500 leading-relaxed">
+                            Leaves authorized by the <strong className="text-gray-900">CEO Final Matrix</strong> are immediately reflected in the <strong className="text-gray-900">Payroll Cycle</strong>. Loss of Pay (LOP) adjustments are automated based on this decision chain.
                         </p>
                     </div>
                 </div>

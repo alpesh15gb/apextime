@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, DollarSign, Building2 } from 'lucide-react';
+import { ArrowLeft, Save, DollarSign, Building2, User, Phone, Mail, Fingerprint, Calendar, ShieldCheck, Briefcase, CreditCard } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 
 export const EmployeeForm = () => {
@@ -134,355 +134,292 @@ export const EmployeeForm = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex flex-col items-center justify-center py-32 space-y-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Accessing Human Profile...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center space-x-4 mb-6">
-        <button
-          onClick={() => navigate('/employees')}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-2xl font-bold text-gray-800">
-          {isEditing ? 'Edit Employee' : 'Add Employee'}
-        </h1>
+    <div className="max-w-5xl mx-auto space-y-8 pb-32">
+      {/* Breadcrumb Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigate('/employees')}
+            className="w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-50 transition-all shadow-sm group"
+          >
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              {isEditing ? 'Modify Personnel' : 'Enroll Personnel'}
+            </h1>
+            <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">Core identity and payroll routing</p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 bg-red-50 px-5 py-2.5 rounded-2xl border border-red-100">
+          <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Encryption Active</span>
+        </div>
       </div>
 
-      <div className="card max-w-4xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Employee Code */}
-            <div>
-              <label className="form-label">Employee Code *</label>
+      <form onSubmit={handleSubmit} className="space-y-10">
+        {/* Identity Matrix */}
+        <div className="app-card overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <User className="w-4 h-4" /> Personnel Identity
+            </h3>
+            {isEditing && (
+              <div className="text-[10px] font-black bg-gray-900 text-white px-3 py-1 rounded-lg uppercase tracking-widest">{formData.employeeCode}</div>
+            )}
+          </div>
+
+          <div className="p-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">System Code</label>
               <input
                 type="text"
                 name="employeeCode"
                 value={formData.employeeCode}
                 onChange={handleChange}
-                className="form-input"
+                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                placeholder="e.g. APX-001"
                 required
               />
             </div>
-
-            {/* First Name */}
-            <div>
-              <label className="form-label">First Name *</label>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">First Legal Name</label>
               <input
                 type="text"
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="form-input"
+                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                placeholder="e.g. Rahul"
                 required
               />
             </div>
-
-            {/* Last Name */}
-            <div>
-              <label className="form-label">Last Name *</label>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Surname</label>
               <input
                 type="text"
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="form-input"
+                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                placeholder="e.g. Sharma"
                 required
               />
             </div>
-
-            {/* Email */}
-            <div>
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-              />
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Official Email</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  placeholder="rahul@company.com"
+                />
+              </div>
             </div>
-
-            {/* Phone */}
-            <div>
-              <label className="form-label">Phone</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="form-input"
-              />
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Contact String</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  placeholder="+91 98XXX XXXXX"
+                />
+              </div>
             </div>
-
-            {/* Branch */}
-            <div>
-              <label className="form-label">Branch</label>
-              <select
-                name="branchId"
-                value={formData.branchId}
-                onChange={handleChange}
-                className="form-input"
-              >
-                <option value="">Select Branch</option>
-                {branches.map((branch: any) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Biometric ID</label>
+              <div className="relative">
+                <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input
+                  type="text"
+                  name="deviceUserId"
+                  value={formData.deviceUserId}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-red-600 text-sm"
+                  placeholder="Device UID"
+                />
+              </div>
             </div>
+          </div>
+        </div>
 
-            {/* Department */}
-            <div>
-              <label className="form-label">Department</label>
-              <select
-                name="departmentId"
-                value={formData.departmentId}
-                onChange={handleChange}
-                className="form-input"
-              >
-                <option value="">Select Department</option>
-                {departments.map((dept: any) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
+        {/* Organizational Routing */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="app-card p-10 space-y-8">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Placement Matrix
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Unit / Branch</label>
+                <select name="branchId" value={formData.branchId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                  <option value="">Select Branch</option>
+                  {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
+                <select name="departmentId" value={formData.departmentId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                  <option value="">Select Dept</option>
+                  {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
             </div>
+          </div>
 
-            {/* Shift */}
-            <div>
-              <label className="form-label">Shift</label>
-              <select
-                name="shiftId"
-                value={formData.shiftId}
-                onChange={handleChange}
-                className="form-input"
-              >
-                <option value="">Select Shift</option>
-                {shifts.map((shift: any) => (
-                  <option key={shift.id} value={shift.id}>
-                    {shift.name} ({shift.startTime} - {shift.endTime})
-                  </option>
-                ))}
-              </select>
+          <div className="app-card p-10 space-y-8">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> Employment Lifecycle
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Joining Date</label>
+                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm" />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Operational Shift</label>
+                <select name="shiftId" value={formData.shiftId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                  <option value="">Choose Shift</option>
+                  {shifts.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.startTime} - {s.endTime})</option>)}
+                </select>
+              </div>
             </div>
-
-            {/* Device User ID */}
-            <div>
-              <label className="form-label">Device User ID</label>
-              <input
-                type="text"
-                name="deviceUserId"
-                value={formData.deviceUserId}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Biometric device user ID"
-              />
-            </div>
-
-            {/* Date of Joining */}
-            <div>
-              <label className="form-label">Date of Joining</label>
-              <input
-                type="date"
-                name="dateOfJoining"
-                value={formData.dateOfJoining}
-                onChange={handleChange}
-                className="form-input"
-              />
-            </div>
-
-            {/* Active Status */}
-            <div className="flex items-center">
+            <div className="flex items-center justify-between p-5 bg-emerald-50/20 rounded-3xl border border-emerald-50">
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest leading-none">Operational Status</span>
+              </div>
               <input
                 type="checkbox"
                 name="isActive"
                 checked={formData.isActive}
                 onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                className="w-6 h-6 rounded-lg text-emerald-600 border-emerald-200 focus:ring-emerald-500"
               />
-              <label className="ml-2 text-sm text-gray-700">Active</label>
             </div>
           </div>
+        </div>
 
-          {/* Salary Structure Section */}
-          <div className="pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600" />
-              Salary Structure
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <label className="form-label">Basic Salary</label>
-                <input
-                  type="number"
-                  name="basicSalary"
-                  value={formData.basicSalary}
-                  onChange={handleChange}
-                  className="form-input"
-                  min="0"
-                />
+        {/* Salary Matrix */}
+        <div className="app-card pb-10 overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Financial Ratios</h3>
+          </div>
+
+          <div className="p-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Basic Base</label>
+                <input type="number" name="basicSalary" value={formData.basicSalary} onChange={handleChange} className="w-full px-5 py-4 bg-gray-100 border-none rounded-2xl focus:ring-4 focus:ring-emerald-50 outline-none transition-all font-black text-gray-900 text-lg tracking-tight" />
               </div>
-              <div>
-                <label className="form-label">HRA</label>
-                <input
-                  type="number"
-                  name="hra"
-                  value={formData.hra}
-                  onChange={handleChange}
-                  className="form-input"
-                  min="0"
-                />
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">HRA Allocation</label>
+                <input type="number" name="hra" value={formData.hra} onChange={handleChange} className="w-full px-5 py-4 bg-gray-100 border-none rounded-2xl focus:ring-4 focus:ring-emerald-50 outline-none transition-all font-black text-gray-900 text-lg tracking-tight" />
               </div>
-              <div>
-                <label className="form-label">Other Allowances</label>
-                <input
-                  type="number"
-                  name="otherAllowances"
-                  value={formData.otherAllowances}
-                  onChange={handleChange}
-                  className="form-input"
-                  min="0"
-                />
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Allowances</label>
+                <input type="number" name="otherAllowances" value={formData.otherAllowances} onChange={handleChange} className="w-full px-5 py-4 bg-gray-100 border-none rounded-2xl focus:ring-4 focus:ring-emerald-50 outline-none transition-all font-black text-gray-900 text-lg tracking-tight" />
               </div>
-              <div>
-                <label className="form-label">Standard Deductions</label>
-                <input
-                  type="number"
-                  name="standardDeductions"
-                  value={formData.standardDeductions}
-                  onChange={handleChange}
-                  className="form-input"
-                  min="0"
-                />
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Statutory Deductions</label>
+                <input type="number" name="standardDeductions" value={formData.standardDeductions} onChange={handleChange} className="w-full px-5 py-4 bg-red-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-red-600 text-lg tracking-tight" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="isPFEnabled"
-                  checked={formData.isPFEnabled}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
-                <label className="ml-2 text-sm text-gray-700">Enable PF (12%)</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-10 bg-gray-50/50 rounded-[40px] border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Provident Fund</p>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase">12% Contribution</p>
+                </div>
+                <input type="checkbox" name="isPFEnabled" checked={formData.isPFEnabled} onChange={handleChange} className="w-6 h-6 rounded-lg text-emerald-600" />
               </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="isESIEnabled"
-                  checked={formData.isESIEnabled}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
-                <label className="ml-2 text-sm text-gray-700">Enable ESI (0.75%)</label>
+              <div className="flex items-center justify-between border-x border-gray-100 px-8">
+                <div>
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest">ESI Security</p>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase">Statutory Coverage</p>
+                </div>
+                <input type="checkbox" name="isESIEnabled" checked={formData.isESIEnabled} onChange={handleChange} className="w-6 h-6 rounded-lg text-emerald-600" />
               </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="isOTEnabled"
-                  checked={formData.isOTEnabled}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-                />
-                <label className="ml-2 text-sm text-gray-700">Enable OT Calculation</label>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Overtime Control</p>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase">multiplier {formData.otRateMultiplier}x</p>
+                </div>
+                <input type="checkbox" name="isOTEnabled" checked={formData.isOTEnabled} onChange={handleChange} className="w-6 h-6 rounded-lg text-emerald-600" />
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Banking & Identity Section */}
-          <div className="pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-blue-600" />
-              Banking & Identity
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <label className="form-label">Bank Name</label>
-                <input
-                  type="text"
-                  name="bankName"
-                  value={formData.bankName}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="e.g. HDFC Bank"
-                />
-              </div>
-              <div>
-                <label className="form-label">Account Number</label>
-                <input
-                  type="text"
-                  name="accountNumber"
-                  value={formData.accountNumber}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="Enter A/C Number"
-                />
-              </div>
-              <div>
-                <label className="form-label">IFSC Code</label>
-                <input
-                  type="text"
-                  name="ifscCode"
-                  value={formData.ifscCode}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="Enter IFSC"
-                />
-              </div>
-              <div>
-                <label className="form-label">PAN Number</label>
-                <input
-                  type="text"
-                  name="panNumber"
-                  value={formData.panNumber}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="ABCDE1234F"
-                />
-              </div>
-              <div>
-                <label className="form-label">Aadhaar Number</label>
-                <input
-                  type="text"
-                  name="aadhaarNumber"
-                  value={formData.aadhaarNumber}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="1234 5678 9012"
-                />
-              </div>
+        {/* Banking Matrix */}
+        <div className="app-card overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-blue-600" />
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Banking & Identity Hub</h3>
+          </div>
+
+          <div className="p-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Financial Institution</label>
+              <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm" placeholder="e.g. HDFC Bank" />
+            </div>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Account Sequence</label>
+              <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm" placeholder="Enter A/C" />
+            </div>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">IFSC Identifier</label>
+              <input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm uppercase" placeholder="Enter IFSC" />
+            </div>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">PAN Legal</label>
+              <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm uppercase" placeholder="ABCDE1234F" />
+            </div>
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Aadhaar UID</label>
+              <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm" placeholder="1234 5678 9012" />
             </div>
           </div>
+        </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => navigate('/employees')}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'Saving...' : 'Save Employee'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Action Footer */}
+        <div className="flex justify-end items-center gap-6 pt-10">
+          <button
+            type="button"
+            onClick={() => navigate('/employees')}
+            className="px-10 py-5 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-gray-50 transition-all"
+          >
+            Cancel Session
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-12 py-5 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-red-700 shadow-2xl shadow-red-200 transition-all flex items-center space-x-3"
+          >
+            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save className="w-5 h-5" />}
+            <span>{isEditing ? 'Sync Profile' : 'Commit Enrollment'}</span>
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
