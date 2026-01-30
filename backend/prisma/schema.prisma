@@ -145,6 +145,7 @@ model Employee {
   otRateMultiplier  Float            @default(1.5)
 
   fieldLogs       FieldLog[]
+  salaryComponents EmployeeSalaryComponent[]
 }
 
 model FieldLog {
@@ -201,6 +202,69 @@ model AuditLog {
   createdAt         DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model SalaryComponent {
+  id                String   @id @default(uuid())
+  name              String
+  code              String   @unique // e.g., BASIC, HRA, PF_EMP
+  type              String   // EARNING, DEDUCTION
+  calculationType   String   // FIXED, PERCENTAGE, FORMULA
+  percentageOf      String?  // If calculationType is PERCENTAGE, percentage of which code?
+  value             Float    @default(0)
+  isStatutory       Boolean  @default(false)
+  isTaxable         Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  employeeLinks     EmployeeSalaryComponent[]
+}
+
+model EmployeeSalaryComponent {
+  id                String          @id @default(uuid())
+  employeeId        String
+  employee          Employee        @relation(fields: [employeeId], references: [id])
+  componentId       String
+  component         SalaryComponent @relation(fields: [componentId], references: [id])
+  monthlyAmount     Float           @default(0)
+  effectiveFrom     DateTime        @default(now())
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([employeeId, componentId])
+}
+
+model StatutoryConfig {
+  id                String   @id @default(uuid())
+  key               String   @unique // e.g., PF_LIMIT, ESI_LIMIT, PT_SLABS
+  value             String   // JSON string of config
+  description       String?
+  effectiveFrom     DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model PayrollRun {
+  id                String    @id @default(uuid())
+  month             Int
+  year              Int
+  batchName         String
+  status            String    @default("draft") // draft, processing, review, finalized, locked
+  totalEmployees    Int       @default(0)
+  totalGross        Float     @default(0)
+  totalNet          Float     @default(0)
+  processedBy       String?
+  processedAt       DateTime?
+  approvedBy        String?
+  approvedAt        DateTime?
+  periodStart       DateTime
+  periodEnd         DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  payrolls          Payroll[]
+
+  @@unique([month, year])
 }
 
 model Shift {
@@ -396,11 +460,15 @@ model Payroll {
   totalDeductions   Float
   netSalary         Float
   
-  status            String    @default("draft") // draft, generated, paid
+  payrollRunId      String?
+  payrollRun        PayrollRun? @relation(fields: [payrollRunId], references: [id])
+  
+  status            String    @default("draft") // draft, generated, paid, locked
   remarks           String?
   paidAt            DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   @@unique([employeeId, month, year])
+  @@index([payrollRunId])
 }
