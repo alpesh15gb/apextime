@@ -98,10 +98,10 @@ export const Leaves = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                        {user?.role === 'employee' ? 'My Leave History' : 'Leave Approvals'}
+                        {user?.role === 'employee' ? 'My Leaves' : 'Leave Administration'}
                     </h1>
                     <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">
-                        {user?.role === 'employee' ? 'Track and manage your absence signals' : 'Hierarchical governance of personnel absence'}
+                        {user?.role === 'employee' ? 'View and track your leave history' : 'Review and process employee leave requests'}
                     </p>
                 </div>
 
@@ -112,7 +112,7 @@ export const Leaves = () => {
                                 onClick={() => setActiveView('manager')}
                                 className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'manager' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
                             >
-                                L1: Manager
+                                Manager Approval
                             </button>
                         )}
                         {user?.role === 'admin' && (
@@ -120,7 +120,7 @@ export const Leaves = () => {
                                 onClick={() => setActiveView('ceo')}
                                 className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'ceo' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
                             >
-                                L2: CEO Final
+                                CEO Approval
                             </button>
                         )}
                         <button
@@ -203,7 +203,7 @@ export const Leaves = () => {
                                                         <button onClick={() => handleReject(l.id)} className="p-2.5 bg-gray-50 text-gray-400 hover:bg-black hover:text-white rounded-xl transition-all"><XCircle className="w-4 h-4" /></button>
                                                         <button onClick={() => handleApprove(l.id)} className="p-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 transition-all flex items-center gap-2">
                                                             <Check className="w-4 h-4" />
-                                                            <span className="text-[10px] font-black uppercase tracking-widest px-1">{activeView === 'manager' ? 'Forward' : 'Authorize'}</span>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest px-1">{activeView === 'manager' ? 'Approve' : 'Authorize'}</span>
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -218,7 +218,7 @@ export const Leaves = () => {
                                         <tr>
                                             <td colSpan={4} className="py-24 text-center">
                                                 <AlertCircle className="w-12 h-12 text-gray-100 mx-auto mb-4" />
-                                                <p className="text-sm font-black text-gray-300 uppercase tracking-widest">No Pending Signals</p>
+                                                <p className="text-sm font-black text-gray-300 uppercase tracking-widest">No pending requests</p>
                                             </td>
                                         </tr>
                                     )}
@@ -231,8 +231,8 @@ export const Leaves = () => {
                 <div className="space-y-8">
                     <div className="app-card p-10 bg-gray-900 border-none text-white relative overflow-hidden">
                         <div className="absolute bottom-[-10%] right-[-10%] w-32 h-32 bg-blue-600/20 rounded-full blur-3xl"></div>
-                        <h3 className="text-xl font-extrabold italic mb-2 tracking-tight">Governance Dashboard</h3>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Institutional Efficiency</p>
+                        <h3 className="text-xl font-extrabold italic mb-2 tracking-tight">Approval Statistics</h3>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Quick Overview</p>
 
                         <div className="mt-12 space-y-8">
                             <div className="flex justify-between items-end border-b border-gray-800 pb-4">
@@ -240,7 +240,7 @@ export const Leaves = () => {
                                 <span className="text-2xl font-black text-white tracking-tighter">1.8 Hrs</span>
                             </div>
                             <div className="flex justify-between items-end border-b border-gray-800 pb-4">
-                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Reject Quantum</span>
+                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Rejection Rate</span>
                                 <span className="text-2xl font-black text-red-500 tracking-tighter">4.2%</span>
                             </div>
                         </div>
@@ -249,10 +249,10 @@ export const Leaves = () => {
                     <div className="app-card p-10 space-y-6">
                         <div className="flex items-center space-x-3 text-blue-600">
                             <FileText className="w-5 h-5" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Routing Protocol</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Leave Policy</span>
                         </div>
                         <p className="text-xs font-bold text-gray-500 leading-relaxed">
-                            Leaves authorized by the <strong className="text-gray-900">CEO Final Matrix</strong> are immediately reflected in the <strong className="text-gray-900">Payroll Cycle</strong>. Loss of Pay (LOP) adjustments are automated based on this decision chain.
+                            Leaves approved by the <strong className="text-gray-900">CEO Approval</strong> level are final and will be reflected in the payroll. Loss of Pay (LOP) calculations are based on these final approvals.
                         </p>
                     </div>
                 </div>

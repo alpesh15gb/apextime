@@ -44,25 +44,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     ]
     : user?.role === 'manager'
       ? [
-        { path: '/dashboard', icon: LayoutDashboard, label: 'Manager Hub' },
-        // Personal Section
+        { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         {
-          label: 'My Activities',
-          icon: Users,
-          children: [
-            { path: '/portal', icon: LayoutDashboard, label: 'My Portal' },
-            { path: '/leaves', icon: Calendar, label: 'Apply Leave' },
-            { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
-          ]
-        },
-        // Team Management Section
-        {
-          label: 'Team Management',
+          label: 'Staff Leaves',
           icon: Briefcase,
           children: [
-            { path: '/leaves', icon: Calendar, label: 'Leave Approvals' }, // The page handles role-based views
-            { path: '/attendance', icon: ClipboardCheck, label: 'Team Attendance' },
-            { path: '/reports', icon: FileSpreadsheet, label: 'Team Reports' },
+            { path: '/leaves', icon: Calendar, label: 'Leave Approvals' },
+            { path: '/attendance', icon: ClipboardCheck, label: 'Staff Attendance' },
+          ]
+        },
+        {
+          label: 'My Info',
+          icon: Users,
+          children: [
+            { path: '/leaves', icon: Calendar, label: 'My Leaves' },
+            { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
+            { path: '/portal', icon: LayoutDashboard, label: 'My Portal' },
           ]
         }
       ]

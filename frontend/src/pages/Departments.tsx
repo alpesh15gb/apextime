@@ -111,8 +111,8 @@ export const Departments = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Departmental Matrix</h1>
-          <p className="text-sm font-bold text-gray-400 mt-1">Organize your personnel into functional units</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Departments</h1>
+          <p className="text-sm font-bold text-gray-400 mt-1">Manage and organize your company departments</p>
         </div>
         <button
           onClick={() => {
@@ -132,7 +132,7 @@ export const Departments = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Compiling Units...</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading Departments...</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -140,7 +140,7 @@ export const Departments = () => {
               <thead>
                 <tr className="bg-gray-50/30">
                   <th className="table-header w-24">Code</th>
-                  <th className="table-header">Unit Name</th>
+                  <th className="table-header">Department Name</th>
                   <th className="table-header">Managers</th>
                   <th className="table-header">Parent Branch</th>
                   <th className="table-header">Status</th>
@@ -205,7 +205,7 @@ export const Departments = () => {
           <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-10 border-b border-gray-50 flex justify-between items-center">
               <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-                {editingId ? 'Edit Unit' : 'Create Unit'}
+                {editingId ? 'Edit Department' : 'Create Department'}
               </h3>
               <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-500 rounded-2xl transition-all">
                 <X className="w-6 h-6" />
@@ -317,7 +317,7 @@ export const Departments = () => {
               <div className="pt-6 flex flex-col space-y-3">
                 <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
                   <Check className="w-4 h-4" />
-                  <span>{editingId ? 'Update Matrix' : 'Initialize Unit'}</span>
+                  <span>{editingId ? 'Save Changes' : 'Add Department'}</span>
                 </button>
                 <button type="button" onClick={() => setShowModal(false)} className="w-full py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">
                   Dismiss
