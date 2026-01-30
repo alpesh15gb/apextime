@@ -50,9 +50,22 @@ router.get('/', async (req, res) => {
             if (!status) where.status = 'pending_manager';
         }
 
-        // CEO/Admin View
+        // CEO/Senior Admin View
         else if (view === 'ceo' && user.role === 'admin') {
             if (!status) where.status = 'pending_ceo';
+        }
+
+        // History / All Records View (view='admin' from frontend)
+        else if (view === 'admin') {
+            if (user.role === 'manager') {
+                const managedDepts = await prisma.department.findMany({
+                    where: { managers: { some: { user: { id: user.id } } } },
+                    select: { id: true }
+                });
+                const deptIds = managedDepts.map(d => d.id);
+                where.employee = { departmentId: { in: deptIds } };
+            }
+            // If admin, no 'where' restricted, shows all.
         }
 
         if (status) where.status = status;

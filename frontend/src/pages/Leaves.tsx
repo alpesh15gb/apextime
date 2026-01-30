@@ -127,7 +127,7 @@ export const Leaves = () => {
                             onClick={() => setActiveView('admin')}
                             className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'admin' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                            Archive
+                            Admin Approval
                         </button>
                     </div>
                 ) : (
@@ -207,8 +207,11 @@ export const Leaves = () => {
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <span className={`badge ${l.status === 'approved' ? 'badge-success' : 'badge-warning'} uppercase text-[9px] font-black tracking-widest`}>
-                                                        {l.status}
+                                                    <span className={`badge ${l.status === 'approved' ? 'badge-success' :
+                                                            l.status === 'rejected' ? 'badge-danger' :
+                                                                'badge-warning'
+                                                        } uppercase text-[9px] font-black tracking-widest`}>
+                                                        {l.status === 'approved' ? 'Approved' : l.status === 'rejected' ? 'Rejected' : l.status}
                                                     </span>
                                                 )}
                                             </td>
