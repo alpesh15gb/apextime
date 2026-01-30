@@ -23,6 +23,7 @@ router.get('/', async (req, res) => {
             location: true,
           },
         },
+        manager: true, // Include manager details
       },
       orderBy: { name: 'asc' },
     });
@@ -44,6 +45,7 @@ router.get('/:id', async (req, res) => {
       include: {
         branch: true,
         employees: true,
+        manager: true,
       },
     });
 
@@ -58,21 +60,44 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Helper to promote employee to manager
+const promoteToManager = async (employeeId: string) => {
+  try {
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true }
+    });
+
+    if (employee && employee.user && employee.user.role === 'employee') {
+      await prisma.user.update({
+        where: { id: employee.user.id },
+        data: { role: 'manager' }
+      });
+    }
+  } catch (e) {
+    console.error("Failed to auto-promote manager:", e);
+  }
+};
+
 // Create department
 router.post('/', async (req, res) => {
   try {
-    const { name, code, branchId } = req.body;
+    const { name, code, branchId, managerId } = req.body;
 
     const department = await prisma.department.create({
       data: {
         name,
         code,
         branchId,
+        managerId: managerId || null,
       },
       include: {
         branch: true,
+        manager: true,
       },
     });
+
+    if (managerId) await promoteToManager(managerId);
 
     res.status(201).json(department);
   } catch (error) {
@@ -85,7 +110,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, branchId, isActive } = req.body;
+    const { name, code, branchId, isActive, managerId } = req.body;
 
     const department = await prisma.department.update({
       where: { id },
@@ -94,11 +119,15 @@ router.put('/:id', async (req, res) => {
         code,
         branchId,
         isActive,
+        managerId: managerId || null,
       },
       include: {
         branch: true,
+        manager: true,
       },
     });
+
+    if (managerId) await promoteToManager(managerId);
 
     res.json(department);
   } catch (error) {

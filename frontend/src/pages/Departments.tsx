@@ -13,18 +13,32 @@ import {
   MoreVertical,
   ChevronRight,
 } from 'lucide-react';
-import { departmentsAPI } from '../services/api';
+import { departmentsAPI, branchesAPI, employeesAPI } from '../services/api';
 
 export const Departments = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', code: '', branchId: '' });
+  const [branches, setBranches] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [formData, setFormData] = useState({ name: '', code: '', branchId: '', managerId: '' });
 
   useEffect(() => {
     fetchDepartments();
+    fetchMetadata();
   }, []);
+
+  const fetchMetadata = async () => {
+    try {
+      const [branchesRes, employeesRes] = await Promise.all([
+        branchesAPI.getAll(),
+        employeesAPI.getAll()
+      ]);
+      setBranches(branchesRes.data || []);
+      setEmployees(employeesRes.data || []);
+    } catch (e) { console.error('Meta error', e); }
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -48,7 +62,7 @@ export const Departments = () => {
       }
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: '', code: '', branchId: '' });
+      setFormData({ name: '', code: '', branchId: '', managerId: '' });
       fetchDepartments();
     } catch (error) {
       console.error('Failed to save department:', error);
@@ -56,7 +70,12 @@ export const Departments = () => {
   };
 
   const handleEdit = (dept: any) => {
-    setFormData({ name: dept.name, code: dept.code, branchId: dept.branchId || '' });
+    setFormData({
+      name: dept.name,
+      code: dept.code,
+      branchId: dept.branchId || '',
+      managerId: dept.managerId || ''
+    });
     setEditingId(dept.id);
     setShowModal(true);
   };
@@ -82,7 +101,7 @@ export const Departments = () => {
         <button
           onClick={() => {
             setEditingId(null);
-            setFormData({ name: '', code: '', branchId: '' });
+            setFormData({ name: '', code: '', branchId: '', managerId: '' });
             setShowModal(true);
           }}
           className="px-6 py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center space-x-2"
@@ -106,6 +125,7 @@ export const Departments = () => {
                 <tr className="bg-gray-50/30">
                   <th className="table-header w-24">Code</th>
                   <th className="table-header">Unit Name</th>
+                  <th className="table-header">Manager</th>
                   <th className="table-header">Parent Branch</th>
                   <th className="table-header">Status</th>
                   <th className="table-header text-right">Settings</th>
@@ -126,6 +146,16 @@ export const Departments = () => {
                         </div>
                         <span className="text-sm font-extrabold text-gray-800">{dept.name}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      {dept.manager ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-black text-blue-600">
+                            {dept.manager.firstName[0]}{dept.manager.lastName[0]}
+                          </div>
+                          <span className="text-xs font-bold text-gray-700">{dept.manager.firstName} {dept.manager.lastName}</span>
+                        </div>
+                      ) : <span className="text-xs text-gray-400 font-bold">Unassigned</span>}
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center space-x-2 text-xs font-bold text-gray-500">
@@ -189,19 +219,48 @@ export const Departments = () => {
                 />
               </div>
 
-              <div className="pt-6 flex flex-col space-y-3">
-                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
-                  <Check className="w-4 h-4" />
-                  <span>{editingId ? 'Update Matrix' : 'Initialize Unit'}</span>
-                </button>
-                <button type="button" onClick={() => setShowModal(false)} className="w-full py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">
-                  Dismiss
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Parent Branch</label>
+                  <select
+                    value={formData.branchId}
+                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
+                  >
+                    <option value="">Select Branch</option>
+                    {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Dept. Manager</label>
+                  <select
+                    value={formData.managerId}
+                    onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
+                  >
+                    <option value="">Assign Admin</option>
+                    {employees.map((e: any) => (
+                      <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeCode})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </form>
+
           </div>
-        </div>
+
+          <div className="pt-6 flex flex-col space-y-3">
+            <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
+              <Check className="w-4 h-4" />
+              <span>{editingId ? 'Update Matrix' : 'Initialize Unit'}</span>
+            </button>
+            <button type="button" onClick={() => setShowModal(false)} className="w-full py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">
+              Dismiss
+            </button>
+          </div>
+        </form>
+          </div >
+        </div >
       )}
-    </div>
+    </div >
   );
 };
