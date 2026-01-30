@@ -175,14 +175,15 @@ router.post(
         aadhaarNumber,
       } = req.body;
 
-      const sanitizeNumber = (val: any) => {
-        const parsed = parseFloat(val);
-        return isNaN(parsed) ? 0 : parsed;
+      const sanitizeId = (val: any) => {
+        if (!val || val === '' || val === 'undefined') return null;
+        return val;
       };
 
-      const sanitizeId = (val: any) => {
+      const sanitizeDate = (val: any) => {
         if (!val || val === '') return null;
-        return val;
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
       };
 
       // Check if employee code already exists
@@ -191,7 +192,7 @@ router.post(
       });
 
       if (existing) {
-        return res.status(400).json({ error: 'Employee code already exists' });
+        return res.status(400).json({ error: `Employee code '${employeeCode}' already exists` });
       }
 
       // Also check if User with same username exists
@@ -203,58 +204,62 @@ router.post(
         return res.status(400).json({ error: `User login '${employeeCode}' is already taken` });
       }
 
-      const employee = await prisma.employee.create({
-        data: {
-          employeeCode,
-          firstName,
-          lastName,
-          email,
-          phone,
-          branchId: sanitizeId(branchId),
-          departmentId: sanitizeId(departmentId),
-          designationId: sanitizeId(designationId),
-          categoryId: sanitizeId(categoryId),
-          shiftId: sanitizeId(shiftId),
-          deviceUserId,
-          dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
-          basicSalary: sanitizeNumber(basicSalary),
-          hra: sanitizeNumber(hra),
-          otherAllowances: sanitizeNumber(otherAllowances),
-          standardDeductions: sanitizeNumber(standardDeductions),
-          isPFEnabled: isPFEnabled === true || isPFEnabled === 'true',
-          isESIEnabled: isESIEnabled === true || isESIEnabled === 'true',
-          isOTEnabled: isOTEnabled === true || isOTEnabled === 'true',
-          otRateMultiplier: sanitizeNumber(otRateMultiplier || 1.5),
-          bankName,
-          accountNumber,
-          ifscCode,
-          panNumber,
-          aadhaarNumber,
-        },
-        include: {
-          department: true,
-          branch: true,
-          shift: true,
-          designation: true,
-          category: true,
-        },
+      const result = await prisma.$transaction(async (tx) => {
+        const employee = await tx.employee.create({
+          data: {
+            employeeCode,
+            firstName,
+            lastName,
+            email,
+            phone,
+            branchId: sanitizeId(branchId),
+            departmentId: sanitizeId(departmentId),
+            designationId: sanitizeId(designationId),
+            categoryId: sanitizeId(categoryId),
+            shiftId: sanitizeId(shiftId),
+            deviceUserId: sanitizeId(deviceUserId),
+            dateOfJoining: sanitizeDate(dateOfJoining),
+            basicSalary: sanitizeNumber(basicSalary),
+            hra: sanitizeNumber(hra),
+            otherAllowances: sanitizeNumber(otherAllowances),
+            standardDeductions: sanitizeNumber(standardDeductions),
+            isPFEnabled: isPFEnabled === true || isPFEnabled === 'true',
+            isESIEnabled: isESIEnabled === true || isESIEnabled === 'true',
+            isOTEnabled: isOTEnabled === true || isOTEnabled === 'true',
+            otRateMultiplier: sanitizeNumber(otRateMultiplier || 1.5),
+            bankName,
+            accountNumber,
+            ifscCode,
+            panNumber,
+            aadhaarNumber,
+          },
+          include: {
+            department: true,
+            branch: true,
+            shift: true,
+            designation: true,
+            category: true,
+          },
+        });
+
+        // Automatically create User record for the employee
+        const hashedPassword = await bcrypt.hash(employeeCode, 10);
+        await tx.user.create({
+          data: {
+            username: employeeCode,
+            password: hashedPassword,
+            role: 'employee',
+            employeeId: employee.id
+          }
+        });
+
+        return employee;
       });
 
-      // Automatically create User record for the employee
-      const hashedPassword = await bcrypt.hash(employeeCode, 10);
-      await prisma.user.create({
-        data: {
-          username: employeeCode,
-          password: hashedPassword,
-          role: 'employee',
-          employeeId: employee.id
-        }
-      });
-
-      res.status(201).json(employee);
-    } catch (error) {
+      res.status(201).json(result);
+    } catch (error: any) {
       console.error('Create employee error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: error.message || 'Internal server error while creating employee' });
     }
   }
 );
@@ -299,8 +304,14 @@ router.put('/:id', async (req, res) => {
     };
 
     const sanitizeId = (val: any) => {
-      if (!val || val === '') return null;
+      if (!val || val === '' || val === 'undefined') return null;
       return val;
+    };
+
+    const sanitizeDate = (val: any) => {
+      if (!val || val === '') return undefined;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? undefined : d;
     };
 
     const employee = await prisma.employee.update({
@@ -316,8 +327,8 @@ router.put('/:id', async (req, res) => {
         designationId: sanitizeId(designationId),
         categoryId: sanitizeId(categoryId),
         shiftId: sanitizeId(shiftId),
-        deviceUserId,
-        dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
+        deviceUserId: sanitizeId(deviceUserId),
+        dateOfJoining: sanitizeDate(dateOfJoining),
         isActive: isActive !== undefined ? (isActive === true || isActive === 'true') : undefined,
         basicSalary: sanitizeNumber(basicSalary),
         hra: sanitizeNumber(hra),

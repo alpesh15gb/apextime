@@ -117,8 +117,10 @@ export const EmployeeForm = () => {
         await employeesAPI.create(formData);
       }
       navigate('/employees');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save employee:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Failed to sync personnel matrix';
+      alert(`Critical Error: ${errorMsg}`);
     } finally {
       setSaving(false);
     }
