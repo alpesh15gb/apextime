@@ -102,7 +102,7 @@ export const Holidays = () => {
               <button
                 key={year}
                 onClick={() => setSelectedYear(year)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-red-600 text-white shadow-lg shadow-red-100' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 {year}
               </button>
@@ -126,12 +126,12 @@ export const Holidays = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 space-y-8">
           {/* Legend / Info */}
-          <div className="app-card p-8 bg-red-50/20 border-red-50 flex items-start gap-4">
-            <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-white shrink-0">
+          <div className="app-card p-8 bg-blue-50/20 border-blue-50 flex items-start gap-4">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shrink-0">
               <Info className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-xs font-black text-red-600 uppercase tracking-widest">Global Policy</h4>
+              <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest">Global Policy</h4>
               <p className="text-xs font-bold text-gray-500 leading-relaxed">Sundays are systemically handled as weekly offs. Added holidays will be reflected in Attendance reports and Payroll LOP logic automatically.</p>
             </div>
           </div>
@@ -140,7 +140,7 @@ export const Holidays = () => {
           <div className="app-card overflow-hidden">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scanning Calendar...</p>
               </div>
             ) : (
@@ -160,7 +160,7 @@ export const Holidays = () => {
                         <td className="px-6 py-5">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex flex-col items-center justify-center shadow-sm">
-                              <span className="text-[9px] font-black text-red-600 uppercase leading-none">{new Date(holiday.date).toLocaleString('default', { month: 'short' })}</span>
+                              <span className="text-[9px] font-black text-blue-600 uppercase leading-none">{new Date(holiday.date).toLocaleString('default', { month: 'short' })}</span>
                               <span className="text-sm font-black text-gray-900 leading-none mt-1">{new Date(holiday.date).getDate()}</span>
                             </div>
                             <div>
@@ -204,7 +204,7 @@ export const Holidays = () => {
             <div className="app-card p-10 space-y-10 animate-in slide-in-from-right-10 duration-500 ring-4 ring-red-50/50">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">{editingId ? 'Edit Holiday' : 'Add Holiday'}</h3>
-                <button onClick={() => setShowForm(false)} className="p-2 text-gray-400 hover:text-red-600"><X className="w-6 h-6" /></button>
+                <button onClick={() => setShowForm(false)} className="p-2 text-gray-400 hover:text-blue-600"><X className="w-6 h-6" /></button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-8">
@@ -214,7 +214,7 @@ export const Holidays = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                     placeholder="e.g. Independence Day"
                     required
                   />
@@ -225,7 +225,7 @@ export const Holidays = () => {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-red-600 text-sm"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-black text-blue-600 text-sm"
                     required
                   />
                 </div>
@@ -234,7 +234,7 @@ export const Holidays = () => {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm resize-none h-24"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-3xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm resize-none h-24"
                     placeholder="Brief description..."
                   />
                 </div>
@@ -250,12 +250,12 @@ export const Holidays = () => {
                     type="checkbox"
                     checked={formData.isRecurring}
                     onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-                    className="w-6 h-6 rounded-lg text-red-600 border-gray-200 focus:ring-red-500"
+                    className="w-6 h-6 rounded-lg text-blue-600 border-gray-200 focus:ring-blue-500"
                   />
                 </div>
 
                 <div className="pt-4 flex flex-col space-y-3">
-                  <button type="submit" className="w-full py-5 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-red-700 shadow-2xl shadow-red-200 transition-all flex items-center justify-center space-x-3">
+                  <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all flex items-center justify-center space-x-3">
                     <Save className="w-4 h-4" />
                     <span>Commit to Calendar</span>
                   </button>

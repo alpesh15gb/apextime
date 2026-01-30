@@ -107,7 +107,7 @@ export const Locations = () => {
       <div className="app-card overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Triangulating Nodes...</p>
           </div>
         ) : (
@@ -128,7 +128,7 @@ export const Locations = () => {
                   <tr key={loc.id} className="table-row group">
                     <td className="px-6 py-5">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-red-50 group-hover:text-red-600 transition-all shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all shadow-sm">
                           <MapPin className="w-5 h-5" />
                         </div>
                         <span className="text-sm font-extrabold text-gray-800">{loc.name}</span>
@@ -176,7 +176,7 @@ export const Locations = () => {
               <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
                 {editingId ? 'Edit Node' : 'New Node'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all">
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-500 rounded-2xl transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -188,7 +188,7 @@ export const Locations = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="e.g. Haryana Corporate Hub"
                   required
                 />
@@ -199,7 +199,7 @@ export const Locations = () => {
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="Enter full street address"
                 />
               </div>
@@ -227,7 +227,7 @@ export const Locations = () => {
               </div>
 
               <div className="pt-6 flex flex-col space-y-3">
-                <button type="submit" className="w-full py-4 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center justify-center space-x-2">
+                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
                   <Check className="w-4 h-4" />
                   <span>{editingId ? 'Modify Matrix' : 'Initialize Node'}</span>
                 </button>

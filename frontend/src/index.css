@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --primary: 220 38 38;
-    --primary-light: 254 242 242;
+    --primary: 37 99 235;
+    --primary-light: 239 246 255;
     --bg-main: 245 246 250;
     --sidebar-bg: 26 26 26;
     --sidebar-w: 260px;
@@ -14,7 +14,7 @@
 
   body {
     @apply bg-[#F5F6FA] text-gray-900 antialiased;
-    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 }
 
@@ -29,7 +29,7 @@
   }
 
   .nav-item-active {
-    @apply bg-[#FEF2F2] text-[#E03131] font-semibold;
+    @apply bg-blue-50 text-blue-600 font-semibold;
   }
 
   .stat-card {
@@ -57,7 +57,7 @@
   }
 
   .input-app {
-    @apply px-4 py-2 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all duration-200 text-sm;
+    @apply px-4 py-2 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200 text-sm;
   }
 
   .btn-app {
@@ -65,7 +65,7 @@
   }
 
   .btn-app-primary {
-    @apply bg-[#E03131] text-white hover:bg-red-700 shadow-lg shadow-red-200;
+    @apply bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200;
   }
 }
 

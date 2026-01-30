@@ -291,14 +291,14 @@ export const SyncDiagnostics = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-            <Terminal className="w-8 h-8 text-red-600" />
+            <Terminal className="w-8 h-8 text-blue-600" />
             Sync Control Center
           </h1>
           <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter italic">Precision diagnostic matrix for biometric data ingestion</p>
         </div>
 
         <div className="flex bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
-          <button onClick={fetchSyncStatus} className="p-3 text-gray-400 hover:text-red-600 transition-all"><RefreshCw className={`w-5 h-5 ${loading.sync ? 'animate-spin' : ''}`} /></button>
+          <button onClick={fetchSyncStatus} className="p-3 text-gray-400 hover:text-blue-600 transition-all"><RefreshCw className={`w-5 h-5 ${loading.sync ? 'animate-spin' : ''}`} /></button>
           <button onClick={triggerSync} disabled={loading.trigger} className="btn-app btn-app-primary">
             <Play className="w-4 h-4" />
             <span>{loading.trigger ? 'Ingesting...' : 'Hot Sync'}</span>
@@ -312,7 +312,7 @@ export const SyncDiagnostics = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="app-card p-10 space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Database className="w-4 h-4 text-red-600" /> SQL Tunnel</h3>
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Database className="w-4 h-4 text-blue-600" /> SQL Tunnel</h3>
                 <div className={`w-3 h-3 rounded-full ${connectionStatus?.status === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
               </div>
               {connectionStatus?.status === 'connected' ? (
@@ -352,9 +352,9 @@ export const SyncDiagnostics = () => {
           {/* Unmatched Mapping */}
           <div className="app-card overflow-hidden">
             <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/20">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Users className="w-4 h-4 text-red-600" /> Identity Resolver Matrix</h3>
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" /> Identity Resolver Matrix</h3>
               <div className="flex items-center space-x-3">
-                <button onClick={syncEmployeeNames} className="px-4 py-2 bg-white border border-gray-100 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-xl hover:text-red-600 transition-all">Push SQL Names</button>
+                <button onClick={syncEmployeeNames} className="px-4 py-2 bg-white border border-gray-100 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-xl hover:text-blue-600 transition-all">Push SQL Names</button>
                 <button onClick={fetchUnmatchedUsers} className="p-2 text-gray-300 hover:text-red-500"><RotateCcw className="w-4 h-4" /></button>
               </div>
             </div>
@@ -390,10 +390,10 @@ export const SyncDiagnostics = () => {
           {/* Duplicate Detection */}
           <div className="app-card border-none bg-gray-900 text-white overflow-hidden shadow-2xl shadow-gray-200">
             <div className="p-8 border-b border-white/5 bg-white/5 flex justify-between items-center">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Disc className="w-4 h-4 text-red-600" /> Conflict Management</h3>
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><Disc className="w-4 h-4 text-blue-600" /> Conflict Management</h3>
               <div className="flex items-center space-x-3">
                 <button onClick={fetchDuplicates} className="px-4 py-2 bg-white/5 border border-white/10 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-xl hover:text-white transition-all">Scan Registry</button>
-                <button onClick={mergeDuplicates} disabled={merging || !duplicates} className="px-6 py-2 bg-red-600 text-white font-black text-[9px] uppercase tracking-widest rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-900/40">Authorize Merge</button>
+                <button onClick={mergeDuplicates} disabled={merging || !duplicates} className="px-6 py-2 bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/40">Authorize Merge</button>
               </div>
             </div>
             <div className="p-10">
@@ -442,12 +442,12 @@ export const SyncDiagnostics = () => {
         <div className="space-y-8">
           {/* Database Exploration */}
           <div className="app-card p-10 space-y-8">
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><List className="w-4 h-4 text-red-600" /> Operational Shards</h3>
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2"><List className="w-4 h-4 text-blue-600" /> Operational Shards</h3>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {discoveredTables.map(t => (
-                <div key={t.name} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-red-100 group transition-all">
+                <div key={t.name} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-blue-100 group transition-all">
                   <div>
-                    <p className="text-[10px] font-black text-gray-800 line-clamp-1 group-hover:text-red-600 transition-colors uppercase tracking-widest">{t.name}</p>
+                    <p className="text-[10px] font-black text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors uppercase tracking-widest">{t.name}</p>
                     <p className="text-[8px] font-bold text-gray-400 mt-1">Status: Indexed</p>
                   </div>
                   <div className="text-right">
@@ -456,23 +456,23 @@ export const SyncDiagnostics = () => {
                 </div>
               ))}
             </div>
-            <button onClick={discoverTables} className="w-full py-4 bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-red-700 shadow-xl shadow-red-100 transition-all flex items-center justify-center space-x-2">
+            <button onClick={discoverTables} className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all flex items-center justify-center space-x-2">
               <RotateCcw className="w-4 h-4" />
               <span>Rescan Shards</span>
             </button>
           </div>
 
-          <div className="app-card p-10 bg-red-600 text-white space-y-6 relative overflow-hidden">
+          <div className="app-card p-10 bg-blue-600 text-white space-y-6 relative overflow-hidden">
             <div className="absolute bottom-[-20%] left-[-20%] w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-            <h3 className="text-xl font-extrabold italic relative z-10">Advanced <span className="text-red-200">Ingestion</span></h3>
-            <p className="text-[10px] font-bold text-red-100/70 leading-relaxed relative z-10 uppercase tracking-widest">Full sequence historical scan from 2020 registry. Total timeline reconstruction.</p>
-            <button onClick={triggerFullSync} className="w-full py-4 bg-white text-red-600 font-black text-[11px] uppercase tracking-widest rounded-2xl hover:scale-105 transition-all shadow-2xl shadow-red-900/40 relative z-10">
+            <h3 className="text-xl font-extrabold italic relative z-10">Advanced <span className="text-blue-200">Ingestion</span></h3>
+            <p className="text-[10px] font-bold text-blue-100/70 leading-relaxed relative z-10 uppercase tracking-widest">Full sequence historical scan from 2020 registry. Total timeline reconstruction.</p>
+            <button onClick={triggerFullSync} className="w-full py-4 bg-white text-blue-600 font-black text-[11px] uppercase tracking-widest rounded-2xl hover:scale-105 transition-all shadow-2xl shadow-blue-900/40 relative z-10">
               Initiate Deep Scan
             </button>
           </div>
 
           <div className="app-card p-10 space-y-4 border-dashed border-2">
-            <div className="flex items-center space-x-2 text-red-600">
+            <div className="flex items-center space-x-2 text-blue-600">
               <ShieldCheck className="w-5 h-5" />
               <span className="text-[10px] font-black uppercase tracking-widest">Security Protocol</span>
             </div>

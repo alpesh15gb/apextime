@@ -201,7 +201,7 @@ export const MonthlyReport = () => {
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">All Branches</option>
                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -212,7 +212,7 @@ export const MonthlyReport = () => {
               <select
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">All Departments</option>
                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -251,7 +251,7 @@ export const MonthlyReport = () => {
         </div>
       ) : loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading Report...</p>
         </div>
       ) : (
@@ -347,8 +347,8 @@ export const MonthlyReport = () => {
                 </thead>
                 <tbody>
                   {report?.reportData?.map((row, idx) => (
-                    <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
-                      <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                    <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-blue-50/10 transition-colors">
+                      <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-blue-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
                         <div className="font-extrabold text-gray-900 text-[10px] truncate whitespace-nowrap w-28" title={row?.employee?.name}>{row?.employee?.name || 'Unknown'}</div>
                         <div className="text-[8px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row?.employee?.employeeCode || '-'}</div>
                       </td>

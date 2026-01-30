@@ -121,7 +121,7 @@ export const Shifts = () => {
       <div className="app-card overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Loading Rosters...</p>
           </div>
         ) : (
@@ -198,7 +198,7 @@ export const Shifts = () => {
               <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
                 {editingId ? 'Edit Roster' : 'New Roster'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all">
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-500 rounded-2xl transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -210,7 +210,7 @@ export const Shifts = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="e.g. Standard Morning"
                   required
                 />
@@ -223,7 +223,7 @@ export const Shifts = () => {
                     type="time"
                     value={formData.startTime}
                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                     required
                   />
                 </div>
@@ -233,7 +233,7 @@ export const Shifts = () => {
                     type="time"
                     value={formData.endTime}
                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                     required
                   />
                 </div>
@@ -246,7 +246,7 @@ export const Shifts = () => {
                     type="number"
                     value={formData.gracePeriodIn}
                     onChange={(e) => setFormData({ ...formData, gracePeriodIn: parseInt(e.target.value) })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                     min="0"
                   />
                 </div>
@@ -256,7 +256,7 @@ export const Shifts = () => {
                     type="number"
                     value={formData.gracePeriodOut}
                     onChange={(e) => setFormData({ ...formData, gracePeriodOut: parseInt(e.target.value) })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                     min="0"
                   />
                 </div>
@@ -274,12 +274,12 @@ export const Shifts = () => {
                   type="checkbox"
                   checked={formData.isNightShift}
                   onChange={(e) => setFormData({ ...formData, isNightShift: e.target.checked })}
-                  className="w-6 h-6 rounded-lg text-red-600 border-gray-200 focus:ring-red-500"
+                  className="w-6 h-6 rounded-lg text-blue-600 border-gray-200 focus:ring-blue-500"
                 />
               </div>
 
               <div className="pt-4 flex flex-col space-y-3">
-                <button type="submit" className="w-full py-4 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center justify-center space-x-2">
+                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
                   <Check className="w-4 h-4" />
                   <span>{editingId ? 'Update Roster' : 'Initialize Roster'}</span>
                 </button>

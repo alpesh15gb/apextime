@@ -135,7 +135,7 @@ export const EmployeeForm = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Accessing Human Profile...</p>
       </div>
     );
@@ -148,7 +148,7 @@ export const EmployeeForm = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate('/employees')}
-            className="w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-50 transition-all shadow-sm group"
+            className="w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-50 transition-all shadow-sm group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           </button>
@@ -160,9 +160,9 @@ export const EmployeeForm = () => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 bg-red-50 px-5 py-2.5 rounded-2xl border border-red-100">
-          <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
-          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Encryption Active</span>
+        <div className="flex items-center space-x-2 bg-blue-50 px-5 py-2.5 rounded-2xl border border-blue-100">
+          <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+          <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Encryption Active</span>
         </div>
       </div>
 
@@ -186,7 +186,7 @@ export const EmployeeForm = () => {
                 name="employeeCode"
                 value={formData.employeeCode}
                 onChange={handleChange}
-                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                 placeholder="e.g. APX-001"
                 required
               />
@@ -198,7 +198,7 @@ export const EmployeeForm = () => {
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                 placeholder="e.g. Rahul"
                 required
               />
@@ -210,7 +210,7 @@ export const EmployeeForm = () => {
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                 placeholder="e.g. Sharma"
                 required
               />
@@ -224,7 +224,7 @@ export const EmployeeForm = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="rahul@company.com"
                 />
               </div>
@@ -238,7 +238,7 @@ export const EmployeeForm = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="+91 98XXX XXXXX"
                 />
               </div>
@@ -252,7 +252,7 @@ export const EmployeeForm = () => {
                   name="deviceUserId"
                   value={formData.deviceUserId}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-red-600 text-sm"
+                  className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-black text-blue-600 text-sm"
                   placeholder="Device UID"
                 />
               </div>
@@ -269,14 +269,14 @@ export const EmployeeForm = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Unit / Branch</label>
-                <select name="branchId" value={formData.branchId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                <select name="branchId" value={formData.branchId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
                   <option value="">Select Branch</option>
                   {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
               <div className="space-y-3">
                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
-                <select name="departmentId" value={formData.departmentId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                <select name="departmentId" value={formData.departmentId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
                   <option value="">Select Dept</option>
                   {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -291,11 +291,11 @@ export const EmployeeForm = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Joining Date</label>
-                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm" />
+                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm" />
               </div>
               <div className="space-y-3">
                 <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Operational Shift</label>
-                <select name="shiftId" value={formData.shiftId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                <select name="shiftId" value={formData.shiftId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
                   <option value="">Choose Shift</option>
                   {shifts.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.startTime} - {s.endTime})</option>)}
                 </select>
@@ -413,7 +413,7 @@ export const EmployeeForm = () => {
           <button
             type="submit"
             disabled={saving}
-            className="px-12 py-5 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-red-700 shadow-2xl shadow-red-200 transition-all flex items-center space-x-3"
+            className="px-12 py-5 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all flex items-center space-x-3"
           >
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save className="w-5 h-5" />}
             <span>{isEditing ? 'Sync Profile' : 'Commit Enrollment'}</span>

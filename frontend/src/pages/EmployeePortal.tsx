@@ -93,7 +93,7 @@ export const EmployeePortal = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Personnel Dashboard</h1>
-                    <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter italic">Personalized performance matrix for <span className="text-red-600 font-black">{user?.username}</span></p>
+                    <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter italic">Personalized performance matrix for <span className="text-blue-600 font-black">{user?.username}</span></p>
                 </div>
 
                 <div className="flex items-center space-x-3">
@@ -101,7 +101,7 @@ export const EmployeePortal = () => {
                         <Download className="w-4 h-4" />
                         <span>Payroll Slips</span>
                     </button>
-                    <button onClick={() => setIsApplying(true)} className="px-8 py-4 bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-red-700 shadow-xl shadow-red-100 transition-all flex items-center space-x-2">
+                    <button onClick={() => setIsApplying(true)} className="px-8 py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all flex items-center space-x-2">
                         <ArrowUpRight className="w-4 h-4" />
                         <span>Request Absence</span>
                     </button>
@@ -112,7 +112,7 @@ export const EmployeePortal = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="app-card p-8">
                     <div className="flex justify-between items-start mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center"><TrendingUp className="w-5 h-5" /></div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><TrendingUp className="w-5 h-5" /></div>
                         <span className="badge badge-success text-[8px]">+1.2%</span>
                     </div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-2">Consistency Rate</p>
@@ -125,7 +125,7 @@ export const EmployeePortal = () => {
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-2">Accrued Credits</p>
                     <p className="text-3xl font-black text-gray-900 tracking-tighter">12 <span className="text-xs font-bold text-gray-400">Days</span></p>
                 </div>
-                <div className="app-card p-8 border-l-8 border-red-600">
+                <div className="app-card p-8 border-l-8 border-blue-600">
                     <div className="flex justify-between items-start mb-6">
                         <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-900 flex items-center justify-center font-black text-xs">AM</div>
                     </div>
@@ -146,9 +146,9 @@ export const EmployeePortal = () => {
                 <div className="app-card overflow-hidden h-[600px] flex flex-col">
                     <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/20">
                         <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-red-600" /> Recent Precision Logs
+                            <Clock className="w-4 h-4 text-blue-600" /> Recent Precision Logs
                         </h3>
-                        <button className="text-[10px] font-black text-red-600 uppercase hover:underline">Download Report</button>
+                        <button className="text-[10px] font-black text-blue-600 uppercase hover:underline">Download Report</button>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         <table className="w-full text-left">
@@ -189,12 +189,12 @@ export const EmployeePortal = () => {
                 <div className="app-card overflow-hidden h-[600px] flex flex-col">
                     <div className="p-8 border-b border-gray-50 bg-gray-50/20">
                         <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-red-600" /> Request Lifecycle
+                            <Calendar className="w-4 h-4 text-blue-600" /> Request Lifecycle
                         </h3>
                     </div>
                     <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gray-50/20">
                         {myLeaves.map((l: any) => (
-                            <div key={l.id} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:border-red-100 transition-all relative group">
+                            <div key={l.id} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:border-blue-100 transition-all relative group">
                                 <div className="flex justify-between items-start mb-6">
                                     <div>
                                         <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest mb-2 block w-fit ${l.leaveType.isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
@@ -231,9 +231,9 @@ export const EmployeePortal = () => {
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/20">
                             <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-                                Absence <span className="text-red-600">Request</span>
+                                Absence <span className="text-blue-600">Request</span>
                             </h3>
-                            <button onClick={() => setIsApplying(false)} className="p-2.5 bg-white text-gray-400 hover:text-red-500 rounded-2xl transition-all shadow-sm">
+                            <button onClick={() => setIsApplying(false)} className="p-2.5 bg-white text-gray-400 hover:text-blue-500 rounded-2xl transition-all shadow-sm">
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
@@ -248,11 +248,11 @@ export const EmployeePortal = () => {
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">From</label>
-                                    <input required type="date" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-red-600 text-xs" value={newLeave.startDate} onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })} />
+                                    <input required type="date" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-blue-600 text-xs" value={newLeave.startDate} onChange={(e) => setNewLeave({ ...newLeave, startDate: e.target.value })} />
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Until</label>
-                                    <input required type="date" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-red-600 text-xs" value={newLeave.endDate} onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })} />
+                                    <input required type="date" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-blue-600 text-xs" value={newLeave.endDate} onChange={(e) => setNewLeave({ ...newLeave, endDate: e.target.value })} />
                                 </div>
                             </div>
                             <div className="space-y-3">
@@ -261,7 +261,7 @@ export const EmployeePortal = () => {
                             </div>
 
                             <div className="pt-4 flex flex-col space-y-3">
-                                <button type="submit" className="w-full py-5 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center justify-center space-x-3">
+                                <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[24px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-3">
                                     <Send className="w-4 h-4" />
                                     <span>Broadcast Signal</span>
                                 </button>

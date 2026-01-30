@@ -177,12 +177,12 @@ export const Payroll = () => {
             {
                 data: [stats.totalNet, stats.totalDeductions, stats.totalOT],
                 backgroundColor: [
-                    'rgba(239, 68, 68, 0.8)', // red-500
+                    'rgba(37, 99, 235, 0.8)', // blue-600
                     'rgba(75, 85, 99, 0.8)', // gray-600
                     'rgba(16, 185, 129, 0.8)', // emerald-500
                 ],
                 borderColor: [
-                    '#ef4444',
+                    '#2563eb',
                     '#4b5563',
                     '#10b981',
                 ],
@@ -217,9 +217,9 @@ export const Payroll = () => {
                         </button>
                     </div>
 
-                    <div className="flex items-center space-x-2 bg-red-50 px-5 py-2.5 rounded-2xl border border-red-100">
-                        <div className="w-2 h-2 rounded-full bg-red-600"></div>
-                        <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Active Run</span>
+                    <div className="flex items-center space-x-2 bg-blue-50 px-5 py-2.5 rounded-2xl border border-blue-100">
+                        <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Active Run</span>
                     </div>
                 </div>
             </div>
@@ -231,13 +231,13 @@ export const Payroll = () => {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`pb-4 px-2 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab
-                            ? 'text-red-600'
+                            ? 'text-blue-600'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
                         {tab === 'payruns' ? 'Pay Runs' : tab}
                         {activeTab === tab && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-red-600 rounded-t-full"></div>
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-full"></div>
                         )}
                     </button>
                 ))}
@@ -279,7 +279,7 @@ export const Payroll = () => {
                                     <Pie data={chartData} options={{ plugins: { legend: { display: false } } }} />
                                     <div className="mt-8 grid grid-cols-2 gap-4">
                                         <div className="flex items-center space-x-2">
-                                            <div className="w-3 h-3 rounded bg-red-500"></div>
+                                            <div className="w-3 h-3 rounded bg-blue-500"></div>
                                             <span className="text-[10px] font-bold text-gray-500">Net Basic</span>
                                         </div>
                                         <div className="flex items-center space-x-2">
@@ -319,13 +319,13 @@ export const Payroll = () => {
                     </div>
 
                     <div className="space-y-8">
-                        <div className="app-card p-10 bg-red-600 text-white border-none shadow-xl shadow-red-100">
+                        <div className="app-card p-10 bg-blue-600 text-white border-none shadow-xl shadow-blue-100">
                             <h3 className="text-2xl font-extrabold tracking-tight mb-2">Initiate Run</h3>
-                            <p className="text-red-100 text-sm font-bold opacity-80 mb-10">Trigger deep calculation linking attendance and structural logs.</p>
+                            <p className="text-blue-100 text-sm font-bold opacity-80 mb-10">Trigger deep calculation linking attendance and structural logs.</p>
                             <button
                                 onClick={handleGenerate}
                                 disabled={generating}
-                                className="w-full py-4 bg-white text-red-600 rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center space-x-3 shadow-lg shadow-red-900/20"
+                                className="w-full py-4 bg-white text-blue-600 rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center space-x-3 shadow-lg shadow-blue-900/20"
                             >
                                 {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                                 <span>{generating ? 'Processing Grid...' : 'Execute Calculation'}</span>
@@ -359,7 +359,7 @@ export const Payroll = () => {
                             <select
                                 value={selectedBranch}
                                 onChange={(e) => setSelectedBranch(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
+                                className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
                             >
                                 <option value="">All Locations</option>
                                 {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -369,7 +369,7 @@ export const Payroll = () => {
                             <select
                                 value={selectedDepartment}
                                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-red-100"
+                                className="w-full px-4 py-2.5 bg-gray-50 border-none rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
                             >
                                 <option value="">All Departments</option>
                                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -380,7 +380,7 @@ export const Payroll = () => {
                     <div className="app-card overflow-hidden">
                         {loading ? (
                             <div className="py-20 flex flex-col items-center space-y-4">
-                                <RefreshCw className="w-10 h-10 animate-spin text-red-600 opacity-20" />
+                                <RefreshCw className="w-10 h-10 animate-spin text-blue-600 opacity-20" />
                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Parsing Ledger Records...</p>
                             </div>
                         ) : payrolls.length === 0 ? (
@@ -388,7 +388,7 @@ export const Payroll = () => {
                                 <AlertCircle className="w-16 h-16 text-gray-100" />
                                 <div>
                                     <p className="text-sm font-extrabold text-gray-400">Zero Records Found</p>
-                                    <button onClick={() => setActiveTab('overview')} className="mt-4 text-[10px] font-black text-red-600 uppercase tracking-widest hover:underline">Execute calculation first</button>
+                                    <button onClick={() => setActiveTab('overview')} className="mt-4 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Execute calculation first</button>
                                 </div>
                             </div>
                         ) : (
@@ -410,7 +410,7 @@ export const Payroll = () => {
                                             <tr key={p.id} className="table-row group">
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center space-x-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-red-50 group-hover:text-red-500 transition-all">{p.employee.firstName[0]}</div>
+                                                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">{p.employee.firstName[0]}</div>
                                                         <div>
                                                             <p className="text-sm font-extrabold text-gray-900 leading-none">{p.employee.firstName} {p.employee.lastName}</p>
                                                             <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tighter">{p.employee.employeeCode}</p>
@@ -458,7 +458,7 @@ export const Payroll = () => {
                                 <input
                                     type="text"
                                     placeholder="Filter team member..."
-                                    className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-bold text-gray-600 focus:ring-4 focus:ring-red-50"
+                                    className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-bold text-gray-600 focus:ring-4 focus:ring-blue-50"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -472,10 +472,10 @@ export const Payroll = () => {
                                 <button
                                     key={emp.id}
                                     onClick={() => setEditingEmployee(emp)}
-                                    className={`w-full p-6 text-left transition-all flex justify-between items-center group ${editingEmployee?.id === emp.id ? 'bg-red-50/40 border-r-4 border-red-600' : 'hover:bg-gray-50'}`}
+                                    className={`w-full p-6 text-left transition-all flex justify-between items-center group ${editingEmployee?.id === emp.id ? 'bg-blue-50/40 border-r-4 border-blue-600' : 'hover:bg-gray-50'}`}
                                 >
                                     <div>
-                                        <p className="font-extrabold text-gray-900 group-hover:text-red-600 transition-colors capitalize">{emp.firstName} {emp.lastName}</p>
+                                        <p className="font-extrabold text-gray-900 group-hover:text-blue-600 transition-colors capitalize">{emp.firstName} {emp.lastName}</p>
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{emp.employeeCode}</p>
                                     </div>
                                     <div className="text-right">
@@ -494,7 +494,7 @@ export const Payroll = () => {
                                 <div className="flex justify-between items-center pb-10 border-b border-gray-50">
                                     <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Financial Config</h3>
                                     <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-3xl border border-gray-100">
-                                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center font-black text-red-600 shadow-sm">{editingEmployee.firstName[0]}</div>
+                                        <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center font-black text-blue-600 shadow-sm">{editingEmployee.firstName[0]}</div>
                                         <div>
                                             <p className="font-black text-gray-800 leading-tight">{editingEmployee.firstName} {editingEmployee.lastName}</p>
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{editingEmployee.employeeCode}</p>
@@ -504,24 +504,24 @@ export const Payroll = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <div className="space-y-8">
-                                        <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest bg-red-50 inline-block px-3 py-1 rounded-lg">Fixed Earnings Matrix</h4>
+                                        <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 inline-block px-3 py-1 rounded-lg">Fixed Earnings Matrix</h4>
                                         <div className="space-y-6">
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Basic Base</label>
-                                                <input type="number" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} />
+                                                <input type="number" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">HRA Allocation</label>
-                                                <input type="number" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} />
+                                                <input type="number" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} />
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Conveyance</label>
-                                                    <input type="number" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.conveyance} onChange={(e) => setEditingEmployee({ ...editingEmployee, conveyance: parseFloat(e.target.value) })} />
+                                                    <input type="number" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.conveyance} onChange={(e) => setEditingEmployee({ ...editingEmployee, conveyance: parseFloat(e.target.value) })} />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Medical</label>
-                                                    <input type="number" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.medicalAllowance} onChange={(e) => setEditingEmployee({ ...editingEmployee, medicalAllowance: parseFloat(e.target.value) })} />
+                                                    <input type="number" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.medicalAllowance} onChange={(e) => setEditingEmployee({ ...editingEmployee, medicalAllowance: parseFloat(e.target.value) })} />
                                                 </div>
                                             </div>
                                         </div>
@@ -530,16 +530,16 @@ export const Payroll = () => {
                                         <div className="space-y-6">
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Financial Institution</label>
-                                                <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" placeholder="e.g. ICICI Corporate" value={editingEmployee.bankName || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bankName: e.target.value })} />
+                                                <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" placeholder="e.g. ICICI Corporate" value={editingEmployee.bankName || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bankName: e.target.value })} />
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Acc Number</label>
-                                                    <input type="text" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.accountNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, accountNumber: e.target.value })} />
+                                                    <input type="text" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.accountNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, accountNumber: e.target.value })} />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">IFSC Code</label>
-                                                    <input type="text" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.ifscCode || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, ifscCode: e.target.value })} />
+                                                    <input type="text" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700" value={editingEmployee.ifscCode || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, ifscCode: e.target.value })} />
                                                 </div>
                                             </div>
                                         </div>
@@ -550,29 +550,29 @@ export const Payroll = () => {
                                         <div className="grid grid-cols-2 gap-6">
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">PAN Legal</label>
-                                                <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-gray-700 uppercase" value={editingEmployee.panNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, panNumber: e.target.value.toUpperCase() })} />
+                                                <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-black text-gray-700 uppercase" value={editingEmployee.panNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, panNumber: e.target.value.toUpperCase() })} />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Aadhaar UID</label>
-                                                <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-black text-gray-700" value={editingEmployee.aadhaarNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, aadhaarNumber: e.target.value })} />
+                                                <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-black text-gray-700" value={editingEmployee.aadhaarNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, aadhaarNumber: e.target.value })} />
                                             </div>
                                         </div>
 
-                                        <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest bg-red-50 inline-block px-3 py-1 rounded-lg">Regulated Compliance</h4>
+                                        <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 inline-block px-3 py-1 rounded-lg">Regulated Compliance</h4>
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between p-5 bg-gray-50/50 rounded-3xl border border-gray-50">
                                                 <div>
                                                     <p className="text-xs font-black text-gray-900 uppercase">Provident Fund (PF)</p>
                                                     <p className="text-[10px] font-bold text-gray-400">12% Contribution Active</p>
                                                 </div>
-                                                <input type="checkbox" className="w-6 h-6 rounded-lg text-red-600 border-gray-200 focus:ring-red-500" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
+                                                <input type="checkbox" className="w-6 h-6 rounded-lg text-blue-600 border-gray-200 focus:ring-blue-500" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
                                             </div>
                                             <div className="flex items-center justify-between p-5 bg-gray-50/50 rounded-3xl border border-gray-50">
                                                 <div>
                                                     <p className="text-xs font-black text-gray-900 uppercase">ESI Eligibility</p>
                                                     <p className="text-[10px] font-bold text-gray-400">Gross Threshold Check</p>
                                                 </div>
-                                                <input type="checkbox" className="w-6 h-6 rounded-lg text-red-600 border-gray-200 focus:ring-red-500" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
+                                                <input type="checkbox" className="w-6 h-6 rounded-lg text-blue-600 border-gray-200 focus:ring-blue-500" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
                                             </div>
                                             <div className="p-6 border-t border-gray-50 mt-4 space-y-4">
                                                 <div className="flex items-center justify-between">
@@ -580,12 +580,12 @@ export const Payroll = () => {
                                                         <p className="text-xs font-black text-gray-900 uppercase">Overtime (OT)</p>
                                                         <p className="text-[10px] font-bold text-gray-400">Hour-linked bonus</p>
                                                     </div>
-                                                    <input type="checkbox" className="w-6 h-6 rounded-lg text-red-600 border-gray-200 focus:ring-red-500" checked={editingEmployee.isOTEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isOTEnabled: e.target.checked })} />
+                                                    <input type="checkbox" className="w-6 h-6 rounded-lg text-blue-600 border-gray-200 focus:ring-blue-500" checked={editingEmployee.isOTEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isOTEnabled: e.target.checked })} />
                                                 </div>
                                                 {editingEmployee.isOTEnabled && (
                                                     <div className="pt-2 animate-in fade-in duration-300">
                                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Rate Multiplier</label>
-                                                        <input type="number" step="0.1" className="w-full px-5 py-3 bg-red-50/30 border-none rounded-2xl focus:ring-4 focus:ring-red-100 outline-none transition-all font-black text-red-600" value={editingEmployee.otRateMultiplier} onChange={(e) => setEditingEmployee({ ...editingEmployee, otRateMultiplier: parseFloat(e.target.value) })} />
+                                                        <input type="number" step="0.1" className="w-full px-5 py-3 bg-blue-50/30 border-none rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none transition-all font-black text-blue-600" value={editingEmployee.otRateMultiplier} onChange={(e) => setEditingEmployee({ ...editingEmployee, otRateMultiplier: parseFloat(e.target.value) })} />
                                                     </div>
                                                 )}
                                             </div>
@@ -595,7 +595,7 @@ export const Payroll = () => {
 
                                 <div className="pt-10 flex justify-end space-x-4 border-t border-gray-50">
                                     <button type="button" onClick={() => setEditingEmployee(null)} className="px-8 py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">Dismiss</button>
-                                    <button type="submit" disabled={loading} className="px-10 py-4 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center space-x-3">
+                                    <button type="submit" disabled={loading} className="px-10 py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center space-x-3">
                                         {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                         <span>Commit Structure</span>
                                     </button>
@@ -616,8 +616,8 @@ export const Payroll = () => {
 
             {activeTab === 'settings' && (
                 <div className="app-card max-w-4xl mx-auto p-16 text-center space-y-12">
-                    <div className="w-24 h-24 bg-red-50 rounded-[32px] flex items-center justify-center mx-auto ring-8 ring-red-50/30 animate-pulse">
-                        <Settings className="w-10 h-10 text-red-600" />
+                    <div className="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mx-auto ring-8 ring-blue-50/30 animate-pulse">
+                        <Settings className="w-10 h-10 text-blue-600" />
                     </div>
                     <div>
                         <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Global Parameters</h2>
@@ -625,8 +625,8 @@ export const Payroll = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left pt-6">
-                        <div className="app-card p-10 space-y-6 border-r-8 border-r-red-600">
-                            <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest flex items-center gap-2">
+                        <div className="app-card p-10 space-y-6 border-r-8 border-r-blue-600">
+                            <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
                                 <Lock className="w-3 h-3" />
                                 PF Engine Rules
                             </h4>
@@ -659,19 +659,19 @@ export const Payroll = () => {
                             <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Statement</h3>
                             <div className="flex items-center space-x-3">
                                 <button onClick={() => window.print()} className="p-3 bg-gray-50 text-gray-400 hover:text-gray-900 rounded-2xl transition-all"><Printer className="w-5 h-5" /></button>
-                                <button onClick={() => setSelectedPayroll(null)} className="p-3 bg-gray-50 text-gray-400 hover:text-red-600 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+                                <button onClick={() => setSelectedPayroll(null)} className="p-3 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
                             </div>
                         </div>
                         <div className="p-12 overflow-y-auto max-h-[70vh] custom-scrollbar">
                             {/* Payslip simplified for brevity but matching new design */}
                             <div className="bg-gray-50/50 p-10 rounded-[32px] border border-gray-50 space-y-8">
-                                <div className="flex justify-between border-b-4 border-red-600 pb-6">
+                                <div className="flex justify-between border-b-4 border-blue-600 pb-6">
                                     <div>
                                         <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Apextime Enterprise</h2>
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Official Payroll Statement</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-2xl font-black text-red-600 uppercase italic leading-none">{monthName}</p>
+                                        <p className="text-2xl font-black text-blue-600 uppercase italic leading-none">{monthName}</p>
                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{year}</span>
                                     </div>
                                 </div>
@@ -681,7 +681,7 @@ export const Payroll = () => {
                                         <div className="flex justify-between items-center border-b border-gray-100 pb-2"><span className="font-bold text-gray-400 uppercase text-[10px] tracking-widest">ID Code</span><span className="font-extrabold text-gray-800">{selectedPayroll.employee.employeeCode}</span></div>
                                     </div>
                                     <div className="space-y-4 font-black">
-                                        <div className="flex justify-between items-center text-red-500"><span className="uppercase text-[10px] tracking-widest">Net Disbursed</span><span className="text-2xl tracking-tighter">₹{selectedPayroll.netSalary.toLocaleString()}</span></div>
+                                        <div className="flex justify-between items-center text-blue-500"><span className="uppercase text-[10px] tracking-widest">Net Disbursed</span><span className="text-2xl tracking-tighter">₹{selectedPayroll.netSalary.toLocaleString()}</span></div>
                                         <div className="flex justify-between items-center text-gray-400 text-[10px] uppercase tracking-widest"><span>Status</span><span>{selectedPayroll.status}</span></div>
                                     </div>
                                 </div>

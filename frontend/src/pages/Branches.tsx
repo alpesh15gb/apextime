@@ -115,9 +115,9 @@ export const Branches = () => {
             </div>
           ))
         ) : branches.map((branch: any) => (
-          <div key={branch.id} className="app-card p-10 group hover:border-red-100 transition-all relative overflow-hidden">
+          <div key={branch.id} className="app-card p-10 group hover:border-blue-100 transition-all relative overflow-hidden">
             <div className="flex justify-between items-start mb-10">
-              <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                 <Building className="w-6 h-6" />
               </div>
               <div className="badge badge-success text-[10px] font-black uppercase tracking-widest">{branch.isActive ? 'Live' : 'Closed'}</div>
@@ -155,7 +155,7 @@ export const Branches = () => {
               <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
                 {editingId ? 'Edit Branch' : 'New Branch'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all">
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-500 rounded-2xl transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -167,7 +167,7 @@ export const Branches = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="e.g. Gurugram Tech Hub"
                   required
                 />
@@ -178,7 +178,7 @@ export const Branches = () => {
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="e.g. GGN-01"
                   required
                 />
@@ -188,7 +188,7 @@ export const Branches = () => {
                 <select
                   value={formData.locationId}
                   onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none cursor-pointer"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none cursor-pointer"
                 >
                   <option value="">Select Region</option>
                   {locations.map((location: any) => (
@@ -200,7 +200,7 @@ export const Branches = () => {
               </div>
 
               <div className="pt-6 flex flex-col space-y-3">
-                <button type="submit" className="w-full py-4 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center justify-center space-x-2">
+                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
                   <Check className="w-4 h-4" />
                   <span>{editingId ? 'Modify Record' : 'Add Register'}</span>
                 </button>

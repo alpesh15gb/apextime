@@ -85,7 +85,7 @@ export const Departments = () => {
             setFormData({ name: '', code: '', branchId: '' });
             setShowModal(true);
           }}
-          className="btn-app btn-app-primary"
+          className="px-6 py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center space-x-2"
         >
           <Plus className="w-5 h-5" />
           <span>New Department</span>
@@ -96,7 +96,7 @@ export const Departments = () => {
       <div className="app-card overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-600 border-opacity-20 border-r-2 border-r-blue-600"></div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Compiling Units...</p>
           </div>
         ) : (
@@ -121,7 +121,7 @@ export const Departments = () => {
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-400 group-hover:bg-red-50 group-hover:text-red-500 transition-all">
+                        <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
                           <Briefcase className="w-4 h-4" />
                         </div>
                         <span className="text-sm font-extrabold text-gray-800">{dept.name}</span>
@@ -160,7 +160,7 @@ export const Departments = () => {
               <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">
                 {editingId ? 'Edit Unit' : 'Create Unit'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all">
+              <button onClick={() => setShowModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-500 rounded-2xl transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -172,7 +172,7 @@ export const Departments = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="e.g. Finance & Accounts"
                   required
                 />
@@ -183,14 +183,14 @@ export const Departments = () => {
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
                   placeholder="e.g. FIN-01"
                   required
                 />
               </div>
 
               <div className="pt-6 flex flex-col space-y-3">
-                <button type="submit" className="w-full py-4 bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-red-700 shadow-xl shadow-red-200 transition-all flex items-center justify-center space-x-2">
+                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
                   <Check className="w-4 h-4" />
                   <span>{editingId ? 'Update Matrix' : 'Initialize Unit'}</span>
                 </button>
