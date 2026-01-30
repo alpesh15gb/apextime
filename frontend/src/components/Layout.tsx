@@ -14,12 +14,18 @@ import {
   Bell,
   Mail,
   ChevronDown,
-  ClipboardList
+  ClipboardList,
+  Briefcase,
+  MapPin,
+  Building2,
+  Award,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['Masters']); // Default expand Masters
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,6 +44,17 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     : [
       { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/employees', icon: Users, label: 'Employees' },
+      // Master Data Group
+      {
+        label: 'Masters',
+        icon: Database,
+        children: [
+          { path: '/branches', icon: Building2, label: 'Branches' },
+          { path: '/locations', icon: MapPin, label: 'Locations' },
+          { path: '/designations', icon: Award, label: 'Designations' },
+          { path: '/departments', icon: Briefcase, label: 'Departments' },
+        ]
+      },
       { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
       { path: '/leaves', icon: Calendar, label: 'Leave' },
       { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
@@ -45,6 +62,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
       { path: '/settings', icon: Settings, label: 'Settings' },
     ];
+
+  const toggleMenu = (label: string) => {
+    setExpandedMenus(prev =>
+      prev.includes(label) ? prev.filter(p => p !== label) : [...prev, label]
+    );
+  };
 
   if (user?.role === 'employee') {
     return (
@@ -75,20 +98,58 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center px-3 py-3 rounded-lg transition-colors group ${isActive
-                  ? 'bg-blue-600 text-white font-medium'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`
-              }
-            >
-              <item.icon className={`w-5 h-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
-              {sidebarOpen && <span className="text-sm">{item.label}</span>}
-            </NavLink>
+          {navItems.map((item: any) => (
+            item.children ? (
+              <div key={item.label} className="space-y-1">
+                <button
+                  onClick={() => toggleMenu(item.label)}
+                  className={`flex items-center w-full px-3 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors justify-between group`}
+                >
+                  <div className="flex items-center">
+                    <item.icon className={`w-5 h-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                    {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                  </div>
+                  {sidebarOpen && (
+                    <ChevronDown className={`w-4 h-4 transition-transform ${expandedMenus.includes(item.label) ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+
+                {/* Submenu */}
+                {expandedMenus.includes(item.label) && sidebarOpen && (
+                  <div className="pl-4 space-y-1 mt-1 bg-gray-800/20 rounded-xl pb-2">
+                    {item.children.map((child: any) => (
+                      <NavLink
+                        key={child.path}
+                        to={child.path}
+                        className={({ isActive }) =>
+                          `flex items-center px-3 py-2 rounded-lg transition-colors text-xs font-bold ${isActive
+                            ? 'text-blue-400 bg-blue-900/10'
+                            : 'text-gray-500 hover:text-white hover:bg-gray-800'
+                          }`
+                        }
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-current mr-3 opacity-50"></div>
+                        <span>{child.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center px-3 py-3 rounded-lg transition-colors group ${isActive
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  }`
+                }
+              >
+                <item.icon className={`w-5 h-5 flex-shrink-0 ${sidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                {sidebarOpen && <span className="text-sm">{item.label}</span>}
+              </NavLink>
+            )
           ))}
         </nav>
 

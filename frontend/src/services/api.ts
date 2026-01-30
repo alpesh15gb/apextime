@@ -83,6 +83,20 @@ export const departmentsAPI = {
     api.delete(`/departments/${id}`),
 };
 
+// Designations API
+export const designationsAPI = {
+  getAll: (params?: Record<string, string>) =>
+    api.get('/designations', { params }),
+  getById: (id: string) =>
+    api.get(`/designations/${id}`),
+  create: (data: any) =>
+    api.post('/designations', data),
+  update: (id: string, data: any) =>
+    api.put(`/designations/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/designations/${id}`),
+};
+
 // Shifts API
 export const shiftsAPI = {
   getAll: (params?: Record<string, string>) =>

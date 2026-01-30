@@ -10,6 +10,7 @@ import { Departments } from './pages/Departments';
 import { Shifts } from './pages/Shifts';
 import { Locations } from './pages/Locations';
 import { Branches } from './pages/Branches';
+import { Designations } from './pages/Designations';
 import { Attendance } from './pages/Attendance';
 import { Reports } from './pages/Reports';
 import { MonthlyReport } from './pages/MonthlyReport';
@@ -55,6 +56,7 @@ function App() {
                     <Route path="/shifts" element={<Shifts />} />
                     <Route path="/locations" element={<Locations />} />
                     <Route path="/branches" element={<Branches />} />
+                    <Route path="/designations" element={<Designations />} />
                     <Route path="/attendance" element={<Attendance />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/monthly-report" element={<MonthlyReport />} />
