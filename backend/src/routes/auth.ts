@@ -40,7 +40,7 @@ router.post(
       // Generate JWT
       const secret = process.env.JWT_SECRET || 'apextime-secret-key-2026';
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        { id: user.id, username: user.username, role: user.role, employeeId: user.employeeId },
         secret,
         { expiresIn: '24h' }
       );
