@@ -40,28 +40,53 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       { path: '/portal', icon: LayoutDashboard, label: 'Portal' },
       { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
       { path: '/leaves', icon: Calendar, label: 'My Leaves' },
+      { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
     ]
-    : [
-      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { path: '/employees', icon: Users, label: 'Employees' },
-      // Master Data Group
-      {
-        label: 'Masters',
-        icon: Database,
-        children: [
-          { path: '/branches', icon: Building2, label: 'Branches' },
-          { path: '/locations', icon: MapPin, label: 'Locations' },
-          { path: '/designations', icon: Award, label: 'Designations' },
-          { path: '/departments', icon: Briefcase, label: 'Departments' },
-        ]
-      },
-      { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
-      { path: '/leaves', icon: Calendar, label: 'Leave' },
-      { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
-      { path: '/payroll', icon: DollarSign, label: 'Payroll' },
-      { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
-      { path: '/settings', icon: Settings, label: 'Settings' },
-    ];
+    : user?.role === 'manager'
+      ? [
+        { path: '/dashboard', icon: LayoutDashboard, label: 'Manager Hub' },
+        // Personal Section
+        {
+          label: 'My Activities',
+          icon: Users,
+          children: [
+            { path: '/portal', icon: LayoutDashboard, label: 'My Portal' },
+            { path: '/leaves', icon: Calendar, label: 'Apply Leave' },
+            { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
+          ]
+        },
+        // Team Management Section
+        {
+          label: 'Team Management',
+          icon: Briefcase,
+          children: [
+            { path: '/leaves', icon: Calendar, label: 'Leave Approvals' }, // The page handles role-based views
+            { path: '/attendance', icon: ClipboardCheck, label: 'Team Attendance' },
+            { path: '/reports', icon: FileSpreadsheet, label: 'Team Reports' },
+          ]
+        }
+      ]
+      : [
+        { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { path: '/employees', icon: Users, label: 'Employees' },
+        // Master Data Group
+        {
+          label: 'Masters',
+          icon: Database,
+          children: [
+            { path: '/branches', icon: Building2, label: 'Branches' },
+            { path: '/locations', icon: MapPin, label: 'Locations' },
+            { path: '/designations', icon: Award, label: 'Designations' },
+            { path: '/departments', icon: Briefcase, label: 'Departments' },
+          ]
+        },
+        { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
+        { path: '/leaves', icon: Calendar, label: 'Leave' },
+        { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
+        { path: '/payroll', icon: DollarSign, label: 'Payroll' },
+        { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
+        { path: '/settings', icon: Settings, label: 'Settings' },
+      ];
 
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev =>

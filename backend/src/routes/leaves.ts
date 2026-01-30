@@ -99,6 +99,14 @@ router.post('/', async (req, res) => {
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
+        // Routing logic:
+        // 1. Employee -> pending_manager
+        // 2. Manager -> pending_ceo
+        // 3. Admin (CEO) -> approved
+        let initialStatus = 'pending_manager';
+        if (user.role === 'admin') initialStatus = 'approved';
+        else if (user.role === 'manager') initialStatus = 'pending_ceo';
+
         const entry = await prisma.leaveEntry.create({
             data: {
                 employeeId: employee.id,
@@ -107,7 +115,7 @@ router.post('/', async (req, res) => {
                 endDate: end,
                 days,
                 reason,
-                status: 'pending_manager'
+                status: initialStatus
             }
         });
         res.json(entry);
