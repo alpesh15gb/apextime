@@ -18,6 +18,7 @@ export const Departments = () => {
   const [editingId, setEditingId] = useState(null);
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [adminSearch, setAdminSearch] = useState('');
   const [formData, setFormData] = useState({ name: '', code: '', branchId: '', managerIds: [] as string[] });
 
   useEffect(() => {
@@ -253,29 +254,63 @@ export const Departments = () => {
                 {/* Selected Managers List */}
                 <div className="flex flex-wrap gap-2 mb-2">
                   {formData.managerIds.map(mid => (
-                    <div key={mid} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2">
+                    <div key={mid} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 animate-in fade-in zoom-in duration-200">
                       <span>{getEmployeeName(mid)}</span>
-                      <button type="button" onClick={() => removeManager(mid)} className="hover:text-blue-900"><X className="w-3 h-3" /></button>
+                      <button type="button" onClick={() => removeManager(mid)} className="hover:text-blue-900 transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
 
-                {/* Add Manager Dropdown */}
-                <div className="relative">
+                {/* Search Box */}
+                <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Users className="h-4 w-4 text-gray-400" />
+                    <Users className="h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
-                  <select
-                    onChange={(e) => { addManager(e.target.value); e.target.value = ""; }}
-                    className="w-full pl-11 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
-                  >
-                    <option value="">+ Add Administrator</option>
-                    {Array.isArray(employees) && employees
-                      .filter((e: any) => !formData.managerIds.includes(e.id))
-                      .map((e: any) => (
-                        <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeCode})</option>
-                      ))}
-                  </select>
+                  <input
+                    type="text"
+                    placeholder="Search and add administrators..."
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                    className="w-full pl-11 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm"
+                  />
+
+                  {/* Search Results Dropdown */}
+                  {adminSearch && (
+                    <div className="absolute z-10 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                      {employees
+                        .filter((e: any) =>
+                          !formData.managerIds.includes(e.id) &&
+                          (e.firstName + ' ' + e.lastName + ' ' + e.employeeCode).toLowerCase().includes(adminSearch.toLowerCase())
+                        )
+                        .map((e: any) => (
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={() => { addManager(e.id); setAdminSearch(''); }}
+                            className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors flex items-center space-x-3"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-black text-blue-600">
+                              {e.firstName[0]}{e.lastName[0]}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-800">{e.firstName} {e.lastName}</p>
+                              <p className="text-[10px] text-gray-400 font-medium tracking-tight">#{e.employeeCode}</p>
+                            </div>
+                          </button>
+                        ))
+                      }
+                      {employees.filter((e: any) =>
+                        !formData.managerIds.includes(e.id) &&
+                        (e.firstName + ' ' + e.lastName + ' ' + e.employeeCode).toLowerCase().includes(adminSearch.toLowerCase())
+                      ).length === 0 && (
+                          <div className="p-5 text-center text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                            No matching employees found
+                          </div>
+                        )}
+                    </div>
+                  )}
                 </div>
               </div>
 
