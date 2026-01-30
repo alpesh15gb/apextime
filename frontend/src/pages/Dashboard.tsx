@@ -2,35 +2,47 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
-  Building2,
-  Briefcase,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  RefreshCw,
-  Sparkles,
-  TrendingUp,
-  ArrowUpRight,
-  ShieldCheck,
-  Zap,
+  Calendar,
+  UserPlus,
+  CheckSquare,
+  FileText,
+  ClipboardCheck,
+  MoreVertical,
   Activity,
   ArrowUp,
-  ArrowDown,
-  MoreVertical,
-  Search,
-  Filter,
-  DollarSign
+  ArrowDown
 } from 'lucide-react';
-import { dashboardAPI, employeesAPI } from '../services/api';
+import { dashboardAPI } from '../services/api';
 import { DashboardStats } from '../types';
+import { Line, Doughnut } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -39,259 +51,273 @@ export const Dashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [statsRes, employeesRes] = await Promise.all([
-        dashboardAPI.getStats(),
-        employeesAPI.getAll()
-      ]);
-
+      const statsRes = await dashboardAPI.getStats();
       setStats(statsRes.data || {});
-
-      let empData = employeesRes.data;
-      if (empData && typeof empData === 'object' && 'employees' in empData) {
-        empData = empData.employees;
-      }
-
-      if (Array.isArray(empData)) {
-        // Filter out invalid employee objects
-        setEmployees(empData.filter((e: any) => e && typeof e === 'object' && (typeof e.id === 'string' || typeof e.id === 'number')));
-      } else {
-        setEmployees([]);
-      }
     } catch (err) {
       console.error('Dashboard data load error:', err);
-      setError('Failed to load dashboard data');
-      setEmployees([]);
-      setStats({} as any);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-red-600 border-opacity-20 border-r-2 border-r-red-600"></div>
-        <p className="text-gray-400 font-bold tracking-widest text-[10px] uppercase">Synchronizing Hub...</p>
+  // Chart Data
+  const lineChartData = {
+    labels: ['0 Mon', '7 Tue', '2 Wed', '3 Thu', '4 Fri', '5 Sat', '4 Sun'],
+    datasets: [
+      {
+        label: 'Attendance',
+        data: [12, 19, 15, 25, 22, 30, 28], // Mock data or stats.history
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const lineChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#f3f4f6' },
+        ticks: { font: { size: 10 } }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 10 } }
+      }
+    }
+  };
+
+  const donutData = {
+    labels: ['Completed', 'Pending', 'Issues'],
+    datasets: [
+      {
+        data: [300, 50, 100],
+        backgroundColor: [
+          'rgb(59, 130, 246)',
+          'rgb(243, 244, 246)',
+          'rgb(16, 185, 129)',
+        ],
+        borderWidth: 0,
+      },
+    ],
+  };
+
+  const donutOptions = {
+    cutout: '70%',
+    plugins: {
+      legend: { display: false }
+    }
+  };
+
+  const CircularProgress = ({ value, label, subLabel, color }: any) => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center h-48 border border-gray-100">
+      <div className="relative w-24 h-24 flex items-center justify-center mb-3">
+        <svg className="w-full h-full transform -rotate-90">
+          <circle
+            cx="48"
+            cy="48"
+            r="40"
+            stroke="currentColor"
+            strokeWidth="8"
+            fill="transparent"
+            className="text-gray-100"
+          />
+          <circle
+            cx="48"
+            cy="48"
+            r="40"
+            stroke="currentColor"
+            strokeWidth="8"
+            fill="transparent"
+            strokeDasharray={251.2}
+            strokeDashoffset={251.2 - (251.2 * value) / 100}
+            className={color}
+          />
+        </svg>
+        <span className="absolute text-2xl font-bold text-gray-800">{value}%</span>
       </div>
-    );
-  }
-
-  const statCards = [
-    {
-      title: 'Total Staff',
-      value: stats?.counts?.totalEmployees || 0,
-      icon: Users,
-      trend: `${stats?.counts?.activeEmployees || 0} Active`,
-      trendUp: true,
-      color: 'bg-blue-50 text-blue-600',
-    },
-    {
-      title: 'Present Today',
-      value: stats?.today?.present || 0,
-      icon: CheckCircle,
-      trend: stats?.today?.present ? 'On Time' : 'No Data yet',
-      trendUp: true,
-      color: 'bg-emerald-50 text-emerald-600',
-    },
-    {
-      title: 'Late Arrivals',
-      value: stats?.today?.lateArrivals || 0,
-      icon: Clock,
-      trend: 'Late Clock-ins',
-      trendUp: false,
-      color: 'bg-orange-50 text-orange-600',
-    },
-    {
-      title: 'Absent',
-      value: stats?.today?.absent || 0,
-      icon: XCircle,
-      trend: 'Not Checked In',
-      trendUp: false,
-      color: 'bg-red-50 text-red-600',
-    },
-  ];
-
-  const displayedEmployees = Array.isArray(employees) ? employees.slice(0, 10) : [];
+      <h4 className="font-bold text-gray-800">{label}</h4>
+      <p className="text-xs text-gray-400 mt-1">{subLabel}</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((card, idx) => (
-          <div key={idx} className="app-card p-6 flex flex-col justify-between h-48 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center space-x-3">
-                <div className={`p-2.5 rounded-xl ${card.color.split(' ')[0]} bg-opacity-50`}>
-                  <card.icon className={`w-5 h-5 ${card.color.split(' ')[1]}`} />
-                </div>
-                <span className="text-gray-500 font-semibold text-sm">{card.title}</span>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300" />
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-3xl font-bold text-gray-900">{card.value}</h3>
-            </div>
-
-            <div className="mt-auto pt-4 border-t border-gray-100/50 flex items-center justify-between">
-              <span className="text-xs text-gray-400 font-medium">Current Status</span>
-              <div className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-bold ${card.trendUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                {card.trendUp ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-                <span>{card.trend}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
       </div>
 
-      {/* Middle Grid: Charts & Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Attendance Report Chart */}
-        <div className="app-card p-10 lg:col-span-1 border-none shadow-xl shadow-gray-100">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <Activity className="w-4 h-4 text-red-600" /> Weekly Frequency
-            </h3>
-            <MoreVertical className="w-4 h-4 text-gray-300" />
+      {/* Top Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Employees */}
+        <div className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="font-medium text-blue-100 mb-1">Total Employees</h3>
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-bold">{stats?.counts?.totalEmployees || 0}</span>
+              <span className="text-sm bg-blue-500/50 px-2 py-0.5 rounded text-blue-100 mb-1">Active {stats?.counts?.activeEmployees || 0}</span>
+            </div>
+            <p className="text-blue-200 text-sm mt-4">Inactive {stats?.counts?.totalEmployees ? stats.counts.totalEmployees - (stats.counts.activeEmployees || 0) : 0}</p>
           </div>
-          <div className="flex items-end justify-center h-48">
-            <p className="text-xs font-bold text-gray-400">No chart data available</p>
+          <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
+            <Users className="w-40 h-40" />
           </div>
         </div>
 
-        {/* Payroll Summary / Pay Runs */}
-        <div className="app-card p-10 lg:col-span-1 bg-gray-900 text-white border-none shadow-2xl">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-red-500 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <DollarSign className="w-4 h-4" /> Payroll Status
-            </h3>
-            <div className="badge border border-white/10 text-white/40 text-[8px] font-black uppercase">Inactive</div>
+        {/* Today Attendance */}
+        <div className="bg-[#111827] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="font-medium text-gray-400 mb-1">Today Attendance</h3>
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-bold">{stats?.today?.present || 0}</span>
+              <span className="text-sm bg-gray-700 px-2 py-0.5 rounded text-gray-300 mb-1">-</span>
+            </div>
+            <p className="text-gray-400 text-sm mt-4">
+              Absent <span className="text-white font-bold ml-1">{stats?.today?.absent || 0}</span>
+            </p>
           </div>
-          <div className="space-y-10">
-            <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
-              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 font-mono">Current Liabilities</p>
-              <h4 className="text-3xl font-black tracking-tighter italic">---</h4>
-            </div>
+          <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4">
+            <Clock className="w-40 h-40" />
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Tax Nodes</p>
-                <p className="text-xl font-black text-emerald-500">--/--</p>
-              </div>
-              <div>
-                <p className="text-[9px] font-black text-gray-500 uppercase mb-1">Cycle Node</p>
-                <p className="text-xl font-black text-red-500">---</p>
-              </div>
+        {/* Pending Leaves */}
+        <div className="bg-amber-400 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="font-medium text-amber-100 mb-1">Pending Leaves</h3>
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-bold">{stats?.counts?.pendingLeaves || 12}</span>
+              <span className="text-sm bg-amber-500/50 px-2 py-0.5 rounded text-white mb-1">Requests</span>
             </div>
+            <p className="text-amber-100 text-sm mt-4">Requires Approval</p>
+          </div>
+          <div className="absolute right-0 bottom-0 opacity-20 transform translate-y-1/4 translate-x-1/4">
+            <FileText className="w-40 h-40" />
+          </div>
+        </div>
+      </div>
 
-            <button disabled className="w-full py-4 bg-gray-800 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all cursor-not-allowed">
-              Batch Processing Unavailable
+      {/* Circular Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <CircularProgress value={28} label="Late Arrivals" subLabel="Yesterday" color="text-blue-500" />
+        <CircularProgress value={49} label="Processed" subLabel="Payroll" color="text-emerald-500" />
+        <CircularProgress value={8} label="Pending Review" subLabel="Tasks" color="text-red-500" />
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Line Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="font-bold text-gray-800">Attendance Overview</h3>
+              <p className="text-xs text-gray-400">Weekly Headcount</p>
+            </div>
+            <select className="bg-gray-50 border-none text-xs rounded-lg px-2 py-1 text-gray-500 outline-none cursor-pointer">
+              <option>This Week</option>
+              <option>Last Week</option>
+            </select>
+          </div>
+          <div className="h-64 w-full">
+            <Line data={lineChartData} options={lineChartOptions} />
+          </div>
+        </div>
+
+        {/* Donut Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-bold text-gray-800">Daily Tasks</h3>
+            <MoreVertical className="w-4 h-4 text-gray-400" />
+          </div>
+          <div className="h-48 flex justify-center relative">
+            <Doughnut data={donutData} options={donutOptions} />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              {/* Center icon or text if needed */}
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                <span className="text-gray-500">Complete</span>
+              </div>
+              <span className="font-bold text-gray-700">65%</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span className="text-gray-500">Pending</span>
+              </div>
+              <span className="font-bold text-gray-700">25%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {/* Quick Actions */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="font-bold text-gray-800 mb-6">Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => navigate('/employees/new')} className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-colors">
+              <UserPlus className="w-4 h-4" /> Add Employee
+            </button>
+            <button onClick={() => navigate('/leaves')} className="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-colors">
+              <CheckSquare className="w-4 h-4" /> Approve Leave
+            </button>
+            <button onClick={() => navigate('/reports')} className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-colors">
+              <FileText className="w-4 h-4" /> Generate Report
+            </button>
+            <button onClick={() => navigate('/attendance')} className="bg-[#111827] hover:bg-gray-800 text-white p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-colors">
+              <ClipboardCheck className="w-4 h-4" /> Mark Attendance
             </button>
           </div>
         </div>
 
-        {/* Quick Insights List */}
-        <div className="app-card p-10 lg:col-span-1">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-orange-500" /> Quick Stats
-            </h3>
-          </div>
-          <div className="space-y-6">
-            {[
-              { label: 'Unmapped Logs', value: (stats as any)?.today?.unmappedLogs || 0, color: 'text-red-600', bg: 'bg-red-50' },
-              { label: 'Shift Overlaps', value: '04', color: 'text-orange-600', bg: 'bg-orange-50' },
-              { label: 'Compliance', value: '98%', color: 'text-emerald-600', bg: 'bg-emerald-50' }
-            ].map((sig, i) => (
-              <div key={i} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-2xl transition-all group">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-2 h-10 rounded-full ${sig.bg}`}></div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{sig.label}</p>
-                </div>
-                <p className={`text-xl font-black ${sig.color}`}>{sig.value}</p>
+        {/* Activity Feed */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+          <h3 className="font-bold text-gray-800 mb-6">Activity Feed</h3>
+          <div className="space-y-4">
+            <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                <Clock className="w-4 h-4" />
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Section: Employee Table */}
-      <div className="app-card overflow-hidden">
-        <div className="p-10 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-          <div>
-            <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Employee Directory</h3>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase italic tracking-tighter">Real-time status overview</p>
-          </div>
-          <div className="flex items-center space-x-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-80">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-              <input type="text" placeholder="Search employees..." className="w-full pl-12 pr-5 py-4 bg-gray-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-4 focus:ring-red-50 transition-all" />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Rahul applied for leave.</p>
+                <p className="text-xs text-gray-400 mt-1">Today at 10:30 AM</p>
+              </div>
             </div>
-            <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all">
-              <Filter className="w-5 h-5" />
-            </button>
+            <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                <CheckSquare className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Salary processed for January.</p>
+                <p className="text-xs text-gray-400 mt-1">Yesterday</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                <UserPlus className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">New employee onboarded.</p>
+                <p className="text-xs text-gray-400 mt-1">2 days ago</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50/20">
-                <th className="table-header w-20 px-10">ID</th>
-                <th className="table-header">Employee</th>
-                <th className="table-header">Department</th>
-                <th className="table-header">Status</th>
-                <th className="table-header text-right px-10">Join Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {displayedEmployees.map((emp, i) => (
-                <tr key={String(emp.id)} className="table-row group">
-                  <td className="px-10 py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest font-mono">#{String(emp.employeeCode || String(i + 1).padStart(3, '0'))}</td>
-                  <td className="px-6 py-6 font-bold">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-inner">
-                        {String(emp.firstName || '').charAt(0)}{String(emp.lastName || '').charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-gray-800 tracking-tight">{String(emp.firstName || '')} {String(emp.lastName || '')}</p>
-                        <p className="text-[9px] text-red-600 font-black uppercase tracking-[0.2em] mt-0.5">{String(emp.employeeCode || '')}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-6">
-                    <p className="text-xs font-bold text-gray-700">{String(emp.department?.name || 'N/A')}</p>
-                  </td>
-                  <td className="px-6 py-6">
-                    <div className={`badge ${emp.isActive ? 'badge-success' : 'badge-warning'} text-[8px] font-black uppercase tracking-[0.2em] px-4 py-1.5`}>
-                      {emp.isActive ? 'Active' : 'Inactive'}
-                    </div>
-                  </td>
-                  <td className="px-10 py-6 text-xs font-black text-gray-900 text-right opacity-40 group-hover:opacity-100 transition-opacity">
-                    ---
-                  </td>
-                </tr>
-              ))}
 
-              {displayedEmployees.length === 0 && (
-                [1, 2, 3, 4, 5].map(i => (
-                  <tr key={i} className="table-row group animate-pulse">
-                    <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-6 py-8 h-20 bg-gray-50/10"></td>
-                    <td className="px-10 py-8 h-20 bg-gray-50/10"></td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="p-10 bg-gray-50/30 flex justify-center">
-          <button onClick={() => navigate('/employees')} className="text-[10px] font-black text-red-600 uppercase tracking-[0.3em] hover:underline flex items-center gap-2">
-            Explore Full Registry <ArrowUpRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
-    </div >
+    </div>
   );
 };

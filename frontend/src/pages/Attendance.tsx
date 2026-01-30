@@ -108,7 +108,7 @@ export const Attendance = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter italic">Daily <span className="text-red-600">Attendance</span></h1>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter italic">Daily <span className="text-blue-600">Attendance</span></h1>
           <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.3em]">Daily attendance logs</p>
         </div>
 
@@ -123,25 +123,25 @@ export const Attendance = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
           <div className="space-y-4">
             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <Calendar className="w-3 h-3 text-red-500" /> Start Date
+              <Calendar className="w-3 h-3 text-blue-500" /> Start Date
             </label>
             <input
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all uppercase tracking-wider"
+              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all uppercase tracking-wider"
             />
           </div>
 
           <div className="space-y-4">
             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <Calendar className="w-3 h-3 text-red-500" /> End Date
+              <Calendar className="w-3 h-3 text-blue-500" /> End Date
             </label>
             <input
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all uppercase tracking-wider"
+              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all uppercase tracking-wider"
             />
           </div>
 
@@ -151,7 +151,7 @@ export const Attendance = () => {
               <select
                 value={filters.employeeId}
                 onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
-                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
               >
                 <option value="">All Employees</option>
                 {employees.map((emp: any) => (
@@ -168,7 +168,7 @@ export const Attendance = () => {
               <select
                 value={filters.departmentId}
                 onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
-                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-red-100 focus:ring-4 focus:ring-red-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
               >
                 <option value="">All Departments</option>
                 {departments.map((dept: any) => (
@@ -187,7 +187,7 @@ export const Attendance = () => {
           <div className="flex flex-col items-center justify-center py-32 space-y-6">
             <div className="relative">
               <div className="w-16 h-16 border-4 border-gray-100 rounded-full"></div>
-              <div className="w-16 h-16 border-4 border-red-600 rounded-full border-t-transparent animate-spin absolute top-0 left-0"></div>
+              <div className="w-16 h-16 border-4 border-blue-600 rounded-full border-t-transparent animate-spin absolute top-0 left-0"></div>
             </div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] animate-pulse">Loading...</p>
           </div>
@@ -207,15 +207,15 @@ export const Attendance = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {logs.map((log) => (
-                    <tr key={log.id} className="table-row group hover:bg-red-50/5 transition-colors">
+                    <tr key={log.id} className="table-row group hover:bg-blue-50/5 transition-colors">
                       <td className="px-8 py-5">
                         <div className="flex items-center space-x-5">
-                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-sm group-hover:scale-110 transition-transform duration-300 group-hover:border-red-100 group-hover:text-red-500">
+                          <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center font-black text-gray-400 text-xs shadow-sm group-hover:scale-110 transition-transform duration-300 group-hover:border-blue-100 group-hover:text-blue-500">
                             {log.employee?.firstName?.[0]}{log.employee?.lastName?.[0]}
                           </div>
                           <div>
                             <p className="text-sm font-black text-gray-900 tracking-tight">{log.employee?.firstName} {log.employee?.lastName}</p>
-                            <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-[0.2em] group-hover:text-red-400 transition-colors">ID: {log.employee?.employeeCode}</p>
+                            <p className="text-[9px] text-gray-400 font-bold mt-1 uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">ID: {log.employee?.employeeCode}</p>
                           </div>
                         </div>
                       </td>
@@ -280,14 +280,14 @@ export const Attendance = () => {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all text-gray-500 shadow-sm"
+                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-all text-gray-500 shadow-sm"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all text-gray-500 shadow-sm"
+                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-all text-gray-500 shadow-sm"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>

@@ -109,7 +109,7 @@ export const Leaves = () => {
                     {user?.role === 'admin' && (
                         <button
                             onClick={() => setActiveView('ceo')}
-                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'ceo' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'ceo' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                             L2: CEO Final
                         </button>
@@ -134,10 +134,10 @@ export const Leaves = () => {
                                 placeholder="Filter by employee name or code..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[20px] focus:ring-4 focus:ring-red-50 outline-none transition-all font-bold text-gray-700 text-sm shadow-sm"
+                                className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[20px] focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm shadow-sm"
                             />
                         </div>
-                        <button onClick={fetchLeaves} className="p-4 bg-white border border-gray-100 rounded-[20px] text-gray-400 hover:text-red-600 transition-all shadow-sm">
+                        <button onClick={fetchLeaves} className="p-4 bg-white border border-gray-100 rounded-[20px] text-gray-400 hover:text-blue-600 transition-all shadow-sm">
                             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
@@ -159,7 +159,7 @@ export const Leaves = () => {
                                         <tr key={l.id} className="table-row group">
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center space-x-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-red-50 group-hover:text-red-600 transition-all">
+                                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
                                                         {l.employee.firstName[0]}
                                                     </div>
                                                     <div>
@@ -187,7 +187,7 @@ export const Leaves = () => {
                                                 {l.status.includes('pending') ? (
                                                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
                                                         <button onClick={() => handleReject(l.id)} className="p-2.5 bg-gray-50 text-gray-400 hover:bg-black hover:text-white rounded-xl transition-all"><XCircle className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleApprove(l.id)} className="p-2.5 bg-red-600 text-white hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all flex items-center gap-2">
+                                                        <button onClick={() => handleApprove(l.id)} className="p-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 transition-all flex items-center gap-2">
                                                             <Check className="w-4 h-4" />
                                                             <span className="text-[10px] font-black uppercase tracking-widest px-1">{activeView === 'manager' ? 'Forward' : 'Authorize'}</span>
                                                         </button>
@@ -216,7 +216,7 @@ export const Leaves = () => {
 
                 <div className="space-y-8">
                     <div className="app-card p-10 bg-gray-900 border-none text-white relative overflow-hidden">
-                        <div className="absolute bottom-[-10%] right-[-10%] w-32 h-32 bg-red-600/20 rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-32 h-32 bg-blue-600/20 rounded-full blur-3xl"></div>
                         <h3 className="text-xl font-extrabold italic mb-2 tracking-tight">Governance Dashboard</h3>
                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Institutional Efficiency</p>
 
@@ -233,7 +233,7 @@ export const Leaves = () => {
                     </div>
 
                     <div className="app-card p-10 space-y-6">
-                        <div className="flex items-center space-x-3 text-red-600">
+                        <div className="flex items-center space-x-3 text-blue-600">
                             <FileText className="w-5 h-5" />
                             <span className="text-[10px] font-black uppercase tracking-widest">Routing Protocol</span>
                         </div>
