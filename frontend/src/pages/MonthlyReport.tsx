@@ -324,36 +324,36 @@ export const MonthlyReport = () => {
             </div>
 
             <div className="overflow-x-auto w-full pb-4 custom-scrollbar print:overflow-visible">
-              <table className="w-full text-[10px] border-collapse">
+              <table className="w-full text-[9px] border-collapse">
                 <thead>
                   <tr className="bg-gray-50/50">
-                    <th className="px-4 py-4 text-left font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-48 shadow-[1px_0_0_rgba(0,0,0,0.05)]">Employee</th>
+                    <th className="px-2 py-4 text-left font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-32 shadow-[1px_0_0_rgba(0,0,0,0.05)]">Emp</th>
                     {days.map(day => {
                       const date = new Date(year, month - 1, day);
                       const isSun = date.getDay() === 0;
                       const isHol = report?.holidays?.some(h => h.day === day);
                       return (
-                        <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[34px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
-                          <div className={`text-[10px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
-                          <div className="text-[7px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
+                        <th key={day} className={`px-0.5 py-2 text-center border-r border-gray-100 min-w-[26px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
+                          <div className={`text-[9px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
+                          <div className="text-[6px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
                         </th>
                       );
                     })}
-                    <th className="px-2 py-3 text-center font-black text-emerald-600 border-l border-gray-100 bg-emerald-50/30">Pres</th>
-                    <th className="px-2 py-3 text-center font-black text-red-600 border-x border-gray-100 bg-red-50/30">Abs</th>
-                    <th className="px-2 py-3 text-center font-black text-orange-600 border-r border-gray-100 bg-orange-50/30">Late</th>
-                    <th className="px-2 py-3 text-center font-black text-gray-800 bg-gray-50/50">Hrs</th>
+                    <th className="px-1 py-2 text-center font-black text-emerald-600 border-l border-gray-100 bg-emerald-50/30">P</th>
+                    <th className="px-1 py-2 text-center font-black text-red-600 border-x border-gray-100 bg-red-50/30">A</th>
+                    <th className="px-1 py-2 text-center font-black text-orange-600 border-r border-gray-100 bg-orange-50/30">L</th>
+                    <th className="px-1 py-2 text-center font-black text-gray-800 bg-gray-50/50">H</th>
                   </tr>
                 </thead>
                 <tbody>
                   {report?.reportData?.map((row, idx) => (
                     <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-red-50/10 transition-colors">
-                      <td className="px-4 py-3 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
-                        <div className="font-extrabold text-gray-900 text-xs truncate whitespace-nowrap">{row?.employee?.name || 'Unknown'}</div>
-                        <div className="text-[9px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row?.employee?.employeeCode || '-'}</div>
+                      <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-red-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                        <div className="font-extrabold text-gray-900 text-[10px] truncate whitespace-nowrap w-28" title={row?.employee?.name}>{row?.employee?.name || 'Unknown'}</div>
+                        <div className="text-[8px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row?.employee?.employeeCode || '-'}</div>
                       </td>
                       {row?.dailyData?.map((dayInfo, i) => (
-                        <td key={dayInfo?.day || i} className={`p-1 pt-1.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
+                        <td key={dayInfo?.day || i} className={`p-0.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
                           {getCellContent(dayInfo)}
                         </td>
                       ))}
@@ -373,15 +373,17 @@ export const MonthlyReport = () => {
       <style>{`
         @media print {
           @page { size: landscape; margin: 5mm; }
-          body { background: white !important; }
+          body { background: white !important; zoom: 0.65; }
           .print\\:hidden { display: none !important; }
           .min-h-screen, main { margin: 0 !important; padding: 0 !important; }
           .ml-64, .ml-20 { margin-left: 0 !important; }
           header { display: none !important; }
-          .app-card { border: 1px solid #eee !important; box-shadow: none !important; border-radius: 0 !important; }
+          .app-card { border: none !important; box-shadow: none !important; border-radius: 0 !important; width: 100% !important; }
           table { width: 100% !important; border-collapse: collapse !important; }
-          th, td { border: 0.5px solid #eee !important; padding: 2px !important; font-size: 7px !important; }
+          th, td { border: 0.5px solid #ccc !important; padding: 1px !important; }
           .sticky { position: static !important; }
+          .w-32 { width: auto !important; min-width: 80px; }
+          .whitespace-nowrap { white-space: normal !important; }
           .bg-gray-100, .bg-gray-50 { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; }
           .bg-emerald-50 { background-color: #ecfdf5 !important; -webkit-print-color-adjust: exact; }
           .bg-red-50 { background-color: #fef2f2 !important; -webkit-print-color-adjust: exact; }
