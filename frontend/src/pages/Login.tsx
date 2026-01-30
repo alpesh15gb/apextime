@@ -18,8 +18,14 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const response: any = await login(username, password);
+      const user = response?.data?.user || JSON.parse(localStorage.getItem('user') || '{}');
+
+      if (user?.role === 'employee') {
+        navigate('/portal');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid identification sequence');
     } finally {

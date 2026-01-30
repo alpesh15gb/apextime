@@ -180,6 +180,11 @@ router.post(
         return isNaN(parsed) ? 0 : parsed;
       };
 
+      const sanitizeId = (val: any) => {
+        if (!val || val === '') return null;
+        return val;
+      };
+
       // Check if employee code already exists
       const existing = await prisma.employee.findUnique({
         where: { employeeCode },
@@ -189,6 +194,15 @@ router.post(
         return res.status(400).json({ error: 'Employee code already exists' });
       }
 
+      // Also check if User with same username exists
+      const existingUser = await prisma.user.findUnique({
+        where: { username: employeeCode },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ error: `User login '${employeeCode}' is already taken` });
+      }
+
       const employee = await prisma.employee.create({
         data: {
           employeeCode,
@@ -196,11 +210,11 @@ router.post(
           lastName,
           email,
           phone,
-          branchId,
-          departmentId,
-          designationId,
-          categoryId,
-          shiftId,
+          branchId: sanitizeId(branchId),
+          departmentId: sanitizeId(departmentId),
+          designationId: sanitizeId(designationId),
+          categoryId: sanitizeId(categoryId),
+          shiftId: sanitizeId(shiftId),
           deviceUserId,
           dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : null,
           basicSalary: sanitizeNumber(basicSalary),
@@ -284,6 +298,11 @@ router.put('/:id', async (req, res) => {
       return isNaN(parsed) ? 0 : parsed;
     };
 
+    const sanitizeId = (val: any) => {
+      if (!val || val === '') return null;
+      return val;
+    };
+
     const employee = await prisma.employee.update({
       where: { id },
       data: {
@@ -292,11 +311,11 @@ router.put('/:id', async (req, res) => {
         lastName,
         email,
         phone,
-        branchId,
-        departmentId,
-        designationId,
-        categoryId,
-        shiftId,
+        branchId: sanitizeId(branchId),
+        departmentId: sanitizeId(departmentId),
+        designationId: sanitizeId(designationId),
+        categoryId: sanitizeId(categoryId),
+        shiftId: sanitizeId(shiftId),
         deviceUserId,
         dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
         isActive: isActive !== undefined ? (isActive === true || isActive === 'true') : undefined,
