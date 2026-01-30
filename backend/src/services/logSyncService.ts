@@ -97,7 +97,7 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
       const hikResult = await hikPool.request().query(`
         SELECT TOP 5000 
-          LogId, person_id, access_datetime, device_name, serial_no, SyncedToApex
+          LogId, person_id, access_datetime, device_name, serial_no, person_name, SyncedToApex
         FROM HikvisionLogs
         WHERE SyncedToApex IS NULL OR SyncedToApex = 0
         ORDER BY access_datetime ASC
@@ -105,13 +105,35 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
       logger.info(`Found ${hikResult.recordset.length} unsynced logs in HikCentral`);
 
-      const hikLogs: RawLog[] = hikResult.recordset.map((row: any) => ({
-        DeviceLogId: row.LogId,
-        DeviceId: row.serial_no || row.device_name || 'HIK_UNKNOWN',
-        UserId: row.person_id || 'UNKNOWN',
-        LogDate: row.access_datetime,
-        TableName: 'HikvisionLogs'
-      }));
+      const hikLogs: RawLog[] = hikResult.recordset.map((row: any) => {
+        // Capture name from HikCentral if available
+        if (row.person_name && row.person_id) {
+          const pName = row.person_name.toString().trim();
+          const pId = row.person_id.toString();
+
+          // Only update cache if we have a valid name and it's not just a number
+          if (pName && !/^\d+$/.test(pName)) {
+            // Check if we already have a better name, or if this is new
+            const existing = deviceUserInfoCache.get(pId);
+            if (!existing || /^\d+$/.test(existing.Name)) {
+              deviceUserInfoCache.set(pId, {
+                UserId: pId,
+                Name: pName,
+                DeviceId: 0, // Virtual device for HikCentral users
+                DepartmentName: 'HikCentral Internal' // Optional default
+              });
+            }
+          }
+        }
+
+        return {
+          DeviceLogId: row.LogId,
+          DeviceId: row.serial_no || row.device_name || 'HIK_UNKNOWN',
+          UserId: row.person_id || 'UNKNOWN',
+          LogDate: row.access_datetime,
+          TableName: 'HikvisionLogs'
+        };
+      });
 
       // Merge HikCentral logs
       allLogs = [...allLogs, ...hikLogs];
@@ -258,7 +280,7 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
                 }
 
                 employeeCache.set(userId, existingBySourceId.id);
-                continue;
+                // Continue to name check below
               }
             }
 
@@ -294,17 +316,47 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
                 }
 
                 employeeCache.set(userId, existingByName.id);
-                continue;
+                // Continue to name check below
               }
             }
 
-            const newEmployee = await createEmployeeFromDeviceLog(userId);
-            if (newEmployee) {
-              employeeCache.set(userId, newEmployee.id);
-              employeesCreated++;
+            // If still not found in cache, create new
+            if (!employeeCache.has(userId)) {
+              const newEmployee = await createEmployeeFromDeviceLog(userId);
+              if (newEmployee) {
+                employeeCache.set(userId, newEmployee.id);
+                employeesCreated++;
+              }
             }
           } catch (error) {
             logger.error(`Failed to create/link employee for userId ${userId}:`, error);
+          }
+        }
+
+        // CHECK FOR NAME UPDATES (For both new and existing employees)
+        if (employeeCache.has(userId)) {
+          const employeeId = employeeCache.get(userId);
+          const userInfo = deviceUserInfoCache.get(userId);
+
+          if (userInfo && userInfo.Name && !/^\d+$/.test(userInfo.Name)) {
+            const currentEmp = existingEmployees.find(e => e.id === employeeId);
+            // If we don't have currentEmp in this scope because it was just created or just added to cache, fetch it or optimize
+            // For safety and simplicity in this block, let's just do a direct update if needed
+
+            // We can fetch the employee lightly to check current name
+            try {
+              const empDb = await prisma.employee.findUnique({ where: { id: employeeId } });
+              if (empDb && (empDb.firstName === 'Employee' || /^\d+$/.test(empDb.firstName))) {
+                const { firstName, lastName } = parseEmployeeName(userInfo.Name);
+                await prisma.employee.update({
+                  where: { id: employeeId },
+                  data: { firstName, lastName }
+                });
+                logger.info(`Updated name for employee ${empDb.employeeCode} to ${firstName} ${lastName} from sync source`);
+              }
+            } catch (err) {
+              logger.warn(`Failed to check/update name for ${userId}`, err);
+            }
           }
         }
       }
