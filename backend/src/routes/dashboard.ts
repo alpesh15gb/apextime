@@ -15,98 +15,71 @@ router.get('/stats', async (req, res) => {
 
     const yesterday = subDays(today, 1);
 
-    // Get counts
-    const [
-      totalEmployees,
-      activeEmployees,
-      totalDepartments,
-      totalBranches,
-      todayAttendance,
-      yesterdayAttendance,
-      devicesCount,
-    ] = await Promise.all([
-      prisma.employee.count(),
-      prisma.employee.count({ where: { isActive: true } }),
-      prisma.department.count(),
-      prisma.branch.count(),
-      prisma.attendanceLog.count({
+    // Initialize defaults
+    let totalEmployees = 0;
+    let activeEmployees = 0;
+    let totalDepartments = 0;
+    let totalBranches = 0;
+    let yesterdayAttendance = 0;
+    let devicesCount = 0;
+    let todayStatus = { present: 0, absent: 0 };
+    let absentEmployees: any[] = [];
+    let lateArrivals = 0;
+    let lastSync = null;
+
+    // Execute queries sequentially to prevent total failure
+    try {
+      totalEmployees = await prisma.employee.count();
+      activeEmployees = await prisma.employee.count({ where: { isActive: true } });
+    } catch (e) { console.error('Employee count error', e); }
+
+    try {
+      totalDepartments = await prisma.department.count();
+      totalBranches = await prisma.branch.count();
+      devicesCount = await prisma.device.count({ where: { isActive: true } });
+    } catch (e) { console.error('Org count error', e); }
+
+    try {
+      yesterdayAttendance = await prisma.attendanceLog.count({
+        where: { date: { gte: yesterday, lt: today }, status: 'present' }
+      });
+    } catch (e) { console.error('Yesterday att error', e); }
+
+    try {
+      // Today's Status
+      const presentCount = await prisma.attendanceLog.count({
+        where: { date: { gte: today }, status: 'present' }
+      });
+
+      // Accurate Absent Count (Active employees only)
+      const absentCount = await prisma.attendanceLog.count({
         where: {
           date: { gte: today },
-          status: 'present',
-        },
-      }),
-      prisma.attendanceLog.count({
-        where: {
-          date: { gte: yesterday, lt: today },
-          status: 'present',
-        },
-      }),
-      prisma.device.count({ where: { isActive: true } }),
-    ]);
+          status: 'absent',
+          employee: { isActive: true }
+        }
+      });
 
-    // Get today's status breakdown
-    const todayStats = await prisma.attendanceLog.groupBy({
-      by: ['status'],
-      where: {
-        date: { gte: today },
-      },
-      _count: {
-        status: true,
-      },
-    });
+      todayStatus = { present: presentCount, absent: absentCount };
+    } catch (e) { console.error('Today status error', e); }
 
-    const todayStatus = {
-      present: 0,
-      absent: 0,
-    };
+    try {
+      absentEmployees = await prisma.attendanceLog.findMany({
+        where: { date: { gte: today }, status: 'absent', employee: { isActive: true } },
+        include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
+        take: 20
+      }).then(logs => logs.map(l => l.employee));
+    } catch (e) { console.error('Absent list error', e); }
 
-    for (const stat of todayStats) {
-      if (stat.status === 'present') todayStatus.present = stat._count.status;
-      if (stat.status === 'absent') {
-        // Re-verify absent count for active employees only to be safe
-        const activeAbsentCount = await prisma.attendanceLog.count({
-          where: {
-            date: { gte: today },
-            status: 'absent',
-            employee: { isActive: true }
-          }
-        });
-        todayStatus.absent = activeAbsentCount;
-      }
-    }
+    try {
+      lateArrivals = await prisma.attendanceLog.count({
+        where: { date: { gte: today }, lateArrival: { gt: 0 } }
+      });
+    } catch (e) { console.error('Late arrivals error', e); }
 
-    // Get absent employees list
-    const absentEmployees = await prisma.attendanceLog.findMany({
-      where: {
-        date: { gte: today },
-        status: 'absent',
-        employee: { isActive: true }
-      },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            employeeCode: true,
-          },
-        },
-      },
-      take: 20, // Limit to 20 for dashboard summary
-    });
-
-    // Get late arrivals today
-    const lateArrivals = await prisma.attendanceLog.count({
-      where: {
-        date: { gte: today },
-        lateArrival: { gt: 0 },
-      },
-    });
-
-    // Get recent sync status
-    const lastSync = await prisma.syncStatus.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    try {
+      lastSync = await prisma.syncStatus.findFirst({ orderBy: { createdAt: 'desc' } });
+    } catch (e) { console.error('Sync status error', e); }
 
     res.json({
       counts: {
@@ -119,12 +92,12 @@ router.get('/stats', async (req, res) => {
       today: {
         present: todayStatus.present,
         absent: todayStatus.absent,
-        absentEmployees: absentEmployees.map(a => a.employee),
+        absentEmployees,
         lateArrivals,
         attendanceRate: totalEmployees > 0 ? Math.round((todayStatus.present / totalEmployees) * 100) : 0,
       },
       yesterdayAttendance,
-      lastSync: lastSync || null,
+      lastSync,
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
