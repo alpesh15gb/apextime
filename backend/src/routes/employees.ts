@@ -180,6 +180,11 @@ router.post(
         return val;
       };
 
+      const sanitizeNumber = (val: any) => {
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? 0 : parsed;
+      };
+
       const sanitizeDate = (val: any) => {
         if (!val || val === '') return null;
         const d = new Date(val);
@@ -306,6 +311,11 @@ router.put('/:id', async (req, res) => {
     const sanitizeId = (val: any) => {
       if (!val || val === '' || val === 'undefined') return null;
       return val;
+    };
+
+    const sanitizeNumber = (val: any) => {
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? 0 : parsed;
     };
 
     const sanitizeDate = (val: any) => {
