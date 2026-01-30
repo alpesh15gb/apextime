@@ -15,7 +15,8 @@ import {
   Users,
   AlertCircle,
   PieChart,
-  DollarSign
+  DollarSign,
+  LayoutGrid
 } from 'lucide-react';
 import { reportsAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { Department, Branch, Shift } from '../types';
@@ -228,10 +229,17 @@ export const Reports = () => {
       {/* Reports Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 ml-0 gap-6">
         <ReportCard
-          icon={Calendar}
-          title="Attendance Report"
+          icon={LayoutGrid}
+          title="Monthly Matrix"
           colorClass="text-blue-600"
           bgClass="bg-blue-50"
+          onClick={() => navigate('/monthly-report')}
+        />
+        <ReportCard
+          icon={Calendar}
+          title="Daily Attendance"
+          colorClass="text-cyan-600"
+          bgClass="bg-cyan-50"
           onClick={() => handleDownload('excel', 'daily')}
         />
         <ReportCard
