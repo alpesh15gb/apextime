@@ -19,16 +19,18 @@ import {
     Activity,
     Lock,
     Calendar,
-    FileText
+    FileText,
+    DownloadCloud
 } from 'lucide-react';
 import { payrollAPI, branchesAPI, departmentsAPI, employeesAPI } from '../services/api';
 
-type Tab = 'runs' | 'employee-config' | 'settings';
+type Tab = 'runs' | 'employee-config';
 
 export const Payroll = () => {
     const [activeTab, setActiveTab] = useState<Tab>('runs');
     const [runs, setRuns] = useState<any[]>([]);
     const [selectedRun, setSelectedRun] = useState<any>(null);
+    const [selectedPayroll, setSelectedPayroll] = useState<any>(null);
     const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -86,11 +88,11 @@ export const Payroll = () => {
         try {
             setProcessing(true);
             await payrollAPI.processRun(id);
-            fetchRuns();
             if (selectedRun?.id === id) {
                 const details = await payrollAPI.getRunDetails(id);
                 setSelectedRun(details.data);
             }
+            fetchRuns();
         } catch (error) {
             alert('Processing failed. Please check logs.');
         } finally {
@@ -121,6 +123,20 @@ export const Payroll = () => {
             alert('Failed to finalize');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExportBank = async (id: string) => {
+        try {
+            const res = await payrollAPI.exportBank(id);
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `bank_disbursement_${id}.csv`);
+            document.body.appendChild(link);
+            link.click();
+        } catch (e) {
+            alert('Export failed');
         }
     };
 
@@ -157,7 +173,7 @@ export const Payroll = () => {
                         <span>Create New Run</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('employee-config')}
+                        onClick={() => setActiveTab(activeTab === 'runs' ? 'employee-config' : 'runs')}
                         className={`p-3.5 rounded-2xl border transition-all ${activeTab === 'employee-config' ? 'bg-gray-900 border-gray-900 text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:text-gray-600'}`}
                     >
                         <Settings className="w-5 h-5" />
@@ -220,14 +236,6 @@ export const Payroll = () => {
                             </div>
                         </div>
                     ))}
-
-                    {runs.length === 0 && !loading && (
-                        <div className="col-span-full py-40 bg-gray-50/30 rounded-[40px] border-4 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
-                            <RefreshCw className="w-16 h-16 text-gray-100 mb-6" />
-                            <h3 className="text-2xl font-black text-gray-300 tracking-tight">Zero Payruns Found</h3>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Initialize your first batch to start disbursements</p>
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -247,78 +255,158 @@ export const Payroll = () => {
                             </div>
                         </div>
 
-                        {selectedRun.status !== 'locked' && selectedRun.status !== 'finalized' && (
+                        <div className="flex items-center gap-4">
+                            {selectedRun.status !== 'locked' && selectedRun.status !== 'finalized' && (
+                                <button
+                                    onClick={() => handleFinalize(selectedRun.id)}
+                                    className="px-8 py-4 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 flex items-center space-x-3"
+                                >
+                                    <Lock className="w-4 h-4" />
+                                    <span>Finalize & Lock Ledger</span>
+                                </button>
+                            )}
                             <button
-                                onClick={() => handleFinalize(selectedRun.id)}
-                                className="px-8 py-4 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 flex items-center space-x-3"
+                                onClick={() => handleExportBank(selectedRun.id)}
+                                className="px-8 py-4 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-black shadow-xl shadow-gray-100 flex items-center space-x-3"
                             >
-                                <Lock className="w-4 h-4" />
-                                <span>Finalize & Lock Ledger</span>
+                                <DownloadCloud className="w-4 h-4" />
+                                <span>Bank Bulk Export</span>
                             </button>
-                        )}
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-                        <div className="xl:col-span-3">
-                            <div className="app-card overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="bg-gray-50/30">
-                                                <th className="table-header">Emp Record</th>
-                                                <th className="table-header">Attendance Link</th>
-                                                <th className="table-header text-right">Gross</th>
-                                                <th className="table-header text-right">Deductions</th>
-                                                <th className="table-header text-right">Net Disbursement</th>
-                                                <th className="table-header text-center">Export</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {selectedRun.payrolls.map((p: any) => (
-                                                <tr key={p.id} className="table-row group">
-                                                    <td className="px-6 py-5">
-                                                        <p className="text-sm font-extrabold text-gray-900 leading-none capitalize">{p.employee.firstName} {p.employee.lastName}</p>
-                                                        <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tighter">{p.employee.employeeCode}</p>
-                                                    </td>
-                                                    <td className="px-6 py-5">
-                                                        <div className="flex items-center space-x-2">
-                                                            <Activity className="w-3.5 h-3.5 text-gray-300" />
-                                                            <span className="text-xs font-bold text-gray-700">{p.paidDays} / {p.totalWorkingDays} <span className="text-[10px] text-gray-400 font-bold uppercase ml-1">Days</span></span>
-                                                        </div>
-                                                        {p.lopDays > 0 && <span className="text-[9px] text-red-500 font-black uppercase tracking-tighter mt-0.5">-{p.lopDays} Days LOP</span>}
-                                                    </td>
-                                                    <td className="px-6 py-5 text-right font-bold text-gray-700 text-sm">₹{p.grossSalary.toLocaleString()}</td>
-                                                    <td className="px-6 py-5 text-right font-bold text-red-500 text-sm italic">₹{p.totalDeductions.toLocaleString()}</td>
-                                                    <td className="px-6 py-5 text-right font-black text-gray-900 text-base">₹{p.netSalary.toLocaleString()}</td>
-                                                    <td className="px-6 py-5 text-center">
-                                                        <button className="p-2.5 bg-gray-50 text-gray-300 hover:bg-black hover:text-white rounded-xl transition-all">
-                                                            <Printer className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                    <div className="app-card overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-gray-50/30">
+                                        <th className="table-header">Emp Record</th>
+                                        <th className="table-header">Attendance Link</th>
+                                        <th className="table-header text-right">Gross</th>
+                                        <th className="table-header text-right">Deductions</th>
+                                        <th className="table-header text-right">Net Disbursement</th>
+                                        <th className="table-header text-center">Export</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {selectedRun.payrolls.map((p: any) => (
+                                        <tr key={p.id} className="table-row group">
+                                            <td className="px-6 py-5">
+                                                <p className="text-sm font-extrabold text-gray-900 leading-none capitalize">{p.employee.firstName} {p.employee.lastName}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tighter">{p.employee.employeeCode}</p>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center space-x-2">
+                                                    <Activity className="w-3.5 h-3.5 text-gray-300" />
+                                                    <span className="text-xs font-bold text-gray-700">{p.paidDays} / {p.totalWorkingDays} <span className="text-[10px] text-gray-400 font-bold uppercase ml-1">Days</span></span>
+                                                </div>
+                                                {p.lopDays > 0 && <span className="text-[9px] text-red-500 font-black uppercase tracking-tighter mt-0.5">-{p.lopDays} Days LOP</span>}
+                                            </td>
+                                            <td className="px-6 py-5 text-right font-bold text-gray-700 text-sm">₹{p.grossSalary.toLocaleString()}</td>
+                                            <td className="px-6 py-5 text-right font-bold text-red-500 text-sm italic">₹{p.totalDeductions.toLocaleString()}</td>
+                                            <td className="px-6 py-5 text-right font-black text-gray-900 text-base">₹{p.netSalary.toLocaleString()}</td>
+                                            <td className="px-6 py-5 text-center">
+                                                <button onClick={() => setSelectedPayroll(p)} className="p-2.5 bg-gray-50 text-gray-300 hover:bg-black hover:text-white rounded-xl transition-all">
+                                                    <Printer className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payslip Modal */}
+            {selectedPayroll && (
+                <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4 print:p-0">
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in duration-300 print:shadow-none print:rounded-none">
+                        <div className="p-10 border-b border-gray-50 flex justify-between items-center print:hidden">
+                            <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Statement</h3>
+                            <div className="flex items-center space-x-3">
+                                <button onClick={() => window.print()} className="px-6 py-3 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-100 flex items-center gap-2 hover:bg-blue-700 transition-all"><Printer className="w-5 h-5" /> Print Statement</button>
+                                <button onClick={() => setSelectedPayroll(null)} className="p-3 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
                             </div>
                         </div>
+                        <div className="p-12 overflow-y-auto max-h-[70vh] custom-scrollbar print:max-h-none print:p-0">
+                            <div className="bg-white p-8 lg:p-16 space-y-12 print:p-0">
+                                <div className="flex justify-between items-start border-b-8 border-gray-900 pb-12">
+                                    <div className="space-y-4">
+                                        <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase italic">Apextime Enterprise</h2>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Salary Disbursement Statement</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-5xl font-black text-blue-600 tracking-tighter italic leading-none">{new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleString('default', { month: 'long' })}</p>
+                                        <p className="text-sm font-black text-gray-900 mt-2 uppercase tracking-widest">{selectedPayroll.year}</p>
+                                    </div>
+                                </div>
 
-                        <div className="space-y-8">
-                            <div className="app-card p-10 bg-gray-900 text-white relative overflow-hidden">
-                                <div className="absolute right-[-10%] top-[-10%] w-32 h-32 bg-blue-600/20 rounded-full blur-3xl"></div>
-                                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-10">Run Metrics</h4>
-                                <div className="space-y-8">
-                                    <div className="flex justify-between items-end border-b border-gray-800 pb-4">
-                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Total Gross</span>
-                                        <span className="text-2xl font-black text-white tracking-tighter">₹{selectedRun.totalGross.toLocaleString()}</span>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 py-8 border-b border-gray-100">
+                                    <div>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Team Member</p>
+                                        <p className="text-sm font-extrabold text-gray-900 uppercase">{selectedPayroll.employee.firstName} {selectedPayroll.employee.lastName}</p>
                                     </div>
-                                    <div className="flex justify-between items-end border-b border-gray-800 pb-4">
-                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Net Outflow</span>
-                                        <span className="text-2xl font-black text-blue-400 tracking-tighter">₹{selectedRun.totalNet.toLocaleString()}</span>
+                                    <div>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">ID Reference</p>
+                                        <p className="text-sm font-extrabold text-gray-900 uppercase">{selectedPayroll.employee.employeeCode}</p>
                                     </div>
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Statutory Lock</span>
-                                        <span className="text-2xl font-black text-emerald-400 tracking-tighter">₹{(selectedRun.totalGross - selectedRun.totalNet).toLocaleString()}</span>
+                                    <div>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Days Payable</p>
+                                        <p className="text-sm font-extrabold text-gray-900">{selectedPayroll.paidDays} / {selectedPayroll.totalWorkingDays}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Bank Reference</p>
+                                        <p className="text-sm font-extrabold text-gray-900">****{selectedPayroll.employee.accountNumber?.slice(-4) || 'N/A'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                                    <div className="space-y-6">
+                                        <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Earnings Breakdown</h4>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
+                                                <span className="text-gray-500">Basic Wage</span>
+                                                <span className="text-gray-900">₹{selectedPayroll.basicPaid?.toLocaleString() || 0}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
+                                                <span className="text-gray-500">HRA</span>
+                                                <span className="text-gray-900">₹{selectedPayroll.hraPaid?.toLocaleString() || 0}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-base font-black pt-4">
+                                                <span className="text-gray-900 uppercase">Gross Earnings</span>
+                                                <span className="text-gray-900">₹{selectedPayroll.grossSalary.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory Deductions</h4>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
+                                                <span className="text-gray-500">Provident Fund (PF)</span>
+                                                <span className="text-red-500">₹{selectedPayroll.pfDeduction.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
+                                                <span className="text-gray-500">ESI / PT</span>
+                                                <span className="text-red-500">₹{(selectedPayroll.esiDeduction + selectedPayroll.ptDeduction).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-base font-black pt-4">
+                                                <span className="text-gray-900 uppercase">Total Deductions</span>
+                                                <span className="text-red-600">₹{selectedPayroll.totalDeductions.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-12 bg-gray-900 p-16 rounded-[40px] text-white flex flex-col lg:flex-row justify-between items-center gap-8 print:rounded-none">
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Total Net Disbursement</p>
+                                        <h1 className="text-6xl font-black tracking-tighter italic">₹{selectedPayroll.netSalary.toLocaleString()}</h1>
+                                    </div>
+                                    <div className="text-center lg:text-right">
+                                        <div className="badge badge-success px-4 py-1.5 font-black text-[10px] uppercase">State: {selectedPayroll.status}</div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase mt-2">Verified Digital Ledger</p>
                                     </div>
                                 </div>
                             </div>
@@ -327,94 +415,68 @@ export const Payroll = () => {
                 </div>
             )}
 
-            {/* Employee Configuration View */}
+            {/* Employee Config Tab */}
             {activeTab === 'employee-config' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-1 app-card overflow-hidden flex flex-col h-[700px]">
-                        <div className="p-8 border-b border-gray-50 bg-gray-50/20">
-                            <h3 className="font-extrabold text-gray-800 tracking-tight mb-6">Financial Matrix</h3>
-                            <div className="relative">
-                                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Verify team member..."
-                                    className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-bold text-gray-600 focus:ring-4 focus:ring-blue-50 outline-none"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
+                    <div className="lg:col-span-1 app-card overflow-hidden flex flex-col h-[600px]">
+                        <div className="p-8 border-b border-gray-50">
+                            <input
+                                type="text"
+                                placeholder="Search employees..."
+                                className="w-full pl-4 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-50 outline-none"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
                         <div className="flex-1 overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
                             {employees.filter(emp =>
-                                `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase())
+                                `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
                             ).map(emp => (
                                 <button
                                     key={emp.id}
                                     onClick={() => setEditingEmployee(emp)}
-                                    className={`w-full p-6 text-left transition-all flex justify-between items-center group ${editingEmployee?.id === emp.id ? 'bg-blue-50/40 border-r-4 border-blue-600' : 'hover:bg-gray-50'}`}
+                                    className={`w-full p-6 text-left transition-all flex justify-between items-center ${editingEmployee?.id === emp.id ? 'bg-blue-50/40 border-r-4 border-blue-600' : 'hover:bg-gray-50'}`}
                                 >
                                     <div>
-                                        <p className="font-extrabold text-gray-900 group-hover:text-blue-600 transition-colors capitalize">{emp.firstName} {emp.lastName}</p>
+                                        <p className="font-extrabold text-gray-900 capitalize">{emp.firstName} {emp.lastName}</p>
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{emp.employeeCode}</p>
                                     </div>
-                                    <ArrowRightCircle className={`w-5 h-5 transition-all ${editingEmployee?.id === emp.id ? 'text-blue-600' : 'text-gray-100 group-hover:text-gray-300'}`} />
+                                    <ArrowRightCircle className="w-5 h-5 text-gray-100" />
                                 </button>
                             ))}
                         </div>
                     </div>
-
                     <div className="lg:col-span-2">
                         {editingEmployee ? (
-                            <form onSubmit={handleUpdateSalary} className="app-card p-12 space-y-10 animate-in slide-in-from-right duration-500">
-                                <div className="pb-8 border-b border-gray-50">
-                                    <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Structured Salary</h3>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Configuration for {editingEmployee.firstName} {editingEmployee.lastName}</p>
-                                </div>
-
+                            <form onSubmit={handleUpdateSalary} className="app-card p-12 space-y-10">
+                                <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Structured Salary</h3>
                                 <div className="grid grid-cols-2 gap-10">
                                     <div className="space-y-6">
-                                        <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Earnings</h4>
+                                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Earnings</p>
                                         <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Basic Salary</label>
-                                                <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">HRA</label>
-                                                <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Special Allowance</label>
-                                                <input type="number" className="input-app w-full font-bold" value={editingEmployee.specialAllowance || 0} onChange={(e) => setEditingEmployee({ ...editingEmployee, specialAllowance: parseFloat(e.target.value) })} />
-                                            </div>
+                                            <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} placeholder="Basic" />
+                                            <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} placeholder="HRA" />
                                         </div>
                                     </div>
-
                                     <div className="space-y-6">
-                                        <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory Rules</h4>
+                                        <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory</p>
                                         <div className="space-y-4">
-                                            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-50">
-                                                <span className="text-[10px] font-black text-gray-900 uppercase">Enable PF</span>
-                                                <input type="checkbox" className="w-5 h-5 rounded-lg text-blue-600 border-gray-200" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                                <span className="text-[10px] font-black uppercase">Enable PF</span>
+                                                <input type="checkbox" className="w-5 h-5" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
                                             </div>
-                                            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-50">
-                                                <span className="text-[10px] font-black text-gray-900 uppercase">Enable ESI</span>
-                                                <input type="checkbox" className="w-5 h-5 rounded-lg text-blue-600 border-gray-200" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
-                                            </div>
-                                            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-50">
-                                                <span className="text-[10px] font-black text-gray-900 uppercase">Prof. Tax (PT)</span>
-                                                <input type="checkbox" className="w-5 h-5 rounded-lg text-blue-600 border-gray-200" checked={editingEmployee.isPTEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPTEnabled: e.target.checked })} />
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                                <span className="text-[10px] font-black uppercase">Enable ESI</span>
+                                                <input type="checkbox" className="w-5 h-5" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="pt-8 flex justify-end gap-3 border-t border-gray-50">
-                                    <button type="button" onClick={() => setEditingEmployee(null)} className="px-6 py-3 bg-white border border-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-50">Cancel</button>
-                                    <button type="submit" disabled={loading} className="px-8 py-3 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center gap-2">
+                                <div className="flex justify-end gap-3 pt-8 border-t border-gray-50">
+                                    <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 bg-white border border-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-50">Cancel</button>
+                                    <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center gap-2">
                                         <Save className="w-4 h-4" />
-                                        <span>Commit Structural Logic</span>
+                                        <span>Save Structure</span>
                                     </button>
                                 </div>
                             </form>
@@ -422,7 +484,6 @@ export const Payroll = () => {
                             <div className="app-card h-full flex flex-col items-center justify-center text-center p-20 border-dashed border-2 border-gray-100">
                                 <FileText className="w-16 h-16 text-gray-100 mb-6" />
                                 <h3 className="text-xl font-black text-gray-300 tracking-tight">Financial Ledger Neutral</h3>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Select a member to audit or update their payroll profile</p>
                             </div>
                         )}
                     </div>
@@ -432,42 +493,25 @@ export const Payroll = () => {
             {/* New Run Modal */}
             {showNewRunModal && (
                 <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-300">
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden">
                         <div className="p-10 border-b border-gray-50 flex justify-between items-center">
                             <h3 className="text-2xl font-black text-gray-900 tracking-tight">Initialize Batch</h3>
                             <button onClick={() => setShowNewRunModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl"><X className="w-6 h-6" /></button>
                         </div>
                         <form onSubmit={handleCreateRun} className="p-10 space-y-6">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Batch Identifier</label>
-                                <input
-                                    type="text"
-                                    className="input-app w-full font-bold"
-                                    value={newRunData.batchName}
-                                    onChange={(e) => setNewRunData({ ...newRunData, batchName: e.target.value })}
-                                    required
-                                />
-                            </div>
+                            <input type="text" className="input-app w-full font-bold" value={newRunData.batchName} onChange={(e) => setNewRunData({ ...newRunData, batchName: e.target.value })} placeholder="Batch Name" required />
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Target Month</label>
-                                    <select className="input-app w-full font-bold" value={newRunData.month} onChange={(e) => setNewRunData({ ...newRunData, month: parseInt(e.target.value) })}>
-                                        {Array.from({ length: 12 }).map((_, i) => (
-                                            <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fiscal Year</label>
-                                    <input type="number" className="input-app w-full font-bold" value={newRunData.year} onChange={(e) => setNewRunData({ ...newRunData, year: parseInt(e.target.value) })} />
-                                </div>
+                                <select className="input-app w-full font-bold" value={newRunData.month} onChange={(e) => setNewRunData({ ...newRunData, month: parseInt(e.target.value) })}>
+                                    {Array.from({ length: 12 }).map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
+                                    ))}
+                                </select>
+                                <input type="number" className="input-app w-full font-bold" value={newRunData.year} onChange={(e) => setNewRunData({ ...newRunData, year: parseInt(e.target.value) })} />
                             </div>
-                            <div className="pt-6">
-                                <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    <span>Create Ledger Batch</span>
-                                </button>
-                            </div>
+                            <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
+                                <Plus className="w-4 h-4" />
+                                <span>Create Ledger Batch</span>
+                            </button>
                         </form>
                     </div>
                 </div>

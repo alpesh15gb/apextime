@@ -791,24 +791,36 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       continue;
     }
 
-    // Group logs by date
-    const logsByDate = new Map<string, RawLog[]>();
+    // Sort all user logs by time across all dates for this user
+    userLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
+
+    // Group logs by "Logical Day"
+    // For night shifts, if a punch occurs before 8 AM, it might belong to the previous day
+    const logicalDayGroups = new Map<string, RawLog[]>();
 
     for (const log of userLogs) {
-      const dateKey = log.LogDate.toISOString().split('T')[0];
-      if (!logsByDate.has(dateKey)) {
-        logsByDate.set(dateKey, []);
+      let logicalDate = new Date(log.LogDate);
+      const hours = log.LogDate.getHours();
+
+      // IF Shift is Night Shift AND punch is early morning (before 8 AM), 
+      // treat it as previous day's shift
+      if (employee.shift?.isNightShift && hours < 8) {
+        logicalDate.setDate(logicalDate.getDate() - 1);
       }
-      logsByDate.get(dateKey)!.push(log);
+
+      const dateKey = logicalDate.toISOString().split('T')[0];
+      if (!logicalDayGroups.has(dateKey)) {
+        logicalDayGroups.set(dateKey, []);
+      }
+      logicalDayGroups.get(dateKey)!.push(log);
     }
 
-    // Process each date
-    for (const [dateKey, dateLogs] of logsByDate) {
+    // Process each logical date
+    for (const [dateKey, dateLogs] of logicalDayGroups) {
       // Sort logs by time
       dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
-      // DEDUPLICATE: Remove logs with identical timestamps for this user on this day
-      // This prevents "0-minute duration" issues if multiple logs exist for exact same time
+      // DEDUPLICATE: Remove logs with identical timestamps
       const uniqueTimedLogs: RawLog[] = [];
       const seenTimes = new Set<number>();
       for (const log of dateLogs) {
@@ -820,12 +832,11 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       }
 
       const firstIn = uniqueTimedLogs[0].LogDate;
-      // If only one unique punch time exists, lastOut must be null
       const lastOut = uniqueTimedLogs.length > 1 ? uniqueTimedLogs[uniqueTimedLogs.length - 1].LogDate : null;
 
       // Calculate working hours
       let workingHours: number | null = null;
-      if (firstIn && lastOut && firstIn.getTime() !== lastOut.getTime()) {
+      if (firstIn && lastOut) {
         const diffMs = lastOut.getTime() - firstIn.getTime();
         workingHours = diffMs / (1000 * 60 * 60);
       }
@@ -841,31 +852,27 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         const [startHour, startMinute] = shift.startTime.split(':').map(Number);
         const [endHour, endMinute] = shift.endTime.split(':').map(Number);
 
-        // Create shift start/end times for this date
+        // Shift Start is on the Logical Date
         shiftStart = new Date(dateKey);
         shiftStart.setHours(startHour, startMinute, 0, 0);
 
+        // Shift End might be on the next calendar day
         shiftEnd = new Date(dateKey);
         shiftEnd.setHours(endHour, endMinute, 0, 0);
 
-        // Handle overnight shifts
         if (shift.isNightShift || endHour < startHour) {
           shiftEnd.setDate(shiftEnd.getDate() + 1);
         }
 
-        // Calculate grace periods
-        const gracePeriodIn = shift.gracePeriodIn || 0;
-        const gracePeriodOut = shift.gracePeriodOut || 0;
+        // Calculate late/early
+        const graceIn = shift.gracePeriodIn || 0;
+        const graceOut = shift.gracePeriodOut || 0;
 
-        // Check late arrival
-        const allowedInTime = new Date(shiftStart.getTime() + gracePeriodIn * 60000);
-        if (firstIn > allowedInTime) {
+        if (firstIn > new Date(shiftStart.getTime() + graceIn * 60000)) {
           lateArrival = Math.round((firstIn.getTime() - shiftStart.getTime()) / 60000);
         }
 
-        // Check early departure
-        const allowedOutTime = new Date(shiftEnd.getTime() - gracePeriodOut * 60000);
-        if (lastOut < allowedOutTime) {
+        if (lastOut && lastOut < new Date(shiftEnd.getTime() - graceOut * 60000)) {
           earlyDeparture = Math.round((shiftEnd.getTime() - lastOut.getTime()) / 60000);
         }
       }
@@ -881,7 +888,7 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         shiftEnd,
         lateArrival,
         earlyDeparture,
-        status: 'present',
+        status: workingHours && workingHours > 4 ? 'present' : (workingHours && workingHours > 2 ? 'half_day' : 'absent'),
       });
     }
   }

@@ -83,10 +83,30 @@ export class PayrollEngine {
                 if (esc.component.type === 'EARNING') {
                     // Pro-rate salary based on paid days
                     const amount = (esc.monthlyAmount / daysInMonth) * paidDays;
-                    components[esc.component.code] = amount;
+                    components[esc.component.code] = (components[esc.component.code] || 0) + amount;
                     totalEarnings += amount;
                 }
             });
+
+            // 2b. Overtime (OT) Calculation
+            let otAmount = 0;
+            let totalOtHours = 0;
+            if (employee.isOTEnabled) {
+                employee.attendanceLogs.forEach(log => {
+                    if (log.workingHours && log.shiftStart && log.shiftEnd) {
+                        const shiftDuration = (log.shiftEnd.getTime() - log.shiftStart.getTime()) / (1000 * 60 * 60);
+                        const overtime = Math.max(0, log.workingHours - shiftDuration);
+                        totalOtHours += overtime;
+                    }
+                });
+
+                if (totalOtHours > 0) {
+                    const hourlyRate = (totalEarnings / (paidDays * 8)); // Assumes 8hr standard day for OT base
+                    otAmount = totalOtHours * hourlyRate * (employee.otRateMultiplier || 1.5);
+                    totalEarnings += otAmount;
+                    components['OVERTIME'] = otAmount;
+                }
+            }
 
             // 3. Calculate Statutory Deductions (Standard Indian Rules)
             let totalDeductions = 0;
@@ -101,6 +121,7 @@ export class PayrollEngine {
             }
 
             // ESI Calculation (0.75% of Gross if Gross <= 21000)
+            // Note: OT is usually included in Gross for ESI
             if (employee.isESIEnabled && totalEarnings <= 21000) {
                 const esiAmount = Math.ceil(totalEarnings * 0.0075);
                 components['ESI_EMP'] = esiAmount;
@@ -142,6 +163,7 @@ export class PayrollEngine {
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
+                    // Store OT separately if needed or just in gross
                 },
                 create: {
                     employeeId,

@@ -132,4 +132,43 @@ router.post('/runs/:id/finalize', authenticateToken, async (req, res) => {
     }
 });
 
+// Bank Export CSV
+router.get('/runs/:id/export-bank', authenticateToken, async (req, res) => {
+    try {
+        const payrolls = await prisma.payroll.findMany({
+            where: { payrollRunId: req.params.id },
+            include: {
+                employee: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        accountNumber: true,
+                        bankName: true,
+                        ifscCode: true
+                    }
+                }
+            }
+        });
+
+        let csv = 'Beneficiary Name,Account Number,IFSC Code,Amount,Narration\n';
+
+        payrolls.forEach(p => {
+            const name = `${p.employee.firstName} ${p.employee.lastName}`.replace(/,/g, '');
+            const acc = p.employee.accountNumber || '';
+            const ifsc = p.employee.ifscCode || '';
+            const amount = p.netSalary.toFixed(2);
+            const narration = `Salary ${p.month}/${p.year}`;
+
+            csv += `"${name}","${acc}","${ifsc}",${amount},"${narration}"\n`;
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=bank_export_${req.params.id}.csv`);
+        res.status(200).send(csv);
+
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
