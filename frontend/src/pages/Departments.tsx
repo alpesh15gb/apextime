@@ -7,11 +7,7 @@ import {
   Check,
   Building2,
   Briefcase,
-  Layers,
-  Search,
-  Filter,
-  MoreVertical,
-  ChevronRight,
+  Users,
 } from 'lucide-react';
 import { departmentsAPI, branchesAPI, employeesAPI } from '../services/api';
 
@@ -22,7 +18,7 @@ export const Departments = () => {
   const [editingId, setEditingId] = useState(null);
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [formData, setFormData] = useState({ name: '', code: '', branchId: '', managerId: '' });
+  const [formData, setFormData] = useState({ name: '', code: '', branchId: '', managerIds: [] as string[] });
 
   useEffect(() => {
     fetchDepartments();
@@ -36,8 +32,8 @@ export const Departments = () => {
     } catch (e) { console.error('Fetch branches error', e); setBranches([]); }
 
     try {
-      const employeesRes = await employeesAPI.getAll();
-      setEmployees(employeesRes.data || []);
+      const employeesRes = await employeesAPI.getAll({ limit: '1000' });
+      setEmployees(employeesRes.data.employees || employeesRes.data || []);
     } catch (e) { console.error('Fetch employees error', e); setEmployees([]); }
   };
 
@@ -63,7 +59,7 @@ export const Departments = () => {
       }
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: '', code: '', branchId: '', managerId: '' });
+      setFormData({ name: '', code: '', branchId: '', managerIds: [] });
       fetchDepartments();
     } catch (error) {
       console.error('Failed to save department:', error);
@@ -75,7 +71,7 @@ export const Departments = () => {
       name: dept.name,
       code: dept.code,
       branchId: dept.branchId || '',
-      managerId: dept.managerId || ''
+      managerIds: dept.managers ? dept.managers.map((m: any) => m.id) : []
     });
     setEditingId(dept.id);
     setShowModal(true);
@@ -91,6 +87,24 @@ export const Departments = () => {
     }
   };
 
+  // Helper to add manager
+  const addManager = (id: string) => {
+    if (!id) return;
+    if (!formData.managerIds.includes(id)) {
+      setFormData({ ...formData, managerIds: [...formData.managerIds, id] });
+    }
+  };
+
+  // Helper to remove manager
+  const removeManager = (id: string) => {
+    setFormData({ ...formData, managerIds: formData.managerIds.filter(mid => mid !== id) });
+  };
+
+  const getEmployeeName = (id: string) => {
+    const emp: any = employees.find((e: any) => e.id === id);
+    return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+  };
+
   return (
     <div className="space-y-8 pb-20">
       {/* Header */}
@@ -102,7 +116,7 @@ export const Departments = () => {
         <button
           onClick={() => {
             setEditingId(null);
-            setFormData({ name: '', code: '', branchId: '', managerId: '' });
+            setFormData({ name: '', code: '', branchId: '', managerIds: [] });
             setShowModal(true);
           }}
           className="px-6 py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center space-x-2"
@@ -126,7 +140,7 @@ export const Departments = () => {
                 <tr className="bg-gray-50/30">
                   <th className="table-header w-24">Code</th>
                   <th className="table-header">Unit Name</th>
-                  <th className="table-header">Manager</th>
+                  <th className="table-header">Managers</th>
                   <th className="table-header">Parent Branch</th>
                   <th className="table-header">Status</th>
                   <th className="table-header text-right">Settings</th>
@@ -149,12 +163,13 @@ export const Departments = () => {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      {dept.manager ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-black text-blue-600">
-                            {dept.manager.firstName[0]}{dept.manager.lastName[0]}
-                          </div>
-                          <span className="text-xs font-bold text-gray-700">{dept.manager.firstName} {dept.manager.lastName}</span>
+                      {dept.managers && dept.managers.length > 0 ? (
+                        <div className="flex -space-x-2 overflow-hidden">
+                          {dept.managers.map((m: any) => (
+                            <div key={m.id} title={`${m.firstName} ${m.lastName}`} className="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-blue-100 flex items-center justify-center text-[10px] font-black text-blue-600 cursor-help">
+                              {m.firstName[0]}{m.lastName[0]}
+                            </div>
+                          ))}
                         </div>
                       ) : <span className="text-xs text-gray-400 font-bold">Unassigned</span>}
                     </td>
@@ -220,29 +235,46 @@ export const Departments = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Parent Branch</label>
-                  <select
-                    value={formData.branchId}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
-                  >
-                    <option value="">Select Branch</option>
-                    {Array.isArray(branches) && branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Parent Branch</label>
+                <select
+                  value={formData.branchId}
+                  onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
+                >
+                  <option value="">Select Branch</option>
+                  {Array.isArray(branches) && branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assigned Admins</label>
+
+                {/* Selected Managers List */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {formData.managerIds.map(mid => (
+                    <div key={mid} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2">
+                      <span>{getEmployeeName(mid)}</span>
+                      <button type="button" onClick={() => removeManager(mid)} className="hover:text-blue-900"><X className="w-3 h-3" /></button>
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Dept. Manager</label>
+
+                {/* Add Manager Dropdown */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Users className="h-4 w-4 text-gray-400" />
+                  </div>
                   <select
-                    value={formData.managerId}
-                    onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
+                    onChange={(e) => { addManager(e.target.value); e.target.value = ""; }}
+                    className="w-full pl-11 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
                   >
-                    <option value="">Assign Admin</option>
-                    {Array.isArray(employees) && employees.map((e: any) => (
-                      <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeCode})</option>
-                    ))}
+                    <option value="">+ Add Administrator</option>
+                    {Array.isArray(employees) && employees
+                      .filter((e: any) => !formData.managerIds.includes(e.id))
+                      .map((e: any) => (
+                        <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeCode})</option>
+                      ))}
                   </select>
                 </div>
               </div>

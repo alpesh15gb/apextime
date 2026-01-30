@@ -40,7 +40,9 @@ router.get('/', async (req, res) => {
         // Manager View: See leaves for their department
         else if (view === 'manager' && user.role === 'manager') {
             const managedDepts = await prisma.department.findMany({
-                where: { manager: { user: { id: user.id } } },
+                where: {
+                    managers: { some: { user: { id: user.id } } }
+                },
                 select: { id: true }
             });
             const deptIds = managedDepts.map(d => d.id);

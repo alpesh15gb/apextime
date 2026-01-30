@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
             location: true,
           },
         },
-        manager: true, // Include manager details
+        managers: true, // Include managers details (M-N)
       },
       orderBy: { name: 'asc' },
     });
@@ -45,7 +45,7 @@ router.get('/:id', async (req, res) => {
       include: {
         branch: true,
         employees: true,
-        manager: true,
+        managers: true,
       },
     });
 
@@ -60,44 +60,54 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Helper to promote employee to manager
-const promoteToManager = async (employeeId: string) => {
+// Helper to promote employees to manager
+const promoteToManagers = async (employeeIds: string[]) => {
+  if (!employeeIds || employeeIds.length === 0) return;
   try {
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+    const employees = await prisma.employee.findMany({
+      where: { id: { in: employeeIds } },
       include: { user: true }
     });
 
-    if (employee && employee.user && employee.user.role === 'employee') {
-      await prisma.user.update({
-        where: { id: employee.user.id },
-        data: { role: 'manager' }
-      });
+    for (const employee of employees) {
+      if (employee.user && employee.user.role === 'employee') {
+        await prisma.user.update({
+          where: { id: employee.user.id },
+          data: { role: 'manager' }
+        });
+      }
     }
   } catch (e) {
-    console.error("Failed to auto-promote manager:", e);
+    console.error("Failed to auto-promote managers:", e);
   }
 };
 
 // Create department
 router.post('/', async (req, res) => {
   try {
-    const { name, code, branchId, managerId } = req.body;
+    const { name, code, branchId, managerIds } = req.body;
+    // managerIds should be an array of strings
+
+    console.log('Creating department with managers:', managerIds);
+
+    const managersConnect = (Array.isArray(managerIds) && managerIds.length > 0)
+      ? { connect: managerIds.map((id: string) => ({ id })) }
+      : undefined;
 
     const department = await prisma.department.create({
       data: {
         name,
         code,
         branchId,
-        managerId: managerId || null,
+        managers: managersConnect,
       },
       include: {
         branch: true,
-        manager: true,
+        managers: true,
       },
     });
 
-    if (managerId) await promoteToManager(managerId);
+    if (Array.isArray(managerIds)) await promoteToManagers(managerIds);
 
     res.status(201).json(department);
   } catch (error) {
@@ -110,7 +120,15 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, branchId, isActive, managerId } = req.body;
+    const { name, code, branchId, isActive, managerIds } = req.body;
+
+    // Handle managerIds update (replace existing)
+    let managersUpdate = {};
+    if (Array.isArray(managerIds)) {
+      managersUpdate = {
+        set: managerIds.map((mid: string) => ({ id: mid }))
+      };
+    }
 
     const department = await prisma.department.update({
       where: { id },
@@ -119,15 +137,15 @@ router.put('/:id', async (req, res) => {
         code,
         branchId,
         isActive,
-        managerId: managerId || null,
+        managers: managersUpdate,
       },
       include: {
         branch: true,
-        manager: true,
+        managers: true,
       },
     });
 
-    if (managerId) await promoteToManager(managerId);
+    if (Array.isArray(managerIds)) await promoteToManagers(managerIds);
 
     res.json(department);
   } catch (error) {
