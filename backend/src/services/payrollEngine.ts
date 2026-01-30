@@ -140,6 +140,8 @@ export class PayrollEngine {
             const netSalary = totalEarnings - totalDeductions;
 
             // 4. Save to Database
+            const allowancesPaid = totalEarnings - (components['BASIC'] || 0) - (components['HRA'] || 0) - otAmount;
+
             const payroll = await prisma.payroll.upsert({
                 where: {
                     employeeId_month_year: {
@@ -160,10 +162,12 @@ export class PayrollEngine {
                     status: 'generated',
                     basicPaid: components['BASIC'] || 0,
                     hraPaid: components['HRA'] || 0,
+                    allowancesPaid: Math.max(0, allowancesPaid),
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
-                    // Store OT separately if needed or just in gross
+                    otHours: totalOtHours,
+                    otPay: otAmount
                 },
                 create: {
                     employeeId,
@@ -180,9 +184,12 @@ export class PayrollEngine {
                     status: 'generated',
                     basicPaid: components['BASIC'] || 0,
                     hraPaid: components['HRA'] || 0,
+                    allowancesPaid: Math.max(0, allowancesPaid),
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
+                    otHours: totalOtHours,
+                    otPay: otAmount
                 }
             });
 
