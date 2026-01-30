@@ -31,13 +31,14 @@ export const Departments = () => {
 
   const fetchMetadata = async () => {
     try {
-      const [branchesRes, employeesRes] = await Promise.all([
-        branchesAPI.getAll(),
-        employeesAPI.getAll()
-      ]);
+      const branchesRes = await branchesAPI.getAll();
       setBranches(branchesRes.data || []);
+    } catch (e) { console.error('Fetch branches error', e); setBranches([]); }
+
+    try {
+      const employeesRes = await employeesAPI.getAll();
       setEmployees(employeesRes.data || []);
-    } catch (e) { console.error('Meta error', e); }
+    } catch (e) { console.error('Fetch employees error', e); setEmployees([]); }
   };
 
   const fetchDepartments = async () => {
@@ -228,7 +229,7 @@ export const Departments = () => {
                     className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
                   >
                     <option value="">Select Branch</option>
-                    {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    {Array.isArray(branches) && branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-3">
@@ -239,7 +240,7 @@ export const Departments = () => {
                     className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none"
                   >
                     <option value="">Assign Admin</option>
-                    {employees.map((e: any) => (
+                    {Array.isArray(employees) && employees.map((e: any) => (
                       <option key={e.id} value={e.id}>{e.firstName} {e.lastName} ({e.employeeCode})</option>
                     ))}
                   </select>
