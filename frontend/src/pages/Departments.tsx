@@ -246,21 +246,19 @@ export const Departments = () => {
                 </div>
               </div>
 
+              <div className="pt-6 flex flex-col space-y-3">
+                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
+                  <Check className="w-4 h-4" />
+                  <span>{editingId ? 'Update Matrix' : 'Initialize Unit'}</span>
+                </button>
+                <button type="button" onClick={() => setShowModal(false)} className="w-full py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">
+                  Dismiss
+                </button>
+              </div>
+            </form>
           </div>
-
-          <div className="pt-6 flex flex-col space-y-3">
-            <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center space-x-2">
-              <Check className="w-4 h-4" />
-              <span>{editingId ? 'Update Matrix' : 'Initialize Unit'}</span>
-            </button>
-            <button type="button" onClick={() => setShowModal(false)} className="w-full py-4 bg-white border border-gray-100 text-gray-400 font-black text-xs uppercase tracking-widest rounded-[20px] hover:bg-gray-50 transition-all">
-              Dismiss
-            </button>
-          </div>
-        </form>
-          </div >
-        </div >
+        </div>
       )}
-    </div >
+    </div>
   );
 };
