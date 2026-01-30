@@ -672,7 +672,7 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
     }
 
     // Generate employee code from deviceUserId (ensure it's unique)
-    const employeeCode = `EMP${deviceUserId.toString().padStart(4, '0')}`;
+    const employeeCode = deviceUserId.toString();
 
     // Get or create department and designation
     let departmentId: string | null = null;
