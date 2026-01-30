@@ -25,6 +25,9 @@ export const EmployeePortal = () => {
     const [isApplying, setIsApplying] = useState(false);
     const [isPunching, setIsPunching] = useState<null | 'IN' | 'OUT'>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+    const [showLeaveHistory, setShowLeaveHistory] = useState(false);
+    const [myLeaves, setMyLeaves] = useState<any[]>([]);
+    const [loadingLeaves, setLoadingLeaves] = useState(false);
 
     const [punchData, setPunchData] = useState({
         location: '',
@@ -59,6 +62,18 @@ export const EmployeePortal = () => {
             setLeaveTypes(typesRes.data);
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const fetchMyLeaves = async () => {
+        try {
+            setLoadingLeaves(true);
+            const res = await leavesAPI.getAll({ view: 'employee' });
+            setMyLeaves(res.data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingLeaves(false);
         }
     };
 
@@ -222,7 +237,77 @@ export const EmployeePortal = () => {
                         Your punches require <br /> GPS & Photo Verification
                     </p>
                 </div>
+
+                <div className="pt-4 border-t border-gray-100 text-center">
+                    <button
+                        onClick={() => { setShowLeaveHistory(true); fetchMyLeaves(); }}
+                        className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-blue-600 transition-colors"
+                    >
+                        View Leave History
+                    </button>
+                </div>
             </div>
+
+            {/* Leave History Modal */}
+            {showLeaveHistory && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] animate-in fade-in duration-300">
+                    <div className="absolute inset-x-0 bottom-0 top-20 bg-white rounded-t-[48px] p-8 pt-12 animate-in slide-in-from-bottom duration-500 overflow-hidden flex flex-col">
+                        <div className="flex justify-between items-start mb-8 flex-shrink-0">
+                            <div>
+                                <h3 className="text-3xl font-black text-gray-900 tracking-tight leading-none">Absence <br />History</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-4">Past Applications & Status</p>
+                            </div>
+                            <button onClick={() => setShowLeaveHistory(false)} className="w-14 h-14 bg-gray-50 rounded-[20px] flex items-center justify-center text-gray-400">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-4 pb-20 no-scrollbar">
+                            {loadingLeaves ? (
+                                <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase animate-pulse">Loading Records...</div>
+                            ) : myLeaves.length === 0 ? (
+                                <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">No leave records found</div>
+                            ) : (
+                                myLeaves.map((leave: any) => (
+                                    <div key={leave.id} className="bg-gray-50 rounded-[24px] p-6 group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white border border-gray-100 text-gray-600">
+                                                    {leave.leaveType.name}
+                                                </span>
+                                                <p className="text-xs font-bold text-gray-900 mt-3">
+                                                    {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400 font-bold mt-1">
+                                                    {leave.days} Day{leave.days > 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+
+                                            <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${leave.status === 'approved' ? 'bg-emerald-100 text-emerald-600' :
+                                                leave.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                                                    'bg-amber-100 text-amber-600'
+                                                }`}>
+                                                {leave.status.replace('_', ' ')}
+                                            </div>
+                                        </div>
+
+                                        {leave.reason && (
+                                            <div className={`p-4 rounded-xl mt-4 ${leave.status === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-white text-gray-500'}`}>
+                                                <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-1">
+                                                    {leave.status === 'rejected' ? 'Rejection Reason' : 'Note'}
+                                                </p>
+                                                <p className="text-xs font-bold leading-relaxed">
+                                                    {leave.reason}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Install Prompt Overlay */}
             {showInstallPrompt && (
