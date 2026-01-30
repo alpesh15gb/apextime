@@ -156,7 +156,10 @@ export const Dashboard = () => {
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Employees */}
-        <div className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div
+          onClick={() => navigate('/employees')}
+          className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform active:scale-95"
+        >
           <div className="relative z-10">
             <h3 className="font-medium text-blue-100 mb-1">Total Employees</h3>
             <div className="flex items-end gap-2">
@@ -188,11 +191,14 @@ export const Dashboard = () => {
         </div>
 
         {/* Pending Leaves */}
-        <div className="bg-amber-400 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div
+          onClick={() => navigate('/leaves')}
+          className="bg-amber-400 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform active:scale-95"
+        >
           <div className="relative z-10">
             <h3 className="font-medium text-amber-100 mb-1">Pending Leaves</h3>
             <div className="flex items-end gap-2">
-              <span className="text-4xl font-bold">{stats?.counts?.pendingLeaves || 12}</span>
+              <span className="text-4xl font-bold">{stats?.counts?.pendingLeaves || 0}</span>
               <span className="text-sm bg-amber-500/50 px-2 py-0.5 rounded text-white mb-1">Requests</span>
             </div>
             <p className="text-amber-100 text-sm mt-4">Requires Approval</p>
@@ -203,71 +209,14 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Circular Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <CircularProgress value={28} label="Late Arrivals" subLabel="Yesterday" color="text-blue-500" />
-        <CircularProgress value={49} label="Processed" subLabel="Payroll" color="text-emerald-500" />
-        <CircularProgress value={8} label="Pending Review" subLabel="Tasks" color="text-red-500" />
-      </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Line Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="font-bold text-gray-800">Attendance Overview</h3>
-              <p className="text-xs text-gray-400">Weekly Headcount</p>
-            </div>
-            <select className="bg-gray-50 border-none text-xs rounded-lg px-2 py-1 text-gray-500 outline-none cursor-pointer">
-              <option>This Week</option>
-              <option>Last Week</option>
-            </select>
-          </div>
-          <div className="h-64 w-full">
-            <Line data={lineChartData} options={lineChartOptions} />
-          </div>
-        </div>
-
-        {/* Donut Chart */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-gray-800">Daily Tasks</h3>
-            <MoreVertical className="w-4 h-4 text-gray-400" />
-          </div>
-          <div className="h-48 flex justify-center relative">
-            <Doughnut data={donutData} options={donutOptions} />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              {/* Center icon or text if needed */}
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                <span className="text-gray-500">Complete</span>
-              </div>
-              <span className="font-bold text-gray-700">65%</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                <span className="text-gray-500">Pending</span>
-              </div>
-              <span className="font-bold text-gray-700">25%</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
+      <div className="grid grid-cols-1 gap-6">
         {/* Quick Actions */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-6">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button onClick={() => navigate('/employees/new')} className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-colors">
               <UserPlus className="w-4 h-4" /> Add Employee
             </button>
@@ -282,41 +231,6 @@ export const Dashboard = () => {
             </button>
           </div>
         </div>
-
-        {/* Activity Feed */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
-          <h3 className="font-bold text-gray-800 mb-6">Activity Feed</h3>
-          <div className="space-y-4">
-            <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                <Clock className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">Rahul applied for leave.</p>
-                <p className="text-xs text-gray-400 mt-1">Today at 10:30 AM</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                <CheckSquare className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">Salary processed for January.</p>
-                <p className="text-xs text-gray-400 mt-1">Yesterday</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-                <UserPlus className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">New employee onboarded.</p>
-                <p className="text-xs text-gray-400 mt-1">2 days ago</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );

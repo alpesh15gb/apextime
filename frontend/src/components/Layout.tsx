@@ -138,11 +138,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div className="h-8 w-px bg-gray-200 mx-2"></div>
 
             <div className="flex items-center space-x-3 cursor-pointer">
-              <img
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
-              />
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
+                {user?.username?.[0]?.toUpperCase() || 'A'}
+              </div>
               <div className="hidden md:block">
                 <ChevronDown className="w-4 h-4 text-gray-500" />
               </div>
