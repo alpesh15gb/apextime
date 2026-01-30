@@ -21,6 +21,15 @@ import { EmployeePortal } from './pages/EmployeePortal';
 import { Settings } from './pages/Settings';
 import { CEOAnalytics } from './pages/CEOAnalytics';
 import { FieldLogs } from './pages/FieldLogs';
+import { useAuth } from './contexts/AuthContext';
+
+const HomeRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === 'employee') {
+    return <Navigate to="/portal" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
 
 function App() {
   return (
@@ -36,11 +45,7 @@ function App() {
                   <Routes>
                     <Route
                       path="/"
-                      element={
-                        user?.role === 'employee'
-                          ? <Navigate to="/portal" replace />
-                          : <Navigate to="/dashboard" replace />
-                      }
+                      element={<HomeRedirect />}
                     />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/employees" element={<Employees />} />
