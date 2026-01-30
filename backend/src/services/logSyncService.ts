@@ -1,11 +1,11 @@
-import { getSqlPool, prisma } from '../config/database';
+import { getSqlPool, getHikCentralPool, prisma } from '../config/database';
 import sql from 'mssql';
 import logger from '../config/logger';
 import { normalizeName, parseEmployeeName } from '../utils/nameUtils';
 
 interface RawLog {
   DeviceLogId: number;
-  DeviceId: number;
+  DeviceId: number | string;
   UserId: string;
   LogDate: Date;
   TableName?: string;
@@ -89,6 +89,54 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
         logger.warn(`Table ${tableName} not accessible: ${error.message}`);
       }
     }
+
+    // --- HikCentral Sync Start ---
+    try {
+      logger.info('Connecting to HikCentral for logs...');
+      const hikPool = await getHikCentralPool();
+
+      const hikResult = await hikPool.request().query(`
+        SELECT TOP 5000 
+          LogId, person_id, access_datetime, device_name, serial_no, SyncedToApex
+        FROM HikvisionLogs
+        WHERE SyncedToApex IS NULL OR SyncedToApex = 0
+        ORDER BY access_datetime ASC
+      `);
+
+      logger.info(`Found ${hikResult.recordset.length} unsynced logs in HikCentral`);
+
+      const hikLogs: RawLog[] = hikResult.recordset.map((row: any) => ({
+        DeviceLogId: row.LogId,
+        DeviceId: row.serial_no || row.device_name || 'HIK_UNKNOWN',
+        UserId: row.person_id || 'UNKNOWN',
+        LogDate: row.access_datetime,
+        TableName: 'HikvisionLogs'
+      }));
+
+      // Merge HikCentral logs
+      allLogs = [...allLogs, ...hikLogs];
+
+      // Mark as synced in HikCentral (Optimistic update - if this script fails later, we might miss re-processing, 
+      // but RawLog unique constraint prevents duplicates locally)
+      if (hikLogs.length > 0) {
+        const logIds = hikLogs.map(l => l.DeviceLogId).join(',');
+        try {
+          await hikPool.request().query(`
+             UPDATE HikvisionLogs 
+             SET SyncedToApex = 1
+             WHERE LogId IN (${logIds})
+           `);
+          logger.info(`Marked ${hikLogs.length} HikCentral logs as synced`);
+        } catch (updErr) {
+          logger.warn('Failed to update SyncedToApex flag in HikCentral', updErr);
+        }
+      }
+
+    } catch (hikErr) {
+      logger.error('Error syncing from HikCentral:', hikErr);
+      // Don't stop the whole process, just log error
+    }
+    // --- HikCentral Sync End ---
 
     // Deduplicate logs using a globally unique key: TableName + DeviceLogId
     const uniqueLogs = new Map<string, RawLog>();
@@ -298,8 +346,9 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
           // Convert to RawLog format for processor
           const formattedLogs: RawLog[] = allRawLogsMatch.map(rl => ({
-            DeviceLogId: parseInt(rl.id),
-            DeviceId: parseInt(rl.deviceId),
+            DeviceLogId: parseInt(rl.id.split('_').pop() || '0'), // Handle string IDs if composite
+            DeviceId: rl.deviceId, // Keep as string or convert if needed. The processor expects it.
+
             UserId: rl.userId,
             LogDate: rl.punchTime
           }));

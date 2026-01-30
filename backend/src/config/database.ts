@@ -49,3 +49,46 @@ export const closeSqlPool = async (): Promise<void> => {
 };
 
 export default { prisma, getSqlPool, closeSqlPool };
+
+// HikCentral Database configuration
+const hikCentralConfig: sql.config = {
+  server: process.env.HIK_SERVER_HOST || '115.98.2.20',
+  port: parseInt(process.env.HIK_SERVER_PORT || '1433'),
+  user: process.env.HIK_SERVER_USER || 'essl',
+  password: process.env.HIK_SERVER_PASSWORD || 'Keystone@456',
+  database: process.env.HIK_SERVER_DATABASE || 'hikcentral',
+  options: {
+    encrypt: false,
+    trustServerCertificate: true,
+  },
+  connectionTimeout: 30000,
+  requestTimeout: 30000,
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
+};
+
+let hikCentralPool: sql.ConnectionPool | null = null;
+
+export const getHikCentralPool = async (): Promise<sql.ConnectionPool> => {
+  if (!hikCentralPool) {
+    try {
+      hikCentralPool = await new sql.ConnectionPool(hikCentralConfig).connect();
+      console.log('Connected to HikCentral Database');
+    } catch (error) {
+      console.error('HikCentral connection failed:', error);
+      throw error;
+    }
+  }
+  return hikCentralPool;
+};
+
+export const closeHikCentralPool = async (): Promise<void> => {
+  if (hikCentralPool) {
+    await hikCentralPool.close();
+    hikCentralPool = null;
+    console.log('HikCentral connection closed');
+  }
+};
