@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { PayrollEngine } from '../services/payrollEngine';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 // Get all payroll runs
-router.get('/runs', authenticateToken, async (req, res) => {
+router.get('/runs', authenticate, async (req, res) => {
     try {
         const runs = await prisma.payrollRun.findMany({
             orderBy: { createdAt: 'desc' },
@@ -24,7 +24,7 @@ router.get('/runs', authenticateToken, async (req, res) => {
 });
 
 // Create a new payroll run
-router.post('/runs', authenticateToken, async (req, res) => {
+router.post('/runs', authenticate, async (req, res) => {
     const { month, year, batchName, periodStart, periodEnd } = req.body;
     try {
         const run = await prisma.payrollRun.create({
@@ -44,7 +44,7 @@ router.post('/runs', authenticateToken, async (req, res) => {
 });
 
 // Process all employees in a run
-router.post('/runs/:id/process', authenticateToken, async (req, res) => {
+router.post('/runs/:id/process', authenticate, async (req, res) => {
     const { id } = req.params;
     try {
         const run = await prisma.payrollRun.findUnique({ where: { id } });
@@ -88,7 +88,7 @@ router.post('/runs/:id/process', authenticateToken, async (req, res) => {
 });
 
 // Get details of a specific run
-router.get('/runs/:id', authenticateToken, async (req, res) => {
+router.get('/runs/:id', authenticate, async (req, res) => {
     try {
         const run = await prisma.payrollRun.findUnique({
             where: { id: req.params.id },
@@ -109,7 +109,7 @@ router.get('/runs/:id', authenticateToken, async (req, res) => {
 });
 
 // Finalize/Lock a run
-router.post('/runs/:id/finalize', authenticateToken, async (req, res) => {
+router.post('/runs/:id/finalize', authenticate, async (req, res) => {
     try {
         const run = await prisma.payrollRun.update({
             where: { id: req.params.id },
@@ -133,7 +133,7 @@ router.post('/runs/:id/finalize', authenticateToken, async (req, res) => {
 });
 
 // Bank Export CSV
-router.get('/runs/:id/export-bank', authenticateToken, async (req, res) => {
+router.get('/runs/:id/export-bank', authenticate, async (req, res) => {
     try {
         const payrolls = await prisma.payroll.findMany({
             where: { payrollRunId: req.params.id },
