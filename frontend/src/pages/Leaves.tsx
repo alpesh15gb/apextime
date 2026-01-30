@@ -229,23 +229,6 @@ export const Leaves = () => {
                 </div>
 
                 <div className="space-y-8">
-                    <div className="app-card p-10 bg-gray-900 border-none text-white relative overflow-hidden">
-                        <div className="absolute bottom-[-10%] right-[-10%] w-32 h-32 bg-blue-600/20 rounded-full blur-3xl"></div>
-                        <h3 className="text-xl font-extrabold italic mb-2 tracking-tight">Approval Statistics</h3>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Quick Overview</p>
-
-                        <div className="mt-12 space-y-8">
-                            <div className="flex justify-between items-end border-b border-gray-800 pb-4">
-                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Avg Response</span>
-                                <span className="text-2xl font-black text-white tracking-tighter">1.8 Hrs</span>
-                            </div>
-                            <div className="flex justify-between items-end border-b border-gray-800 pb-4">
-                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Rejection Rate</span>
-                                <span className="text-2xl font-black text-red-500 tracking-tighter">4.2%</span>
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="app-card p-10 space-y-6">
                         <div className="flex items-center space-x-3 text-blue-600">
                             <FileText className="w-5 h-5" />
