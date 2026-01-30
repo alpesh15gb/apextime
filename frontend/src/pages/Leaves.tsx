@@ -40,7 +40,11 @@ export const Leaves = () => {
     const fetchLeaves = async () => {
         try {
             setLoading(true);
-            const res = await leavesAPI.getAll({ view: activeView });
+            const params: any = { view: activeView };
+            if (user?.role === 'employee') {
+                params.view = 'employee';
+            }
+            const res = await leavesAPI.getAll(params);
             setLeaves(res.data);
         } catch (e) {
             console.error(e);
@@ -93,34 +97,44 @@ export const Leaves = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Leave Approvals</h1>
-                    <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">Hierarchical governance of personnel absence</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                        {user?.role === 'employee' ? 'My Leave History' : 'Leave Approvals'}
+                    </h1>
+                    <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-tighter">
+                        {user?.role === 'employee' ? 'Track and manage your absence signals' : 'Hierarchical governance of personnel absence'}
+                    </p>
                 </div>
 
-                <div className="flex bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
-                    {user?.role === 'manager' && (
+                {user?.role !== 'employee' ? (
+                    <div className="flex bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
+                        {user?.role === 'manager' && (
+                            <button
+                                onClick={() => setActiveView('manager')}
+                                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'manager' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                L1: Manager
+                            </button>
+                        )}
+                        {user?.role === 'admin' && (
+                            <button
+                                onClick={() => setActiveView('ceo')}
+                                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'ceo' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                L2: CEO Final
+                            </button>
+                        )}
                         <button
-                            onClick={() => setActiveView('manager')}
-                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'manager' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                            onClick={() => setActiveView('admin')}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'admin' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                            L1: Manager
+                            Archive
                         </button>
-                    )}
-                    {user?.role === 'admin' && (
-                        <button
-                            onClick={() => setActiveView('ceo')}
-                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'ceo' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            L2: CEO Final
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setActiveView('admin')}
-                        className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'admin' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        Archive
+                    </div>
+                ) : (
+                    <button onClick={() => window.location.href = '/portal'} className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-100 transition-all hover:scale-105">
+                        Apply New Leave
                     </button>
-                </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

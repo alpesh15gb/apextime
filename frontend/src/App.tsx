@@ -20,6 +20,7 @@ import { Leaves } from './pages/Leaves';
 import { EmployeePortal } from './pages/EmployeePortal';
 import { Settings } from './pages/Settings';
 import { CEOAnalytics } from './pages/CEOAnalytics';
+import { FieldLogs } from './pages/FieldLogs';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
                     <Route path="/sync-diagnostics" element={<SyncDiagnostics />} />
                     <Route path="/payroll" element={<Payroll />} />
                     <Route path="/leaves" element={<Leaves />} />
+                    <Route path="/field-logs" element={<FieldLogs />} />
                     <Route path="/portal" element={<EmployeePortal />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/ceo-vault" element={<CEOAnalytics />} />

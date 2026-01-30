@@ -215,4 +215,13 @@ export const payrollAPI = {
   processPay: (data: any) => api.post('/payroll/process-pay', data),
 };
 
+export const fieldLogsAPI = {
+  punch: (data: { type: 'IN' | 'OUT', location?: string, image?: string, remarks?: string }) =>
+    api.post('/field-logs/punch', data),
+  getMyPunches: () => api.get('/field-logs/my-punches'),
+  getPending: () => api.get('/field-logs/pending'),
+  approve: (data: { logId: string, status: 'approved' | 'rejected', remarks?: string }) =>
+    api.post('/field-logs/approve', data),
+};
+
 export default api;

@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
@@ -225,6 +226,17 @@ router.post(
         },
       });
 
+      // Automatically create User record for the employee
+      const hashedPassword = await bcrypt.hash(employeeCode, 10);
+      await prisma.user.create({
+        data: {
+          username: employeeCode,
+          password: hashedPassword,
+          role: 'employee',
+          employeeId: employee.id
+        }
+      });
+
       res.status(201).json(employee);
     } catch (error) {
       console.error('Create employee error:', error);
@@ -322,6 +334,11 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Delete associated user first
+    await prisma.user.deleteMany({
+      where: { employeeId: id }
+    });
 
     await prisma.employee.delete({
       where: { id },

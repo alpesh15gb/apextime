@@ -12,9 +12,11 @@ import {
   Search
 } from 'lucide-react';
 import { attendanceAPI, employeesAPI, departmentsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { AttendanceLog } from '../types';
 
 export const Attendance = () => {
+  const { user } = useAuth();
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -22,7 +24,7 @@ export const Attendance = () => {
   const [filters, setFilters] = useState({
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    employeeId: '',
+    employeeId: user?.role === 'employee' ? user.employeeId : '',
     departmentId: '',
   });
   const [page, setPage] = useState(1);
@@ -145,39 +147,43 @@ export const Attendance = () => {
             />
           </div>
 
-          <div className="space-y-4">
-            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee</label>
-            <div className="relative">
-              <select
-                value={filters.employeeId}
-                onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
-                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
-              >
-                <option value="">All Employees</option>
-                {employees.map((emp: any) => (
-                  <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                ))}
-              </select>
-              <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
+          {user?.role !== 'employee' && (
+            <>
+              <div className="space-y-4">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee</label>
+                <div className="relative">
+                  <select
+                    value={filters.employeeId}
+                    onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+                  >
+                    <option value="">All Employees</option>
+                    {employees.map((emp: any) => (
+                      <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                    ))}
+                  </select>
+                  <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
 
-          <div className="space-y-4">
-            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
-            <div className="relative">
-              <select
-                value={filters.departmentId}
-                onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
-                className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
-              >
-                <option value="">All Departments</option>
-                {departments.map((dept: any) => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
-              <Activity className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
+              <div className="space-y-4">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
+                <div className="relative">
+                  <select
+                    value={filters.departmentId}
+                    onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map((dept: any) => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                  <Activity className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

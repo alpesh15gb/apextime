@@ -143,6 +143,28 @@ model Employee {
   isPTEnabled       Boolean          @default(true) // Professional Tax
   isOTEnabled       Boolean          @default(false)
   otRateMultiplier  Float            @default(1.5)
+
+  fieldLogs       FieldLog[]
+}
+
+model FieldLog {
+  id              String    @id @default(uuid())
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type            String    // IN, OUT
+  timestamp       DateTime  @default(now())
+  location        String?   // lat,lng or address
+  image           String?   // Base64 or URL
+  status          String    @default("pending") // pending, approved, rejected
+  remarks         String?
+  processed       Boolean   @default(false)
+  approvedBy      String?
+  approvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([employeeId, timestamp])
+  @@index([status])
 }
 
 model CompanyProfile {

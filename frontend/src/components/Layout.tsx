@@ -13,7 +13,8 @@ import {
   Search,
   Bell,
   Mail,
-  ChevronDown
+  ChevronDown,
+  ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -31,13 +32,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navItems = user?.role === 'employee'
     ? [
       { path: '/portal', icon: LayoutDashboard, label: 'Portal' },
-      { path: '/leaves', icon: Calendar, label: 'Leave' },
+      { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
+      { path: '/leaves', icon: Calendar, label: 'My Leaves' },
     ]
     : [
       { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/employees', icon: Users, label: 'Employees' },
       { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
       { path: '/leaves', icon: Calendar, label: 'Leave' },
+      { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
       { path: '/payroll', icon: DollarSign, label: 'Payroll' },
       { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
       { path: '/settings', icon: Settings, label: 'Settings' },
