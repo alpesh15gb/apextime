@@ -6,6 +6,22 @@ import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
 
+const sanitizeId = (val: any) => {
+  if (!val || val === '' || val === 'undefined') return null;
+  return val;
+};
+
+const sanitizeNumber = (val: any) => {
+  const parsed = parseFloat(val);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+const sanitizeDate = (val: any) => {
+  if (!val || val === '') return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 // Apply authentication to all routes
 router.use(authenticate);
 
@@ -175,22 +191,6 @@ router.post(
         aadhaarNumber,
       } = req.body;
 
-      const sanitizeId = (val: any) => {
-        if (!val || val === '' || val === 'undefined') return null;
-        return val;
-      };
-
-      const sanitizeNumber = (val: any) => {
-        const parsed = parseFloat(val);
-        return isNaN(parsed) ? 0 : parsed;
-      };
-
-      const sanitizeDate = (val: any) => {
-        if (!val || val === '') return null;
-        const d = new Date(val);
-        return isNaN(d.getTime()) ? null : d;
-      };
-
       // Check if employee code already exists
       const existing = await prisma.employee.findUnique({
         where: { employeeCode },
@@ -303,27 +303,6 @@ router.put('/:id', async (req, res) => {
       aadhaarNumber
     } = req.body;
 
-    const sanitizeNumber = (val: any) => {
-      const parsed = parseFloat(val);
-      return isNaN(parsed) ? 0 : parsed;
-    };
-
-    const sanitizeId = (val: any) => {
-      if (!val || val === '' || val === 'undefined') return null;
-      return val;
-    };
-
-    const sanitizeNumber = (val: any) => {
-      const parsed = parseFloat(val);
-      return isNaN(parsed) ? 0 : parsed;
-    };
-
-    const sanitizeDate = (val: any) => {
-      if (!val || val === '') return undefined;
-      const d = new Date(val);
-      return isNaN(d.getTime()) ? undefined : d;
-    };
-
     const employee = await prisma.employee.update({
       where: { id },
       data: {
@@ -338,7 +317,7 @@ router.put('/:id', async (req, res) => {
         categoryId: sanitizeId(categoryId),
         shiftId: sanitizeId(shiftId),
         deviceUserId: sanitizeId(deviceUserId),
-        dateOfJoining: sanitizeDate(dateOfJoining),
+        dateOfJoining: sanitizeDate(dateOfJoining) || undefined,
         isActive: isActive !== undefined ? (isActive === true || isActive === 'true') : undefined,
         basicSalary: sanitizeNumber(basicSalary),
         hra: sanitizeNumber(hra),
