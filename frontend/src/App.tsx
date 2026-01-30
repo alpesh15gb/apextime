@@ -34,7 +34,14 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route
+                      path="/"
+                      element={
+                        user?.role === 'employee'
+                          ? <Navigate to="/portal" replace />
+                          : <Navigate to="/dashboard" replace />
+                      }
+                    />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/employees" element={<Employees />} />
                     <Route path="/employees/new" element={<EmployeeForm />} />

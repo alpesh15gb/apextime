@@ -46,6 +46,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       { path: '/settings', icon: Settings, label: 'Settings' },
     ];
 
+  if (user?.role === 'employee') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex font-sans">
       {/* Sidebar */}
