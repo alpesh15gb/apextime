@@ -223,7 +223,12 @@ export const leavesAPI = {
 };
 
 export const payrollAPI = {
-  get: (params: any) => api.get('/payroll', { params }),
+  get: (params: any) => api.get('/payroll', { params }), // legacy
+  getRuns: () => api.get('/payroll/runs'),
+  createRun: (data: any) => api.post('/payroll/runs', data),
+  processRun: (id: string) => api.post(`/payroll/runs/${id}/process`),
+  getRunDetails: (id: string) => api.get(`/payroll/runs/${id}`),
+  finalizeRun: (id: string) => api.post(`/payroll/runs/${id}/finalize`),
   generate: (data: any) => api.post('/payroll/generate', data),
   updateSalary: (employeeId: string, data: any) => api.put(`/payroll/salary/${employeeId}`, data),
   processPay: (data: any) => api.post('/payroll/process-pay', data),
