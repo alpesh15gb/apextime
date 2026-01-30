@@ -44,7 +44,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     ]
     : user?.role === 'manager'
       ? [
-        { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         {
           label: 'Staff Leaves',
           icon: Briefcase,

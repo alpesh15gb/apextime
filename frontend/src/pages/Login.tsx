@@ -23,6 +23,8 @@ export const Login = () => {
 
       if (user?.role === 'employee') {
         navigate('/portal');
+      } else if (user?.role === 'manager') {
+        navigate('/leaves');
       } else {
         navigate('/dashboard');
       }

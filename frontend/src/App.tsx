@@ -29,6 +29,9 @@ const HomeRedirect = () => {
   if (user?.role === 'employee') {
     return <Navigate to="/portal" replace />;
   }
+  if (user?.role === 'manager') {
+    return <Navigate to="/leaves" replace />;
+  }
   return <Navigate to="/dashboard" replace />;
 };
 
