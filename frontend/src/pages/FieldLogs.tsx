@@ -107,13 +107,19 @@ export const FieldLogs = () => {
 
                                 {/* Evidence (Location & Image) */}
                                 <div className="flex-1 flex flex-col md:flex-row gap-6 md:items-center px-6 border-l border-gray-50">
-                                    <div className="flex items-center gap-3 group/loc cursor-pointer" title={log.location}>
-                                        <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover/loc:bg-blue-50 group-hover/loc:text-primary transition-colors">
+                                    <div
+                                        className="flex items-center gap-3 group/loc cursor-pointer"
+                                        title="Click to view on Map"
+                                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(log.location || '')}`, '_blank')}
+                                    >
+                                        <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover/loc:bg-blue-600 group-hover/loc:text-white transition-colors">
                                             <MapPin className="w-5 h-5" />
                                         </div>
                                         <div className="max-w-[200px]">
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Location</p>
-                                            <p className="text-xs font-bold text-gray-700 truncate">{log.location || 'Unknown Location'}</p>
+                                            <p className="text-xs font-bold text-gray-700 truncate group-hover/loc:text-blue-600 transition-colors">
+                                                {log.location || 'Unknown Location'}
+                                            </p>
                                         </div>
                                     </div>
 
