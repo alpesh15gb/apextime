@@ -174,7 +174,10 @@ export const Dashboard = () => {
         </div>
 
         {/* Today Attendance */}
-        <div className="bg-[#111827] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div
+          onClick={() => navigate('/attendance')}
+          className="bg-[#111827] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform active:scale-95"
+        >
           <div className="relative z-10">
             <h3 className="font-medium text-gray-400 mb-1">Today Attendance</h3>
             <div className="flex items-end gap-2">

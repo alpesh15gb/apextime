@@ -62,7 +62,17 @@ router.get('/stats', async (req, res) => {
 
     for (const stat of todayStats) {
       if (stat.status === 'present') todayStatus.present = stat._count.status;
-      if (stat.status === 'absent') todayStatus.absent = stat._count.status;
+      if (stat.status === 'absent') {
+        // Re-verify absent count for active employees only to be safe
+        const activeAbsentCount = await prisma.attendanceLog.count({
+          where: {
+            date: { gte: today },
+            status: 'absent',
+            employee: { isActive: true }
+          }
+        });
+        todayStatus.absent = activeAbsentCount;
+      }
     }
 
     // Get absent employees list
@@ -70,6 +80,7 @@ router.get('/stats', async (req, res) => {
       where: {
         date: { gte: today },
         status: 'absent',
+        employee: { isActive: true }
       },
       include: {
         employee: {
