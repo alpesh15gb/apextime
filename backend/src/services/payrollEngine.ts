@@ -1,6 +1,5 @@
-import { PrismaClient, Employee, Payroll, AttendanceLog, LeaveEntry } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../config/database';
+import { Employee, Payroll, AttendanceLog, LeaveEntry } from '@prisma/client';
 
 export interface PayrollResult {
     success: boolean;
