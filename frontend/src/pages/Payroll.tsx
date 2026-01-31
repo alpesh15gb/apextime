@@ -439,7 +439,7 @@ export const Payroll = () => {
             {/* Payslip Modal */}
             {
                 selectedPayroll && (
-                    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 print:p-0 overflow-y-auto print:block print:relative print:inset-auto print:h-auto print:overflow-visible">
+                    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-10 print:p-0 overflow-y-auto print:block print:relative print:inset-auto print:h-auto print:overflow-visible">
                         <div className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-2xl print:shadow-none print:w-full">
                             <div className="p-8 print:p-0">
                                 {/* Toolbar */}
