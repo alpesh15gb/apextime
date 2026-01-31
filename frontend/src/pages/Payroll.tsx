@@ -347,18 +347,22 @@ export const Payroll = () => {
                                     <div>
                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Team Member</p>
                                         <p className="text-sm font-extrabold text-gray-900 uppercase">{selectedPayroll.employee.firstName} {selectedPayroll.employee.lastName}</p>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase">{selectedPayroll.employee.designation?.name || 'Associate'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">ID Reference</p>
-                                        <p className="text-sm font-extrabold text-gray-900 uppercase">{selectedPayroll.employee.employeeCode}</p>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Internal Unit</p>
+                                        <p className="text-sm font-extrabold text-gray-900 uppercase">{selectedPayroll.employee.department?.name || 'General'}</p>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase">{selectedPayroll.employee.branch?.name || 'Headquarters'}</p>
                                     </div>
                                     <div>
                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Days Payable</p>
                                         <p className="text-sm font-extrabold text-gray-900">{selectedPayroll.paidDays} / {selectedPayroll.totalWorkingDays}</p>
+                                        {selectedPayroll.otHours > 0 && <p className="text-[10px] font-bold text-blue-600 uppercase">+{selectedPayroll.otHours} OT Hours</p>}
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Bank Reference</p>
                                         <p className="text-sm font-extrabold text-gray-900">****{selectedPayroll.employee.accountNumber?.slice(-4) || 'N/A'}</p>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase">{selectedPayroll.employee.bankName || 'Direct Transfer'}</p>
                                     </div>
                                 </div>
 
@@ -374,6 +378,18 @@ export const Payroll = () => {
                                                 <span className="text-gray-500">HRA</span>
                                                 <span className="text-gray-900">₹{selectedPayroll.hraPaid?.toLocaleString() || 0}</span>
                                             </div>
+                                            {selectedPayroll.otPay > 0 && (
+                                                <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
+                                                    <span className="text-gray-500">Overtime (OT)</span>
+                                                    <span className="text-gray-900">₹{selectedPayroll.otPay.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {selectedPayroll.allowancesPaid > 0 && (
+                                                <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
+                                                    <span className="text-gray-500">Other Allowances</span>
+                                                    <span className="text-gray-900">₹{selectedPayroll.allowancesPaid.toLocaleString()}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between items-center text-base font-black pt-4">
                                                 <span className="text-gray-900 uppercase">Gross Earnings</span>
                                                 <span className="text-gray-900">₹{selectedPayroll.grossSalary.toLocaleString()}</span>
@@ -388,13 +404,31 @@ export const Payroll = () => {
                                                 <span className="text-red-500">₹{selectedPayroll.pfDeduction.toLocaleString()}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-sm font-bold border-b border-gray-50 pb-2">
-                                                <span className="text-gray-500">ESI / PT</span>
+                                                <span className="text-gray-500">ESI & Prof. Tax</span>
                                                 <span className="text-red-500">₹{(selectedPayroll.esiDeduction + selectedPayroll.ptDeduction).toLocaleString()}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-base font-black pt-4">
                                                 <span className="text-gray-900 uppercase">Total Deductions</span>
                                                 <span className="text-red-600">₹{selectedPayroll.totalDeductions.toLocaleString()}</span>
                                             </div>
+
+                                            {/* Compliance Note */}
+                                            {(selectedPayroll.employerPF > 0 || selectedPayroll.employerESI > 0) && (
+                                                <div className="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                                    <p className="text-[8px] font-black text-gray-400 uppercase mb-2 tracking-widest text-center">Employer Statutory Contributions</p>
+                                                    <div className="flex justify-around items-center">
+                                                        <div className="text-center">
+                                                            <p className="text-[10px] font-extrabold text-gray-900">₹{selectedPayroll.employerPF.toLocaleString()}</p>
+                                                            <p className="text-[7px] font-black text-gray-400 uppercase">PF Share</p>
+                                                        </div>
+                                                        <div className="w-px h-6 bg-gray-200" />
+                                                        <div className="text-center">
+                                                            <p className="text-[10px] font-extrabold text-gray-900">₹{selectedPayroll.employerESI.toLocaleString()}</p>
+                                                            <p className="text-[7px] font-black text-gray-400 uppercase">ESI Share</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

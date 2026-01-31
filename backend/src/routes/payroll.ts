@@ -50,8 +50,23 @@ router.post('/runs/:id/process', authenticate, async (req, res) => {
         const run = await prisma.payrollRun.findUnique({ where: { id } });
         if (!run) return res.status(404).json({ error: 'Run not found' });
 
-        const activeEmployees = await prisma.employee.findMany({
-            where: { isActive: true },
+        // Find all employees who either are active OR have logs in this period (to handle resignations)
+        const relevantEmployees = await prisma.employee.findMany({
+            where: {
+                OR: [
+                    { isActive: true },
+                    {
+                        attendanceLogs: {
+                            some: {
+                                date: {
+                                    gte: new Date(run.year, run.month - 1, 1),
+                                    lte: new Date(run.year, run.month, 0)
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
             select: { id: true }
         });
 
@@ -59,7 +74,7 @@ router.post('/runs/:id/process', authenticate, async (req, res) => {
         let totalGross = 0;
         let totalNet = 0;
 
-        for (const emp of activeEmployees) {
+        for (const emp of relevantEmployees) {
             const result = await PayrollEngine.calculateEmployeePayroll(emp.id, run.month, run.year, run.id);
             if (result.success) {
                 results.push(result.data);
@@ -73,7 +88,7 @@ router.post('/runs/:id/process', authenticate, async (req, res) => {
             where: { id },
             data: {
                 status: 'review',
-                totalEmployees: activeEmployees.length,
+                totalEmployees: relevantEmployees.length,
                 totalGross,
                 totalNet,
                 processedAt: new Date(),
@@ -81,7 +96,7 @@ router.post('/runs/:id/process', authenticate, async (req, res) => {
             }
         });
 
-        res.json({ message: 'Payroll processed successfully', employeeCount: activeEmployees.length });
+        res.json({ message: 'Payroll processed successfully', employeeCount: relevantEmployees.length });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
@@ -96,7 +111,11 @@ router.get('/runs/:id', authenticate, async (req, res) => {
                 payrolls: {
                     include: {
                         employee: {
-                            select: { firstName: true, lastName: true, employeeCode: true }
+                            include: {
+                                designation: true,
+                                department: true,
+                                branch: true
+                            }
                         }
                     }
                 }

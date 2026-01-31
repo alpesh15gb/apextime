@@ -49,7 +49,7 @@ export async function reconcileAttendance(date: Date = new Date()): Promise<void
                 status = 'holiday';
                 reason = holidays[0].name;
             } else if (isSunday) {
-                status = 'off';
+                status = 'weekly_off';
                 reason = 'Weekly Off (Sunday)';
             } else {
                 // Check if there is an approved leave for this date
@@ -64,7 +64,7 @@ export async function reconcileAttendance(date: Date = new Date()): Promise<void
                 });
 
                 if (leave) {
-                    status = leave.leaveType.isPaid ? 'leave_paid' : 'leave_unpaid';
+                    status = 'leave_paid';
                     reason = leave.leaveType.name;
                 }
             }

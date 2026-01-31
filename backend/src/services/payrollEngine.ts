@@ -54,26 +54,17 @@ export class PayrollEngine {
 
             // 1. Calculate Days
             const daysInMonth = new Date(year, month, 0).getDate();
+
+            // Unified Day Counting from Attendance Logs
             const presentDays = employee.attendanceLogs.filter(l => l.status === 'present').length;
-            const halfDays = employee.attendanceLogs.filter(l => l.status === 'half_day').length;
-            const holidays = await prisma.holiday.count({
-                where: {
-                    date: {
-                        gte: new Date(year, month - 1, 1),
-                        lte: new Date(year, month, 0)
-                    }
-                }
-            });
+            const weeklyOffs = employee.attendanceLogs.filter(l => l.status === 'weekly_off').length;
+            const holidays = employee.attendanceLogs.filter(l => l.status === 'holiday').length;
+            const leaves = employee.attendanceLogs.filter(l => l.status === 'leave_paid').length;
+            const halfDayCount = employee.attendanceLogs.filter(l => l.status === 'half_day').length;
 
-            // Calculate LOP (Loss of Pay)
-            // Simplified Logic: Days In Month - (Present + HalfDays/2 + Holidays + Approved Paid Leaves)
-            const paidLeaveDays = employee.leaveEntries
-                .filter(l => l.leaveType.isPaid)
-                .reduce((acc, l) => acc + l.days, 0);
-
-            const effectivePresentDays = presentDays + (halfDays * 0.5) + holidays + paidLeaveDays;
+            const effectivePresentDays = presentDays + weeklyOffs + holidays + leaves + (halfDayCount * 0.5);
             const lopDays = Math.max(0, daysInMonth - effectivePresentDays);
-            const paidDays = daysInMonth - lopDays;
+            const paidDays = Math.max(0, daysInMonth - lopDays);
 
             // 2. Calculate Earnings
             let totalEarnings = 0;
@@ -100,8 +91,8 @@ export class PayrollEngine {
                     }
                 });
 
-                if (totalOtHours > 0) {
-                    const hourlyRate = (totalEarnings / (paidDays * 8)); // Assumes 8hr standard day for OT base
+                if (totalOtHours > 0 && paidDays > 0) {
+                    const hourlyRate = (totalEarnings / (paidDays * 8));
                     otAmount = totalOtHours * hourlyRate * (employee.otRateMultiplier || 1.5);
                     totalEarnings += otAmount;
                     components['OVERTIME'] = otAmount;
@@ -111,24 +102,32 @@ export class PayrollEngine {
             // 3. Calculate Statutory Deductions (Standard Indian Rules)
             let totalDeductions = 0;
 
-            // PF Calculation (12% of Basic, usually capped at 15000)
+            // PF Calculation
             if (employee.isPFEnabled) {
                 const basic = components['BASIC'] || 0;
                 const pfWage = Math.min(basic, 15000);
-                const pfAmount = pfWage * 0.12;
+
+                // Employee Share (12%)
+                const pfAmount = Math.round(pfWage * 0.12);
                 components['PF_EMP'] = pfAmount;
                 totalDeductions += pfAmount;
+
+                // Employer Share (12% = 8.33% EPS + 3.67% EPF)
+                components['PF_ER'] = Math.round(pfWage * 0.12);
             }
 
-            // ESI Calculation (0.75% of Gross if Gross <= 21000)
-            // Note: OT is usually included in Gross for ESI
+            // ESI Calculation
             if (employee.isESIEnabled && totalEarnings <= 21000) {
+                // Employee Share (0.75%)
                 const esiAmount = Math.ceil(totalEarnings * 0.0075);
                 components['ESI_EMP'] = esiAmount;
                 totalDeductions += esiAmount;
+
+                // Employer Share (3.25%)
+                components['ESI_ER'] = Math.ceil(totalEarnings * 0.0325);
             }
 
-            // PT Calculation (Flat slabs - Approx values)
+            // PT Calculation
             if (employee.isPTEnabled) {
                 let ptAmount = 0;
                 if (totalEarnings > 12000) ptAmount = 200;
@@ -137,10 +136,10 @@ export class PayrollEngine {
                 totalDeductions += ptAmount;
             }
 
-            const netSalary = totalEarnings - totalDeductions;
+            const netSalary = Math.round(totalEarnings - totalDeductions);
 
             // 4. Save to Database
-            const allowancesPaid = totalEarnings - (components['BASIC'] || 0) - (components['HRA'] || 0) - otAmount;
+            const allowancesPaid = Math.round(totalEarnings - (components['BASIC'] || 0) - (components['HRA'] || 0) - otAmount);
 
             const payroll = await prisma.payroll.upsert({
                 where: {
@@ -155,19 +154,21 @@ export class PayrollEngine {
                     actualPresentDays: effectivePresentDays,
                     lopDays,
                     paidDays,
-                    grossSalary: totalEarnings,
-                    totalDeductions,
-                    netSalary,
+                    grossSalary: Math.round(totalEarnings),
+                    totalDeductions: Math.round(totalDeductions),
+                    netSalary: netSalary,
                     payrollRun: payrollRunId ? { connect: { id: payrollRunId } } : undefined,
                     status: 'generated',
-                    basicPaid: components['BASIC'] || 0,
-                    hraPaid: components['HRA'] || 0,
+                    basicPaid: Math.round(components['BASIC'] || 0),
+                    hraPaid: Math.round(components['HRA'] || 0),
                     allowancesPaid: Math.max(0, allowancesPaid),
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
+                    employerPF: components['PF_ER'] || 0,
+                    employerESI: components['ESI_ER'] || 0,
                     otHours: totalOtHours,
-                    otPay: otAmount
+                    otPay: Math.round(otAmount)
                 },
                 create: {
                     employee: { connect: { id: employeeId } },
@@ -177,19 +178,21 @@ export class PayrollEngine {
                     actualPresentDays: effectivePresentDays,
                     lopDays,
                     paidDays,
-                    grossSalary: totalEarnings,
-                    totalDeductions,
-                    netSalary,
+                    grossSalary: Math.round(totalEarnings),
+                    totalDeductions: Math.round(totalDeductions),
+                    netSalary: netSalary,
                     payrollRun: payrollRunId ? { connect: { id: payrollRunId } } : undefined,
                     status: 'generated',
-                    basicPaid: components['BASIC'] || 0,
-                    hraPaid: components['HRA'] || 0,
+                    basicPaid: Math.round(components['BASIC'] || 0),
+                    hraPaid: Math.round(components['HRA'] || 0),
                     allowancesPaid: Math.max(0, allowancesPaid),
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
+                    employerPF: components['PF_ER'] || 0,
+                    employerESI: components['ESI_ER'] || 0,
                     otHours: totalOtHours,
-                    otPay: otAmount
+                    otPay: Math.round(otAmount)
                 }
             });
 
