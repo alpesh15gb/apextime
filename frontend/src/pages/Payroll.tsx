@@ -440,8 +440,8 @@ export const Payroll = () => {
             {
                 selectedPayroll && (
                     <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-10 print:p-0 overflow-y-auto print:block print:relative print:inset-auto print:h-auto print:overflow-visible">
-                        <div className="bg-white w-full max-w-[210mm] min-h-[297mm] shadow-2xl print:shadow-none print:w-full">
-                            <div className="p-8 print:p-0">
+                        <div className="bg-white w-full max-w-[210mm] shadow-2xl print:shadow-none print:w-full">
+                            <div className="p-6 print:p-0">
                                 {/* Toolbar */}
                                 <div className="flex justify-end gap-2 mb-4 print:hidden">
                                     <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 flex items-center gap-2">
@@ -455,7 +455,7 @@ export const Payroll = () => {
                                 {/* Sober Payslip Container */}
                                 <div className="border-2 border-black text-black font-serif text-sm">
                                     {/* Header Section */}
-                                    <div className="border-b-2 border-black p-4 flex gap-4 min-h-[120px]">
+                                    <div className="border-b-2 border-black p-3 flex gap-4 min-h-[80px]">
                                         <div className="w-24 h-24 flex items-center justify-center border border-gray-200 shrink-0">
                                             {companySettings?.logo ? (
                                                 <img src={companySettings.logo} alt="Logo" className="max-w-full max-h-full object-contain" />
@@ -569,7 +569,7 @@ export const Payroll = () => {
                                                         <span>{selectedPayroll.incentives?.toFixed(2)}</span>
                                                     </div>
                                                 )}
-                                                <div className="h-20"></div> {/* Spacer */}
+                                                <div className="h-8"></div> {/* Spacer */}
                                             </div>
 
                                             {/* Deductions Column */}
