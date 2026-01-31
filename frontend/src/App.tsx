@@ -23,11 +23,8 @@ import { Settings } from './pages/Settings';
 import { CEOAnalytics } from './pages/CEOAnalytics';
 import { FieldLogs } from './pages/FieldLogs';
 import { Projects } from './pages/Projects';
-<<<<<<< HEAD
 import Tenants from './pages/Tenants';
 import Devices from './pages/Devices';
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 import { useAuth } from './contexts/AuthContext';
 
 const HomeRedirect = () => {
@@ -38,12 +35,9 @@ const HomeRedirect = () => {
   if (user?.role === 'manager') {
     return <Navigate to="/leaves" replace />;
   }
-<<<<<<< HEAD
   if (user?.role === 'superadmin') {
     return <Navigate to="/tenants" replace />;
   }
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -84,11 +78,8 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/ceo-vault" element={<CEOAnalytics />} />
                     <Route path="/projects" element={<Projects />} />
-<<<<<<< HEAD
                     <Route path="/devices" element={<Devices />} />
                     <Route path="/tenants" element={<Tenants />} />
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                   </Routes>
                 </Layout>
               </ProtectedRoute>
