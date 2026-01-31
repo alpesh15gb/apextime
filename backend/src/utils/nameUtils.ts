@@ -28,3 +28,18 @@ export function parseEmployeeName(fullName: string): { firstName: string, lastNa
     const lastName = parts.slice(1).join(' ');
     return { firstName, lastName };
 }
+<<<<<<< HEAD
+
+/**
+ * Extracts the core numeric part of an ID (e.g., "HO015" -> "15", "00107" -> "107").
+ * This is crucial for matching device IDs with employee codes.
+ */
+export function getCoreId(id: string): string {
+    if (!id) return '';
+    // Extract only digits
+    const digits = id.replace(/\D/g, '');
+    // Strip leading zeros
+    return digits.replace(/^0+/, '') || (digits === '0' ? '0' : '');
+}
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e

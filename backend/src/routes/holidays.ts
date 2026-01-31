@@ -89,6 +89,10 @@ router.post('/', async (req, res) => {
 
     const holiday = await prisma.holiday.create({
       data: {
+<<<<<<< HEAD
+        tenantId: (req as any).user.tenantId,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         name,
         date: new Date(date),
         description,

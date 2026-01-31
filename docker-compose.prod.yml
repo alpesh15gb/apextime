@@ -59,9 +59,18 @@ services:
     image: nginx:alpine
     container_name: apextime-nginx
     ports:
+<<<<<<< HEAD
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.active.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot-data:/etc/letsencrypt
+      - ./certbot-www:/var/www/certbot
+=======
       - "8009:80"
     volumes:
       - ./nginx/nginx.init.conf:/etc/nginx/conf.d/default.conf:ro
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     depends_on:
       - backend
       - frontend

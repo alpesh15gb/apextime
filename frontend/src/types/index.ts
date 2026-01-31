@@ -2,11 +2,21 @@ export interface User {
   id: string;
   username: string;
   role: string;
+<<<<<<< HEAD
+  tenantId: string;
+  tenantName: string;
+  companyCode: string; // The slug
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 export interface AuthContextType {
   user: User | null;
+<<<<<<< HEAD
+  login: (username: string, password: string, companyCode: string) => Promise<any>;
+=======
   login: (username: string, password: string) => Promise<void>;
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   logout: () => void;
   isLoading: boolean;
 }

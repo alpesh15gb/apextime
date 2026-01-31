@@ -1,11 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+<<<<<<< HEAD
+import { tenantContext } from '../utils/tenantContext';
+
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 interface AuthRequest extends Request {
   user?: {
     id: string;
     username: string;
     role: string;
+<<<<<<< HEAD
+    tenantId: string;
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   };
 }
 
@@ -25,10 +34,22 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
       id: string;
       username: string;
       role: string;
+<<<<<<< HEAD
+      tenantId: string;
+    };
+
+    req.user = decoded;
+
+    // Provide tenancy context for all downstream operations
+    tenantContext.run(decoded.tenantId, () => {
+      next();
+    });
+=======
     };
 
     req.user = decoded;
     next();
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   } catch (error) {
     res.status(401).json({ error: 'Unauthorized - Invalid token' });
   }

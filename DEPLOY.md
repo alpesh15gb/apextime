@@ -1,9 +1,17 @@
+<<<<<<< HEAD
+# Deployment Guide for saas.apextime.in
+=======
 # Deployment Guide for ksipl.apextime.in
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 ## Prerequisites
 
 - Server with Docker and Docker Compose installed
+<<<<<<< HEAD
+- DNS A record pointing saas.apextime.in to your server IP
+=======
 - DNS A record pointing ksipl.apextime.in to your server IP
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 - Ports 80 and 443 open in firewall
 
 ## Initial Deployment Steps
@@ -11,8 +19,14 @@
 ### 1. Clone the repository on your server
 
 ```bash
+<<<<<<< HEAD
+git clone https://github.com/alpesh15gb/apextime.git apextime-saas
+cd apextime-saas
+chmod +x scripts/*.sh
+=======
 git clone https://github.com/alpesh15gb/apextime.git
 cd apextime
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 ```
 
 ### 2. Create environment file
@@ -65,7 +79,11 @@ This will:
 
 ### 5. Verify deployment
 
+<<<<<<< HEAD
+Visit: https://saas.apextime.in
+=======
 Visit: https://ksipl.apextime.in
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 Default login:
 - Username: `admin`
@@ -78,7 +96,11 @@ Default login:
 To deploy updates:
 
 ```bash
+<<<<<<< HEAD
+cd apextime-saas
+=======
 cd apextime
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 git pull origin master
 docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml build

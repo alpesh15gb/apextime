@@ -28,4 +28,8 @@ echo "=== Status ==="
 docker-compose -f docker-compose.prod.yml ps
 
 echo ""
+<<<<<<< HEAD
+echo "App should now be accessible at: http://saas.apextime.in (without :8080)"
+=======
 echo "App should now be accessible at: http://ksipl.apextime.in (without :8080)"
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e

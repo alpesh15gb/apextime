@@ -52,7 +52,11 @@ services:
       dockerfile: Dockerfile
     container_name: apextime-nginx
     ports:
+<<<<<<< HEAD
+      - "8030:80"
+=======
       - "8009:80"
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     depends_on:
       - backend
       - frontend

@@ -1,5 +1,9 @@
 
+<<<<<<< HEAD
+import { getHikCentralPool, closeAllPools } from '../config/database';
+=======
 import { getHikCentralPool, closeHikCentralPool } from '../config/database';
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 async function inspectHikCentral() {
     try {
@@ -40,7 +44,11 @@ async function inspectHikCentral() {
     } catch (error) {
         console.error('Error inspecting HikCentral:', error);
     } finally {
+<<<<<<< HEAD
+        await closeAllPools();
+=======
         await closeHikCentralPool();
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     }
 }
 

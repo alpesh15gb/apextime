@@ -38,10 +38,17 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
+<<<<<<< HEAD
+  login: (username: string, password: string, companyCode: string) =>
+    api.post('/auth/login', { username, password, companyCode }),
+  changePassword: (username: string, currentPassword: string, newPassword: string, companyCode: string) =>
+    api.post('/auth/change-password', { username, currentPassword, newPassword, companyCode }),
+=======
   login: (username: string, password: string) =>
     api.post('/auth/login', { username, password }),
   changePassword: (username: string, currentPassword: string, newPassword: string) =>
     api.post('/auth/change-password', { username, currentPassword, newPassword }),
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 };
 
 // Employees API
@@ -191,13 +198,31 @@ export const reportsAPI = {
 export const devicesAPI = {
   getAll: (params?: Record<string, string>) =>
     api.get('/devices', { params }),
+<<<<<<< HEAD
+  create: (data: any) =>
+    api.post('/devices', data),
+  update: (id: string, data: any) =>
+    api.put(`/devices/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/devices/${id}`),
   syncUsers: () =>
     api.post('/devices/sync-users'),
+  recoveryLogs: (id: string, startDate: string) =>
+    api.post(`/devices/${id}/log-recovery`, { startDate }),
+=======
+  syncUsers: () =>
+    api.post('/devices/sync-users'),
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 };
 
 // Sync API
 export const syncAPI = {
   trigger: (fullSync?: boolean) => api.post('/sync/trigger', { fullSync }),
+<<<<<<< HEAD
+  reprocess: (data: { startDate?: string; endDate?: string; employeeId?: string }) =>
+    api.post('/sync/reprocess-historical', data),
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   reset: () => api.post('/sync/reset'),
   testConnection: () => api.get('/sync/test-connection'),
   getStatus: () => api.get('/sync/status'),
@@ -255,4 +280,14 @@ export const settingsAPI = {
   update: (data: any) => api.post('/settings', data),
 };
 
+<<<<<<< HEAD
+// Tenants API (Superadmin only)
+export const tenantsAPI = {
+  getAll: () => api.get('/tenants'),
+  create: (data: any) => api.post('/tenants', data),
+  update: (id: string, data: any) => api.put(`/tenants/${id}`, data),
+};
+
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 export default api;

@@ -1,7 +1,16 @@
+<<<<<<< HEAD
+import { getDynamicSqlPool, getDynamicHikPool, prisma, BiometricConfig } from '../config/database';
+import { Tenant } from '@prisma/client';
+
+import sql from 'mssql';
+import logger from '../config/logger';
+import { normalizeName, parseEmployeeName, getCoreId } from '../utils/nameUtils';
+=======
 import { getSqlPool, getHikCentralPool, prisma } from '../config/database';
 import sql from 'mssql';
 import logger from '../config/logger';
 import { normalizeName, parseEmployeeName } from '../utils/nameUtils';
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 interface RawLog {
   DeviceLogId: number;
@@ -29,6 +38,28 @@ interface ProcessedAttendance {
 const employeeCache = new Map<string, string>(); // deviceUserId -> employeeId
 
 export async function startLogSync(fullSync: boolean = false): Promise<void> {
+<<<<<<< HEAD
+  const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
+
+  if (activeTenants.length === 0) {
+    logger.info('No active tenants found for sync.');
+    return;
+  }
+
+  logger.info(`Starting multi-tenant log sync for ${activeTenants.length} tenants...`);
+
+  for (const tenant of activeTenants) {
+    try {
+      await syncForTenant(tenant, fullSync);
+    } catch (err) {
+      logger.error(`Sync failed for tenant ${tenant.name} (${tenant.id}):`, err);
+    }
+  }
+}
+
+async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise<void> {
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   const syncStartTime = new Date();
   let recordsSynced = 0;
   let employeesCreated = 0;
@@ -36,8 +67,15 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
   let message = '';
 
   try {
+<<<<<<< HEAD
+    const biometricSettings = (tenant.settings as any)?.biometric as BiometricConfig;
+    const hikSettings = (tenant.settings as any)?.hik as BiometricConfig;
+
+    logger.info(`Starting sync for tenant: ${tenant.name} (${tenant.id})`);
+=======
     logger.info(`Starting log sync from SQL Server... (fullSync: ${fullSync})`);
     console.log(`[${new Date().toISOString()}] Starting log sync... (fullSync: ${fullSync})`);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
     // Get last sync time
     let lastSyncTime: Date;
@@ -48,11 +86,34 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       logger.info('Full sync mode: processing all historical data from 2020-01-01');
     } else {
       const lastSync = await prisma.syncStatus.findFirst({
+<<<<<<< HEAD
+        where: { tenantId: tenant.id },
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         orderBy: { createdAt: 'desc' },
       });
       lastSyncTime = lastSync?.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
 
+<<<<<<< HEAD
+    let allLogs: RawLog[] = [];
+
+    // --- SQL Server Connection (SQL_LOGS) ---
+    if (biometricSettings) {
+      try {
+        const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
+        const result = await pool.request()
+          .input('lastSyncTime', sql.DateTime, lastSyncTime)
+          .query<RawLog>(`
+            SELECT DeviceLogId, DeviceId, UserId, LogDate, 'SQL_LOGS' as TableName
+            FROM DeviceLogs
+            WHERE LogDate > @lastSyncTime
+            ORDER BY LogDate ASC
+          `);
+        allLogs = [...allLogs, ...result.recordset];
+      } catch (err) {
+        logger.error(`SQL Sync failed for tenant ${tenant.id}:`, err);
+=======
     // Get SQL Server connection
     const pool = await getSqlPool();
 
@@ -87,10 +148,66 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
         allLogs = [...allLogs, ...result.recordset];
       } catch (error: any) {
         logger.warn(`Table ${tableName} not accessible: ${error.message}`);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
       }
     }
 
     // --- HikCentral Sync Start ---
+<<<<<<< HEAD
+    if (hikSettings) {
+      try {
+        const hikPool = await getDynamicHikPool(hikSettings, tenant.id);
+        const hikResult = await hikPool.request().query(`
+          SELECT TOP 5000 
+            LogId, person_id, access_datetime, device_name, serial_no, person_name, SyncedToApex
+          FROM HikvisionLogs
+          WHERE SyncedToApex IS NULL OR SyncedToApex = 0
+          ORDER BY access_datetime ASC
+        `);
+
+        const hikLogs: RawLog[] = hikResult.recordset.map((row: any) => {
+          if (row.person_name && row.person_id) {
+            const pName = row.person_name.toString().trim();
+            const pId = row.person_id.toString();
+
+            if (pName && !/^\d+$/.test(pName)) {
+              const existing = deviceUserInfoCache.get(pId);
+              if (!existing || /^\d+$/.test(existing.Name)) {
+                deviceUserInfoCache.set(pId, {
+                  UserId: pId,
+                  Name: pName,
+                  DeviceId: 0,
+                  DepartmentName: 'HikCentral Internal'
+                });
+              }
+            }
+          }
+
+          return {
+            DeviceLogId: row.LogId,
+            DeviceId: row.serial_no || row.device_name || 'HIK_UNKNOWN',
+            UserId: row.person_id || 'UNKNOWN',
+            LogDate: row.access_datetime,
+            TableName: 'HikvisionLogs'
+          };
+        });
+
+        allLogs = [...allLogs, ...hikLogs];
+
+        if (hikLogs.length > 0) {
+          const logIds = hikLogs.map(l => l.DeviceLogId).join(',');
+          await hikPool.request().query(`
+            UPDATE HikvisionLogs 
+            SET SyncedToApex = 1
+            WHERE LogId IN (${logIds})
+          `);
+        }
+      } catch (hikErr) {
+        logger.error(`HikCentral sync failed for tenant ${tenant.id}:`, hikErr);
+      }
+    }
+
+=======
     try {
       logger.info('Connecting to HikCentral for logs...');
       const hikPool = await getHikCentralPool();
@@ -158,6 +275,7 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       logger.error('Error syncing from HikCentral:', hikErr);
       // Don't stop the whole process, just log error
     }
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     // --- HikCentral Sync End ---
 
     // Deduplicate logs using a globally unique key: TableName + DeviceLogId
@@ -179,6 +297,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       // Pre-fetch all existing employees with deviceUserId or sourceEmployeeId
       const existingEmployees = await prisma.employee.findMany({
         where: {
+<<<<<<< HEAD
+          tenantId: tenant.id,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
           OR: [
             { deviceUserId: { not: null } },
             { sourceEmployeeId: { not: null } }
@@ -189,11 +311,22 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
       for (const emp of existingEmployees) {
         if (emp.sourceEmployeeId) {
+<<<<<<< HEAD
+          employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
+          const coreSid = getCoreId(emp.sourceEmployeeId);
+          if (coreSid) employeeCache.set(`CORE:${coreSid}`, emp.id);
+        }
+        if (emp.deviceUserId) {
+          employeeCache.set(emp.deviceUserId, emp.id);
+          const coreDid = getCoreId(emp.deviceUserId);
+          if (coreDid) employeeCache.set(`CORE:${coreDid}`, emp.id);
+=======
           // Use sourceEmployeeId as primary cache key if available
           employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
         }
         if (emp.deviceUserId) {
           employeeCache.set(emp.deviceUserId, emp.id);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         }
       }
       logger.info(`Loaded ${employeeCache.size} employees into cache`);
@@ -207,9 +340,16 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
       for (const dId of uniqueDeviceIds) {
         const device = await prisma.device.upsert({
+<<<<<<< HEAD
+          where: { deviceId_tenantId: { deviceId: dId, tenantId: tenant.id } },
+          update: {},
+          create: {
+            tenantId: tenant.id,
+=======
           where: { deviceId: dId },
           update: {},
           create: {
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
             deviceId: dId,
             name: `Biometric Device ${dId}`,
             status: 'online',
@@ -235,7 +375,12 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
             update: {},
             create: {
               id: uniqueRecordId,
+<<<<<<< HEAD
+              tenantId: tenant.id,
+              deviceId: internalDeviceId,
+=======
               deviceId: internalDeviceId, // Uses internal UUID
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
               userId: log.UserId.toString(),
               punchTime: log.LogDate,
               isProcessed: false,
@@ -249,9 +394,22 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
       console.log(`[STORAGE] Successfully committed ${storedCount} raw logs to database archive.`);
       logger.info(`Stored ${storedCount} raw logs`);
 
+<<<<<<< HEAD
+      // Load device user info from SQL Server if available
+      if (biometricSettings) {
+        try {
+          const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
+          await loadDeviceUserInfoFromSqlServer(pool);
+          logger.info(`Loaded ${deviceUserInfoCache.size} device users into cache for tenant ${tenant.id}`);
+        } catch (err) {
+          logger.warn(`Could not load device user info for tenant ${tenant.id}:`, err);
+        }
+      }
+=======
       // Load device user info from SQL Server once at start
       await loadDeviceUserInfoFromSqlServer();
       logger.info(`Loaded ${deviceUserInfoCache.size} device users into cache for deduplication`);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
       // Auto-create employees if they don't exist
       const uniqueUserIds = new Set<string>();
@@ -298,6 +456,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
 
               // Find all employees and check normalized names
               const allEmps = await prisma.employee.findMany({
+<<<<<<< HEAD
+                where: { tenantId: tenant.id },
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 select: { id: true, firstName: true, lastName: true, employeeCode: true, deviceUserId: true }
               });
 
@@ -320,9 +482,14 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
               }
             }
 
+<<<<<<< HEAD
+            if (!employeeCache.has(userId)) {
+              const newEmployee = await createEmployeeFromDeviceLog(userId, tenant.id);
+=======
             // If still not found in cache, create new
             if (!employeeCache.has(userId)) {
               const newEmployee = await createEmployeeFromDeviceLog(userId);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
               if (newEmployee) {
                 employeeCache.set(userId, newEmployee.id);
                 employeesCreated++;
@@ -411,9 +578,16 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
           for (const attendance of processingResults) {
             await prisma.attendanceLog.upsert({
               where: {
+<<<<<<< HEAD
+                employeeId_date_tenantId: {
+                  employeeId: attendance.employeeId,
+                  date: attendance.date,
+                  tenantId: tenant.id,
+=======
                 employeeId_date: {
                   employeeId: attendance.employeeId,
                   date: attendance.date,
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 },
               },
               update: {
@@ -428,6 +602,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
                 status: attendance.status,
               },
               create: {
+<<<<<<< HEAD
+                tenantId: tenant.id,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 employeeId: attendance.employeeId,
                 date: attendance.date,
                 firstIn: attendance.firstIn,
@@ -487,6 +665,10 @@ export async function startLogSync(fullSync: boolean = false): Promise<void> {
     // Record sync status
     await prisma.syncStatus.create({
       data: {
+<<<<<<< HEAD
+        tenantId: tenant.id,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         lastSyncTime: syncStartTime,
         recordsSynced,
         status,
@@ -513,9 +695,15 @@ interface DeviceUserInfo {
 // Cache for device user info from SQL Server
 const deviceUserInfoCache = new Map<string, DeviceUserInfo>();
 
+<<<<<<< HEAD
+async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promise<void> {
+
+  try {
+=======
 async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
   try {
     const pool = await getSqlPool();
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
     // Query ALL employees with EmployeeCodeInDevice (not just DeviceUsers)
     // This ensures we get names for employees on all devices (HO, KSDK, MIPA, etc.)
@@ -569,9 +757,16 @@ async function loadDeviceUserInfoFromSqlServer(): Promise<void> {
   }
 }
 
+<<<<<<< HEAD
+
+// Utility removed as it's now in src/utils/nameUtils.ts
+
+async function getOrCreateDepartment(departmentName: string, tenantId: string): Promise<string | null> {
+=======
 // Utility removed as it's now in src/utils/nameUtils.ts
 
 async function getOrCreateDepartment(departmentName: string): Promise<string | null> {
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   if (!departmentName || departmentName.trim() === '') {
     return null;
   }
@@ -579,9 +774,15 @@ async function getOrCreateDepartment(departmentName: string): Promise<string | n
   const deptCode = departmentName.toUpperCase().replace(/\s+/g, '_').substring(0, 20);
 
   try {
+<<<<<<< HEAD
+    // Try to find existing department by code and tenant
+    const existing = await prisma.department.findFirst({
+      where: { code: deptCode, tenantId }
+=======
     // Try to find existing department by code (using findFirst since code+branchId is unique)
     const existing = await prisma.department.findFirst({
       where: { code: deptCode }
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     });
 
     if (existing) {
@@ -591,13 +792,21 @@ async function getOrCreateDepartment(departmentName: string): Promise<string | n
     // Create new department
     const newDept = await prisma.department.create({
       data: {
+<<<<<<< HEAD
+        tenantId,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         name: departmentName,
         code: deptCode,
         isActive: true,
       }
     });
 
+<<<<<<< HEAD
+    logger.info(`Created new department: ${departmentName} (${deptCode}) for tenant ${tenantId}`);
+=======
     logger.info(`Created new department: ${departmentName} (${deptCode})`);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     return newDept.id;
   } catch (error) {
     logger.error(`Failed to create department ${departmentName}:`, error);
@@ -605,7 +814,12 @@ async function getOrCreateDepartment(departmentName: string): Promise<string | n
   }
 }
 
+<<<<<<< HEAD
+
+async function getOrCreateDesignation(designationName: string, tenantId: string): Promise<string | null> {
+=======
 async function getOrCreateDesignation(designationName: string): Promise<string | null> {
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   if (!designationName || designationName.trim() === '') {
     return null;
   }
@@ -615,7 +829,11 @@ async function getOrCreateDesignation(designationName: string): Promise<string |
   try {
     // Try to find existing designation
     const existing = await prisma.designation.findUnique({
+<<<<<<< HEAD
+      where: { code_tenantId: { code: desigCode, tenantId } }
+=======
       where: { code: desigCode }
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     });
 
     if (existing) {
@@ -625,13 +843,21 @@ async function getOrCreateDesignation(designationName: string): Promise<string |
     // Create new designation
     const newDesig = await prisma.designation.create({
       data: {
+<<<<<<< HEAD
+        tenantId,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         name: designationName,
         code: desigCode,
         isActive: true,
       }
     });
 
+<<<<<<< HEAD
+    logger.info(`Created new designation: ${designationName} (${desigCode}) for tenant ${tenantId}`);
+=======
     logger.info(`Created new designation: ${designationName} (${desigCode})`);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     return newDesig.id;
   } catch (error) {
     logger.error(`Failed to create designation ${designationName}:`, error);
@@ -639,6 +865,10 @@ async function getOrCreateDesignation(designationName: string): Promise<string |
   }
 }
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 async function lookupProperEmployeeName(deviceUserId: string): Promise<string | null> {
   // If deviceUserId is numeric, try to find the HO-prefixed version
   if (/^\d+$/.test(deviceUserId)) {
@@ -651,6 +881,10 @@ async function lookupProperEmployeeName(deviceUserId: string): Promise<string | 
   return null;
 }
 
+<<<<<<< HEAD
+async function createEmployeeFromDeviceLog(deviceUserId: string, tenantId: string) {
+  try {
+=======
 async function createEmployeeFromDeviceLog(deviceUserId: string) {
   try {
     // Load device user info if cache is empty
@@ -658,6 +892,7 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
       await loadDeviceUserInfoFromSqlServer();
     }
 
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     // Get user info from cache
     const userInfo = deviceUserInfoCache.get(deviceUserId);
 
@@ -679,15 +914,67 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
     let designationId: string | null = null;
 
     if (userInfo?.DepartmentName) {
+<<<<<<< HEAD
+      departmentId = await getOrCreateDepartment(userInfo.DepartmentName, tenantId);
+    }
+
+    if (userInfo?.Designation) {
+      designationId = await getOrCreateDesignation(userInfo.Designation, tenantId);
+    }
+
+    // FUZZY MATCHING: Check if an employee with this name already exists without a linked deviceUserId
+    if (effectiveName && !/^\d+$/.test(effectiveName.trim())) {
+      const { firstName, lastName } = parseEmployeeName(effectiveName);
+      const normalizedQuery = normalizeName(firstName, lastName);
+
+      const allEmps = await prisma.employee.findMany({
+        where: { tenantId, deviceUserId: null }
+      });
+
+      const matched = allEmps.find(e => normalizeName(e.firstName, e.lastName) === normalizedQuery);
+      if (matched) {
+        logger.info(`Fuzzy matched ${effectiveName} to existing employee record ${matched.employeeCode}`);
+        return await prisma.employee.update({
+          where: { id: matched.id },
+          data: {
+            deviceUserId: deviceUserId.toString(),
+            sourceEmployeeId: userInfo?.EmployeeId?.toString(),
+            departmentId: departmentId || matched.departmentId,
+            designationId: designationId || matched.designationId
+          }
+        });
+      }
+=======
       departmentId = await getOrCreateDepartment(userInfo.DepartmentName);
     }
 
     if (userInfo?.Designation) {
       designationId = await getOrCreateDesignation(userInfo.Designation);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     }
 
     // Check if employee code already exists
     const existing = await prisma.employee.findUnique({
+<<<<<<< HEAD
+      where: { employeeCode_tenantId: { employeeCode, tenantId } }
+    });
+
+    if (existing) {
+      // Update existing employee
+      const updateData: any = {
+        deviceUserId: deviceUserId.toString(),
+        sourceEmployeeId: userInfo?.EmployeeId?.toString()
+      };
+
+      if (effectiveName && (existing.firstName === `Employee` || /^\d+$/.test(existing.firstName))) {
+        const { firstName, lastName } = parseEmployeeName(effectiveName);
+        updateData.firstName = firstName;
+        updateData.lastName = lastName;
+      }
+
+      if (departmentId && !existing.departmentId) updateData.departmentId = departmentId;
+      if (designationId && !existing.designationId) updateData.designationId = designationId;
+=======
       where: { employeeCode }
     });
 
@@ -715,6 +1002,7 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
       if (designationId && !existing.designationId) {
         updateData.designationId = designationId;
       }
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
       return await prisma.employee.update({
         where: { id: existing.id },
@@ -722,14 +1010,27 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
       });
     }
 
+<<<<<<< HEAD
+    let firstName = 'Employee';
+    let lastName = deviceUserId;
+=======
     // Parse name from SQL Server or use default
     let firstName = 'Employee';
     let lastName = deviceUserId;
 
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     if (effectiveName) {
       const parsed = parseEmployeeName(effectiveName);
       firstName = parsed.firstName;
       lastName = parsed.lastName;
+<<<<<<< HEAD
+    }
+
+    // Create new employee
+    const employee = await prisma.employee.create({
+      data: {
+        tenantId,
+=======
       logger.info(`Creating employee ${employeeCode} with name from SQL Server: ${firstName} ${lastName}`);
     } else {
       logger.info(`Creating employee ${employeeCode} with default name (UserId: ${deviceUserId})`);
@@ -738,6 +1039,7 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
     // Create new employee with department and designation
     const employee = await prisma.employee.create({
       data: {
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         employeeCode,
         firstName,
         lastName,
@@ -749,14 +1051,24 @@ async function createEmployeeFromDeviceLog(deviceUserId: string) {
       }
     });
 
+<<<<<<< HEAD
+    return employee;
+  } catch (error) {
+    logger.error(`Failed to create employee for ${deviceUserId} in tenant ${tenantId}:`, error);
+=======
     logger.info(`Created new employee: ${employeeCode} (${firstName} ${lastName}) with deviceUserId: ${deviceUserId}, department: ${userInfo?.DepartmentName || 'none'}, designation: ${userInfo?.Designation || 'none'}`);
     return employee;
   } catch (error) {
     logger.error(`Failed to create employee for deviceUserId ${deviceUserId}:`, error);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
     return null;
   }
 }
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendance[]> {
   // Group logs by employee device user ID
   const employeeLogs = new Map<string, RawLog[]>();
@@ -773,7 +1085,19 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
     // Get employee from cache
+<<<<<<< HEAD
+    let employeeId = employeeCache.get(deviceUserId);
+
+    // Fallback to Core ID matching
+    if (!employeeId) {
+      const coreId = getCoreId(deviceUserId);
+      if (coreId) {
+        employeeId = employeeCache.get(`CORE:${coreId}`);
+      }
+    }
+=======
     const employeeId = employeeCache.get(deviceUserId);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
     if (!employeeId) {
       logger.warn(`No employee found for device user ID: ${deviceUserId}`);
@@ -896,6 +1220,39 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
   return processedResults;
 }
 
+<<<<<<< HEAD
+// This function is now mostly handled via per-tenant sync, but left for global manually triggered sync
+export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
+  try {
+    const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
+    let totalResults = { updated: 0, failed: 0, deptUpdated: 0, desigUpdated: 0 };
+
+    for (const tenant of activeTenants) {
+      const biometricSettings = (tenant.settings as any)?.biometric as BiometricConfig;
+      if (!biometricSettings) continue;
+
+      const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
+      await loadDeviceUserInfoFromSqlServer(pool);
+
+      const result = await syncNamesForTenant(tenant);
+      totalResults.updated += result.updated;
+      totalResults.failed += result.failed;
+      totalResults.deptUpdated += result.deptUpdated;
+      totalResults.desigUpdated += result.desigUpdated;
+
+      deviceUserInfoCache.clear();
+    }
+    return totalResults;
+  } catch (error) {
+    logger.error('Global name sync failed:', error);
+    throw error;
+  }
+}
+
+async function syncNamesForTenant(tenant: Tenant): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
+  try {
+    logger.info(`Starting employee name sync for tenant ${tenant.name}...`);
+=======
 // Sync employee names, designation and department from SQL Server
 export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
   try {
@@ -903,6 +1260,7 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
 
     // Load device user info
     await loadDeviceUserInfoFromSqlServer();
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
     // Get all employees with deviceUserId
     const employees = await prisma.employee.findMany({
@@ -928,11 +1286,19 @@ export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: num
       let designationId: string | null = employee.designationId;
 
       if (userInfo?.DepartmentName && !employee.departmentId) {
+<<<<<<< HEAD
+        departmentId = await getOrCreateDepartment(userInfo.DepartmentName, tenant.id);
+      }
+
+      if (userInfo?.Designation && !employee.designationId) {
+        designationId = await getOrCreateDesignation(userInfo.Designation, tenant.id);
+=======
         departmentId = await getOrCreateDepartment(userInfo.DepartmentName);
       }
 
       if (userInfo?.Designation && !employee.designationId) {
         designationId = await getOrCreateDesignation(userInfo.Designation);
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
       }
 
       // Only update if something changed or was auto-generated
@@ -1073,12 +1439,28 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
         const results = await processAttendanceLogs(formattedLogs);
 
+<<<<<<< HEAD
+        // Get tenantId for this specific employee
+        const employeeId = employeeCache.get(uId);
+        const empForTenant = employeeId ? await prisma.employee.findUnique({ where: { id: employeeId }, select: { tenantId: true } }) : null;
+        const rlTenantId = empForTenant?.tenantId || '';
+        if (!rlTenantId) continue;
+
+        for (const attendance of results) {
+          await prisma.attendanceLog.upsert({
+            where: {
+              employeeId_date_tenantId: {
+                employeeId: attendance.employeeId,
+                date: attendance.date,
+                tenantId: rlTenantId, // We need to determine the tenantId for this log
+=======
         for (const attendance of results) {
           await prisma.attendanceLog.upsert({
             where: {
               employeeId_date: {
                 employeeId: attendance.employeeId,
                 date: attendance.date,
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
               },
             },
             update: {
@@ -1093,6 +1475,10 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
               status: attendance.status,
             },
             create: {
+<<<<<<< HEAD
+              tenantId: rlTenantId,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
               employeeId: attendance.employeeId,
               date: attendance.date,
               firstIn: attendance.firstIn,

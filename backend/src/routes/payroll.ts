@@ -28,6 +28,10 @@ router.post('/runs', authenticate, async (req, res) => {
     try {
         const run = await prisma.payrollRun.create({
             data: {
+<<<<<<< HEAD
+                tenantId: (req as any).user.tenantId,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 month,
                 year,
                 batchName,

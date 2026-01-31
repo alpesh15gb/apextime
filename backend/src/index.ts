@@ -30,6 +30,13 @@ import ceoRoutes from './routes/ceo';
 import fieldLogRoutes from './routes/fieldLogs';
 import designationRoutes from './routes/designations';
 import settingsRoutes from './routes/settings';
+<<<<<<< HEAD
+import tenantRoutes from './routes/tenants';
+import iclockRoutes from './routes/iclock';
+import hikvisionRoutes from './routes/hikvision';
+
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 dotenv.config();
 
@@ -40,6 +47,10 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+<<<<<<< HEAD
+app.use(express.text({ type: 'text/plain', limit: '10mb' }));
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 // Request logging
 app.use((req, res, next) => {
@@ -72,6 +83,13 @@ app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
 app.use('/api/settings', settingsRoutes);
+<<<<<<< HEAD
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/iclock', iclockRoutes);
+app.use('/api/hikvision', hikvisionRoutes);
+
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
 // Health check
 app.get('/api/health', (req, res) => {

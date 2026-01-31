@@ -2,8 +2,13 @@
 
 # Configuration
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+<<<<<<< HEAD
+LOG_FILE="/docker/apextime-saas/backups/backup_system.log"
+BACKUP_DIR="/docker/apextime-saas/backups"
+=======
 LOG_FILE="/docker/apextime/backups/backup_system.log"
 BACKUP_DIR="/docker/apextime/backups"
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 DB_CONTAINER="apextime-postgres"
 DB_NAME="apextime"
 DB_USER="apextime"

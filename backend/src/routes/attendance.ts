@@ -168,11 +168,21 @@ router.post('/manual', async (req, res) => {
       workingHours = diffMs / (1000 * 60 * 60);
     }
 
+<<<<<<< HEAD
+    const tenantId = (req as any).user.tenantId;
+    const log = await prisma.attendanceLog.upsert({
+      where: {
+        employeeId_date_tenantId: {
+          employeeId,
+          date: attendanceDate,
+          tenantId,
+=======
     const log = await prisma.attendanceLog.upsert({
       where: {
         employeeId_date: {
           employeeId,
           date: attendanceDate,
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         },
       },
       update: {
@@ -182,6 +192,10 @@ router.post('/manual', async (req, res) => {
         status,
       },
       create: {
+<<<<<<< HEAD
+        tenantId,
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         employeeId,
         date: attendanceDate,
         firstIn: parsedFirstIn,

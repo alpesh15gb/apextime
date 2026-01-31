@@ -12,11 +12,22 @@ async function main() {
         { name: 'Unpaid Leave (LOP)', code: 'LOP', isPaid: false, description: 'Loss of Pay absences' }
     ];
 
+<<<<<<< HEAD
+    const defaultTenant = await prisma.tenant.findFirst({ where: { slug: 'apextime' } });
+    if (!defaultTenant) throw new Error('Default tenant not found. Please run seed first.');
+
+    for (const lt of leaveTypes) {
+        await prisma.leaveType.upsert({
+            where: { code_tenantId: { code: lt.code, tenantId: defaultTenant.id } },
+            update: { ...lt, tenantId: defaultTenant.id },
+            create: { ...lt, tenantId: defaultTenant.id }
+=======
     for (const lt of leaveTypes) {
         await prisma.leaveType.upsert({
             where: { code: lt.code },
             update: lt,
             create: lt
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         });
         console.log(`✓ Leave Type: ${lt.name} (${lt.code})`);
     }

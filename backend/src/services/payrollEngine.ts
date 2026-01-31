@@ -165,12 +165,23 @@ export class PayrollEngine {
             // 4. Save to Database
             const allowancesPaid = Math.round(totalEarnings - (components['BASIC'] || 0) - (components['HRA'] || 0) - otAmount);
 
+<<<<<<< HEAD
+            const tenantId = employee.tenantId;
+            const payroll = await prisma.payroll.upsert({
+                where: {
+                    employeeId_month_year_tenantId: {
+                        employeeId,
+                        month,
+                        year,
+                        tenantId
+=======
             const payroll = await prisma.payroll.upsert({
                 where: {
                     employeeId_month_year: {
                         employeeId,
                         month,
                         year
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     }
                 },
                 update: {
@@ -195,6 +206,10 @@ export class PayrollEngine {
                     otPay: Math.round(otAmount)
                 },
                 create: {
+<<<<<<< HEAD
+                    tenant: { connect: { id: tenantId } },
+=======
+>>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     employee: { connect: { id: employeeId } },
                     month,
                     year,
