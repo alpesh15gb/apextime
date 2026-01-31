@@ -12,15 +12,15 @@ FILENAME="backup_${DB_NAME}_${TIMESTAMP}.sql"
 GDRIVE_REMOTE="drive"
 GDRIVE_FOLDER="Apextime_Backups"
 
+# Create backup directory if it doesn't exist
+mkdir -p $BACKUP_DIR
+
 # Ensure log file exists
 touch $LOG_FILE
 
 {
 echo "-----------------------------------------------------"
 echo "[$(date)] SYSTEM: Starting automated backup job..."
-
-# Create backup directory if it doesn't exist
-mkdir -p $BACKUP_DIR
 
 # 1. Generate the SQL Dump from Docker
 echo "[$(date)] Starting Database Dump..."
