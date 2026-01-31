@@ -1,5 +1,5 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
@@ -413,13 +413,13 @@ router.post('/import-bank-details', async (req, res) => {
             accountNumber: accountNumber?.toString(),
             ifscCode,
             panNumber,
-            basicSalary: basicSalary !== undefined ? parseFloat(String(basicSalary)) : undefined,
-            hra: hra !== undefined ? parseFloat(String(hra)) : undefined,
-            otherAllowances: otherAllowances !== undefined ? parseFloat(String(otherAllowances)) : undefined,
-            standardDeductions: standardDeductions !== undefined ? parseFloat(String(standardDeductions)) : undefined,
-            otRateMultiplier: otRateMultiplier !== undefined ? parseFloat(String(otRateMultiplier)) : undefined,
-            isPFEnabled: isPFEnabled !== undefined ? (/true|yes|1/i.test(String(isPFEnabled))) : undefined,
-            isESIEnabled: isESIEnabled !== undefined ? (/true|yes|1/i.test(String(isESIEnabled))) : undefined
+            basicSalary: (basicSalary !== undefined && basicSalary !== '') ? sanitizeNumber(basicSalary) : undefined,
+            hra: (hra !== undefined && hra !== '') ? sanitizeNumber(hra) : undefined,
+            otherAllowances: (otherAllowances !== undefined && otherAllowances !== '') ? sanitizeNumber(otherAllowances) : undefined,
+            standardDeductions: (standardDeductions !== undefined && standardDeductions !== '') ? sanitizeNumber(standardDeductions) : undefined,
+            otRateMultiplier: (otRateMultiplier !== undefined && otRateMultiplier !== '') ? sanitizeNumber(otRateMultiplier) : undefined,
+            isPFEnabled: (isPFEnabled !== undefined && isPFEnabled !== '') ? (/true|yes|1/i.test(String(isPFEnabled))) : undefined,
+            isESIEnabled: (isESIEnabled !== undefined && isESIEnabled !== '') ? (/true|yes|1/i.test(String(isESIEnabled))) : undefined
           }
         });
         results.success++;
