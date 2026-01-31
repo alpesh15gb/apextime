@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { settingsAPI } from '../services/api';
 import {
     Building2,
     ShieldCheck,
@@ -33,6 +34,21 @@ export const Settings = () => {
     const [loading, setLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await settingsAPI.get();
+            if (res.data) {
+                setProfile(prev => ({ ...prev, ...res.data }));
+            }
+        } catch (error) {
+            console.error('Failed to fetch settings', error);
+        }
+    };
+
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -47,8 +63,7 @@ export const Settings = () => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            // In a real app, send profile to backend here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate api
+            await settingsAPI.update(profile);
             alert('Settings saved successfully.');
         } catch (e) {
             alert('Failed to save settings');

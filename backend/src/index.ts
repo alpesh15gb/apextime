@@ -29,6 +29,7 @@ import leaveRoutes from './routes/leaves';
 import ceoRoutes from './routes/ceo';
 import fieldLogRoutes from './routes/fieldLogs';
 import designationRoutes from './routes/designations';
+import settingsRoutes from './routes/settings';
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ app.use('/api/leaves', leaveRoutes);
 app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

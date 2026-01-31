@@ -246,4 +246,9 @@ export const fieldLogsAPI = {
     api.post('/field-logs/approve', data),
 };
 
+export const settingsAPI = {
+  get: () => api.get('/settings'),
+  update: (data: any) => api.post('/settings', data),
+};
+
 export default api;
