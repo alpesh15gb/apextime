@@ -441,7 +441,7 @@ export const Payroll = () => {
                 selectedPayroll && (
                     <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-10 print:p-0 overflow-y-auto print:block print:relative print:inset-auto print:h-auto print:overflow-visible">
                         <div className="bg-white w-full max-w-[210mm] shadow-2xl print:shadow-none print:w-full">
-                            <div className="p-6 print:p-0">
+                            <div className="p-6 print:p-[10mm]">
                                 {/* Toolbar */}
                                 <div className="flex justify-end gap-2 mb-4 print:hidden">
                                     <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 flex items-center gap-2">
