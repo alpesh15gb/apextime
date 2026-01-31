@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { PayrollEngine } from '../services/payrollEngine';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Get all payroll runs
 router.get('/runs', authenticate, async (req, res) => {
