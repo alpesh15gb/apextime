@@ -140,6 +140,34 @@ export const Payroll = () => {
         }
     };
 
+    const handleDeleteRun = async (id: string) => {
+        if (!window.confirm('Delete this payroll run and all its records? This cannot be undone.')) return;
+        try {
+            setLoading(true);
+            await payrollAPI.deleteRun(id);
+            setSelectedRun(null);
+            fetchRuns();
+        } catch (error) {
+            alert('Deletion failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleProcessSingle = async (runId: string, employeeId: string) => {
+        try {
+            setProcessing(true);
+            await payrollAPI.processSingle(runId, employeeId);
+            const details = await payrollAPI.getRunDetails(runId);
+            setSelectedRun(details.data);
+            fetchRuns();
+        } catch (error) {
+            alert('Individual processing failed');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     const handleUpdateSalary = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -232,6 +260,14 @@ export const Payroll = () => {
                                         <Search className="w-3.5 h-3.5" />
                                         View Details
                                     </button>
+                                    {(run.status === 'draft' || run.status === 'review') && (
+                                        <button
+                                            onClick={() => handleDeleteRun(run.id)}
+                                            className="p-3 bg-red-50 text-red-300 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -306,9 +342,21 @@ export const Payroll = () => {
                                             <td className="px-6 py-5 text-right font-bold text-red-500 text-sm italic">₹{p.totalDeductions.toLocaleString()}</td>
                                             <td className="px-6 py-5 text-right font-black text-gray-900 text-base">₹{p.netSalary.toLocaleString()}</td>
                                             <td className="px-6 py-5 text-center">
-                                                <button onClick={() => setSelectedPayroll(p)} className="p-2.5 bg-gray-50 text-gray-300 hover:bg-black hover:text-white rounded-xl transition-all">
-                                                    <Printer className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {(selectedRun.status === 'draft' || selectedRun.status === 'review') && (
+                                                        <button
+                                                            onClick={() => handleProcessSingle(selectedRun.id, p.employeeId)}
+                                                            disabled={processing}
+                                                            title="Recalculate Single"
+                                                            className="p-2.5 bg-blue-50 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all"
+                                                        >
+                                                            <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => setSelectedPayroll(p)} className="p-2.5 bg-gray-50 text-gray-300 hover:bg-black hover:text-white rounded-xl transition-all">
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

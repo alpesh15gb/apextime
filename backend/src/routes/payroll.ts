@@ -102,6 +102,71 @@ router.post('/runs/:id/process', authenticate, async (req, res) => {
     }
 });
 
+// Process a single employee within a run
+router.post('/runs/:id/process-single', authenticate, async (req, res) => {
+    const { id } = req.params;
+    const { employeeId } = req.body;
+    try {
+        const run = await prisma.payrollRun.findUnique({ where: { id } });
+        if (!run) return res.status(404).json({ error: 'Run not found' });
+
+        const result = await PayrollEngine.calculateEmployeePayroll(employeeId, run.month, run.year, run.id);
+
+        if (!result.success) {
+            return res.status(400).json({ error: result.error });
+        }
+
+        // Recalculate totals for the whole run
+        const allPayrolls = await prisma.payroll.findMany({
+            where: { payrollRunId: run.id }
+        });
+
+        const totalGross = allPayrolls.reduce((sum, p) => sum + p.grossSalary, 0);
+        const totalNet = allPayrolls.reduce((sum, p) => sum + p.netSalary, 0);
+
+        await prisma.payrollRun.update({
+            where: { id },
+            data: {
+                totalEmployees: allPayrolls.length,
+                totalGross,
+                totalNet
+            }
+        });
+
+        res.json({ message: 'Employee payroll processed', payroll: result.data });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete a payroll run
+router.delete('/runs/:id', authenticate, async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Find the run first
+        const run = await prisma.payrollRun.findUnique({ where: { id } });
+        if (!run) return res.status(404).json({ error: 'Run not found' });
+
+        if (run.status === 'locked' || run.status === 'finalized') {
+            return res.status(403).json({ error: 'Cannot delete a finalized/locked run' });
+        }
+
+        // First disconnect/delete individual payroll records
+        await prisma.payroll.deleteMany({
+            where: { payrollRunId: id }
+        });
+
+        // Then delete the run
+        await prisma.payrollRun.delete({
+            where: { id }
+        });
+
+        res.json({ message: 'Payroll run deleted successfully' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get details of a specific run
 router.get('/runs/:id', authenticate, async (req, res) => {
     try {
