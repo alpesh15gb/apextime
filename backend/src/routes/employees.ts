@@ -425,4 +425,50 @@ router.post('/import-bank-details', async (req, res) => {
   }
 });
 
+
+// Repair User Accounts (Create missing logins)
+router.post('/repair-user-accounts', async (req, res) => {
+  try {
+    const employees = await prisma.employee.findMany({
+      where: {
+        isActive: true
+      }
+    });
+
+    let createdCount = 0;
+
+    for (const emp of employees) {
+      if (!emp.employeeCode) continue;
+
+      // Check if user exists linked to this employee OR with same username
+      const userExists = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { employeeId: emp.id },
+            { username: emp.employeeCode } // Case sensitive match typically
+          ]
+        }
+      });
+
+      if (!userExists) {
+        const password = await bcrypt.hash(emp.employeeCode, 10);
+        await prisma.user.create({
+          data: {
+            username: emp.employeeCode,
+            password,
+            role: 'employee',
+            employeeId: emp.id
+          }
+        });
+        createdCount++;
+      }
+    }
+
+    res.json({ message: `Repaired ${createdCount} missing user accounts` });
+  } catch (error) {
+    console.error('Repair users error:', error);
+    res.status(500).json({ error: 'Failed to repair user accounts' });
+  }
+});
+
 export default router;

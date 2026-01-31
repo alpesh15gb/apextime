@@ -60,6 +60,8 @@ export const employeesAPI = {
     api.delete(`/employees/${id}`),
   importBankDetails: (data: { records: any[] }) =>
     api.post('/employees/import-bank-details', data),
+  repairUserAccounts: () =>
+    api.post('/employees/repair-user-accounts'),
 };
 
 // Holidays API

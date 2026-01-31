@@ -14,7 +14,8 @@ import {
   ChevronDown,
   Building2,
   Briefcase,
-  Upload
+  Upload,
+  Key
 } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { Employee, Department, Branch, Shift } from '../types';
@@ -97,6 +98,17 @@ export const Employees = () => {
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const handleRepairLogins = async () => {
+    if (confirm('Create login accounts for employees missing them? Default password = Employee Code.')) {
+      try {
+        const res = await employeesAPI.repairUserAccounts();
+        alert(res.data.message);
+      } catch (e) {
+        alert('Repair failed');
+      }
+    }
   };
 
   const fetchEmployees = async () => {
@@ -277,6 +289,12 @@ export const Employees = () => {
             className="text-gray-600 hover:text-blue-600 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-200"
           >
             <Upload className="w-4 h-4" /> Import Bank Details
+          </button>
+          <button
+            onClick={handleRepairLogins}
+            className="text-gray-600 hover:text-blue-600 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-200"
+          >
+            <Key className="w-4 h-4" /> Fix Logins
           </button>
           <button
             onClick={() => navigate('/employees/new')}
