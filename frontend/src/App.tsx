@@ -22,6 +22,7 @@ import { EmployeePortal } from './pages/EmployeePortal';
 import { Settings } from './pages/Settings';
 import { CEOAnalytics } from './pages/CEOAnalytics';
 import { FieldLogs } from './pages/FieldLogs';
+import { Projects } from './pages/Projects';
 import { useAuth } from './contexts/AuthContext';
 
 const HomeRedirect = () => {
@@ -71,6 +72,7 @@ function App() {
                     <Route path="/portal" element={<EmployeePortal />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/ceo-vault" element={<CEOAnalytics />} />
+                    <Route path="/projects" element={<Projects />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

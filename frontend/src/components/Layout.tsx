@@ -19,7 +19,8 @@ import {
   MapPin,
   Building2,
   Award,
-  Database
+  Database,
+  FolderKanban
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -81,6 +82,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
         { path: '/payroll', icon: DollarSign, label: 'Payroll' },
         { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
+        { path: '/projects', icon: FolderKanban, label: 'Projects' },
         { path: '/settings', icon: Settings, label: 'Settings' },
       ];
 
