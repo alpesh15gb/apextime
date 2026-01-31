@@ -370,4 +370,59 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+
+// Import Bank Details
+router.post('/import-bank-details', async (req, res) => {
+  try {
+    const { records } = req.body;
+
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ error: 'Records must be an array' });
+    }
+
+    const results = {
+      total: records.length,
+      success: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    for (const record of records) {
+      try {
+        const { employeeCode, bankName, accountNumber, ifscCode, panNumber } = record;
+
+        if (!employeeCode) {
+          continue;
+        }
+
+        const employee = await prisma.employee.findUnique({ where: { employeeCode } });
+        if (!employee) {
+          results.failed++;
+          results.errors.push(`Employee not found: ${employeeCode}`);
+          continue;
+        }
+
+        await prisma.employee.update({
+          where: { id: employee.id },
+          data: {
+            bankName,
+            accountNumber: accountNumber?.toString(),
+            ifscCode,
+            panNumber
+          }
+        });
+        results.success++;
+      } catch (err: any) {
+        results.failed++;
+        results.errors.push(`Error updating ${record.employeeCode}: ${err.message}`);
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('Import bank error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

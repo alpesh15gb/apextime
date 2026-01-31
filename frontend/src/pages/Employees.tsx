@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -13,13 +13,15 @@ import {
   User,
   ChevronDown,
   Building2,
-  Briefcase
+  Briefcase,
+  Upload
 } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { Employee, Department, Branch, Shift } from '../types';
 
 export const Employees = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,53 @@ export const Employees = () => {
     fetchBranches();
     fetchShifts();
   }, [page, searchTerm, selectedDepartment, statusFilter]);
+
+  const handleImportBank = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        const rows = text.split('\n').map(r => r.trim()).filter(r => r);
+        if (rows.length < 2) { alert('Empty file'); return; }
+
+        const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
+        const records: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const cols = rows[i].split(',').map(c => c.trim());
+          if (cols.length < 2) continue;
+
+          const rec: any = {};
+          // Simple Map or Fallback
+          const getIdx = (key: string) => headers.findIndex(h => h.includes(key));
+
+          rec.employeeCode = cols[headers.includes('employeecode') ? headers.indexOf('employeecode') : 0]; // Default col 0
+          rec.bankName = cols[getIdx('bank')] || cols[1];
+          rec.accountNumber = cols[getIdx('account')] || cols[2];
+          rec.ifscCode = cols[getIdx('ifsc')] || cols[3];
+          rec.panNumber = cols[getIdx('pan')] || cols[4];
+
+          if (rec.employeeCode) records.push(rec);
+        }
+
+        if (records.length === 0) { alert('No valid records found'); return; }
+
+        if (confirm(`Importing ${records.length} bank records. Ensure CSV format: EmployeeCode, BankName, AccountNo, IFSC, PAN. Continue?`)) {
+          await employeesAPI.importBankDetails({ records });
+          alert('Import Successful');
+          fetchEmployees();
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Import Failed');
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -216,6 +265,19 @@ export const Employees = () => {
               <Edit className="w-4 h-4" /> Bulk Edit
             </button>
           )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportBank}
+            className="hidden"
+            accept=".csv"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-gray-600 hover:text-blue-600 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-200"
+          >
+            <Upload className="w-4 h-4" /> Import Bank Details
+          </button>
           <button
             onClick={() => navigate('/employees/new')}
             className="w-full lg:w-auto text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 flex items-center justify-center gap-2 transition-all"

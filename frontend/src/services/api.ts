@@ -58,6 +58,8 @@ export const employeesAPI = {
     api.post('/employees/bulk-update', { ids, data }),
   delete: (id: string) =>
     api.delete(`/employees/${id}`),
+  importBankDetails: (data: { records: any[] }) =>
+    api.post('/employees/import-bank-details', data),
 };
 
 // Holidays API
