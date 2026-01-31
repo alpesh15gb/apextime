@@ -460,169 +460,321 @@ export const Payroll = () => {
                                             <span className="text-xs text-gray-400">LOGO</span>
                                         )}
                                     </div>
+                                    <div className="flex-1 text-center">
+                                        <h1 className="text-2xl font-bold uppercase tracking-wide">{companySettings?.name || 'Apextime Enterprises'}</h1>
+                                        <p className="whitespace-pre-wrap text-sm mt-1">{companySettings?.address || 'No Address Configure'}</p>
+                                    </div>
                                 </div>
+
+                                {/* Month Title */}
+                                <div className="border-b-2 border-black py-1 text-center font-bold bg-gray-100 uppercase">
+                                    Pay Slip for the Month of {new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleString('default', { month: 'long' })} {selectedPayroll.year}
+                                </div>
+
+                                {/* Employee Details Grid */}
+                                <div className="grid grid-cols-2 text-xs border-b-2 border-black">
+                                    <div className="border-r border-black p-2 space-y-1">
+                                        <div className="grid grid-cols-[100px_1fr]">
+                                            <span className="font-bold">EMP CODE</span>
+                                            <span>: {selectedPayroll.employee.employeeCode || 'N/A'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[100px_1fr]">
+                                            <span className="font-bold">NAME</span>
+                                            <span>: {selectedPayroll.employee.firstName} {selectedPayroll.employee.lastName}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[100px_1fr]">
+                                            <span className="font-bold">DESIGNATION</span>
+                                            <span>: {selectedPayroll.employee.designation?.name || '-'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[100px_1fr]">
+                                            <span className="font-bold">DEPARTMENT</span>
+                                            <span>: {selectedPayroll.employee.department?.name || '-'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[100px_1fr]">
+                                            <span className="font-bold">DOJ</span>
+                                            <span>: {selectedPayroll.employee.dateOfJoining ? new Date(selectedPayroll.employee.dateOfJoining).toLocaleDateString() : '-'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-2 space-y-1">
+                                        <div className="grid grid-cols-[120px_1fr]">
+                                            <span className="font-bold">PAN NUMBER</span>
+                                            <span>: {selectedPayroll.employee.panNumber || 'N/A'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[120px_1fr]">
+                                            <span className="font-bold">PF NUMBER</span>
+                                            <span>: {companySettings?.pfCode || 'N/A'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[120px_1fr]">
+                                            <span className="font-bold">BANK NAME</span>
+                                            <span>: {selectedPayroll.employee.bankName || 'N/A'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[120px_1fr]">
+                                            <span className="font-bold">ACCOUNT NO</span>
+                                            <span>: {selectedPayroll.employee.accountNumber || 'N/A'}</span>
+                                        </div>
+                                        <div className="grid grid-cols-[120px_1fr]">
+                                            <span className="font-bold">WORKING DAYS</span>
+                                            <span>: {selectedPayroll.paidDays} / {selectedPayroll.totalWorkingDays}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Salary Table */}
+                                <div className="border-b-2 border-black">
+                                    <div className="grid grid-cols-2 border-b border-black font-bold text-xs uppercase bg-gray-100">
+                                        <div className="p-2 border-r border-black flex justify-between">
+                                            <span>Earnings</span>
+                                            <span>Amount</span>
+                                        </div>
+                                        <div className="p-2 flex justify-between">
+                                            <span>Deductions</span>
+                                            <span>Amount</span>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 text-xs">
+                                        {/* Earnings Column */}
+                                        <div className="border-r border-black p-0">
+                                            <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                <span>Basic Salary</span>
+                                                <span>{selectedPayroll.basicPaid?.toFixed(2)}</span>
+                                            </div>
+                                            <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                <span>HRA</span>
+                                                <span>{selectedPayroll.hraPaid?.toFixed(2)}</span>
+                                            </div>
+                                            {(selectedPayroll.allowancesPaid > 0) && (
+                                                <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                    <span>Other Allowances</span>
+                                                    <span>{selectedPayroll.allowancesPaid?.toFixed(2)}</span>
+                                                </div>
                                             )}
+                                            {(selectedPayroll.otPay > 0) && (
+                                                <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                    <span>Overtime</span>
+                                                    <span>{selectedPayroll.otPay?.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            {(selectedPayroll.bonus > 0) && (
+                                                <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                    <span>Bonus</span>
+                                                    <span>{selectedPayroll.bonus?.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            {(selectedPayroll.incentives > 0) && (
+                                                <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                    <span>Incentives</span>
+                                                    <span>{selectedPayroll.incentives?.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            <div className="h-20"></div> {/* Spacer */}
+                                        </div>
+
+                                        {/* Deductions Column */}
+                                        <div className="p-0">
+                                            <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                <span>Provident Fund</span>
+                                                <span>{selectedPayroll.pfDeduction?.toFixed(2)}</span>
+                                            </div>
+                                            <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                <span>ESI</span>
+                                                <span>{selectedPayroll.esiDeduction?.toFixed(2)}</span>
+                                            </div>
+                                            <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                <span>Professional Tax</span>
+                                                <span>{selectedPayroll.ptDeduction?.toFixed(2)}</span>
+                                            </div>
+                                            {(selectedPayroll.tdsDeduction > 0) && (
+                                                <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                    <span>TDS</span>
+                                                    <span>{selectedPayroll.tdsDeduction?.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                            {(selectedPayroll.otherDeductions > 0) && (
+                                                <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                    <span>Other Deductions</span>
+                                                    <span>{selectedPayroll.otherDeductions?.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Totals Row */}
+                                    <div className="grid grid-cols-2 border-t border-black font-bold text-xs uppercase bg-gray-50">
+                                        <div className="p-2 border-r border-black flex justify-between">
+                                            <span>Gross Earnings</span>
+                                            <span>{selectedPayroll.grossSalary?.toFixed(2)}</span>
+                                        </div>
+                                        <div className="p-2 flex justify-between">
+                                            <span>Gross Deductions</span>
+                                            <span>{selectedPayroll.totalDeductions?.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Net Pay Section */}
+                                <div className="p-4 border-b-2 border-black">
+                                    <div className="flex justify-between items-center">
+                                        <div className="text-sm">
+                                            <span className="font-bold">NET PAY: </span>
+                                            <span className="font-bold text-lg">₹ {selectedPayroll.netSalary?.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs mt-2 italic text-gray-600">
+                                        (In Words: Rupees {convertNumberToWords(Math.round(selectedPayroll.netSalary))} Only)
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-4 text-center text-[10px] text-gray-500">
+                                    This is a computer generated document, hence no signature is required.
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div className="mt-12 bg-gray-900 p-16 rounded-[40px] text-white flex flex-col lg:flex-row justify-between items-center gap-8 print:rounded-none">
-                        <div>
-                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Total Net Disbursement</p>
-                            <h1 className="text-6xl font-black tracking-tighter italic">₹{selectedPayroll.netSalary.toLocaleString()}</h1>
-                        </div>
-                        <div className="text-center lg:text-right">
-                            <div className="badge badge-success px-4 py-1.5 font-black text-[10px] uppercase">State: {selectedPayroll.status}</div>
-                            <p className="text-[9px] font-bold text-gray-500 uppercase mt-2">Verified Digital Ledger</p>
-                        </div>
-                    </div>
                 </div>
-                        </div>
-                    </div >
-                </div >
             )}
 
-{/* Employee Config Tab */ }
-{
-    activeTab === 'employee-config' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 app-card overflow-hidden flex flex-col h-[600px]">
-                <div className="p-8 border-b border-gray-50">
-                    <input
-                        type="text"
-                        placeholder="Search employees..."
-                        className="w-full pl-4 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-50 outline-none"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <div className="flex-1 overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
-                    {employees.filter(emp =>
-                        `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
-                    ).map(emp => (
-                        <button
-                            key={emp.id}
-                            onClick={() => setEditingEmployee(emp)}
-                            className={`w-full p-6 text-left transition-all flex justify-between items-center ${editingEmployee?.id === emp.id ? 'bg-blue-50/40 border-r-4 border-blue-600' : 'hover:bg-gray-50'}`}
-                        >
-                            <div>
-                                <p className="font-extrabold text-gray-900 capitalize">{emp.firstName} {emp.lastName}</p>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{emp.employeeCode}</p>
+            {/* Employee Config Tab */}
+            {
+                activeTab === 'employee-config' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-1 app-card overflow-hidden flex flex-col h-[600px]">
+                            <div className="p-8 border-b border-gray-50">
+                                <input
+                                    type="text"
+                                    placeholder="Search employees..."
+                                    className="w-full pl-4 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-50 outline-none"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
                             </div>
-                            <ArrowRightCircle className="w-5 h-5 text-gray-100" />
-                        </button>
-                    ))}
-                </div>
-            </div>
-            <div className="lg:col-span-2">
-                {editingEmployee ? (
-                    <form onSubmit={handleUpdateSalary} className="app-card p-12 space-y-10">
-                        <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Structured Salary</h3>
-                        <div className="grid grid-cols-2 gap-10">
-                            <div className="space-y-6">
-                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Monthly Earnings</p>
-                                <div className="space-y-4">
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Basic Salary</label>
-                                        <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} placeholder="Basic" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-2">HRA</label>
-                                        <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} placeholder="HRA" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Other Fixed Allowances</label>
-                                        <input type="number" className="input-app w-full font-bold" value={editingEmployee.otherAllowances} onChange={(e) => setEditingEmployee({ ...editingEmployee, otherAllowances: parseFloat(e.target.value) })} placeholder="Conveyance/Spcl" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-6">
-                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory & OT</p>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                                        <span className="text-[10px] font-black uppercase">Enable PF (12%)</span>
-                                        <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                                        <span className="text-[10px] font-black uppercase">Enable ESI (0.75%)</span>
-                                        <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                                        <span className="text-[10px] font-black uppercase">Enable Prof. Tax</span>
-                                        <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isPTEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPTEnabled: e.target.checked })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-2">OT Rate Multiplier (e.g. 1.5)</label>
-                                        <input type="number" step="0.1" className="input-app w-full font-bold" value={editingEmployee.otRateMultiplier} onChange={(e) => setEditingEmployee({ ...editingEmployee, otRateMultiplier: parseFloat(e.target.value) })} placeholder="OT Rate (e.g. 1.5)" />
-                                    </div>
-                                </div>
+                            <div className="flex-1 overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
+                                {employees.filter(emp =>
+                                    `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+                                ).map(emp => (
+                                    <button
+                                        key={emp.id}
+                                        onClick={() => setEditingEmployee(emp)}
+                                        className={`w-full p-6 text-left transition-all flex justify-between items-center ${editingEmployee?.id === emp.id ? 'bg-blue-50/40 border-r-4 border-blue-600' : 'hover:bg-gray-50'}`}
+                                    >
+                                        <div>
+                                            <p className="font-extrabold text-gray-900 capitalize">{emp.firstName} {emp.lastName}</p>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{emp.employeeCode}</p>
+                                        </div>
+                                        <ArrowRightCircle className="w-5 h-5 text-gray-100" />
+                                    </button>
+                                ))}
                             </div>
                         </div>
+                        <div className="lg:col-span-2">
+                            {editingEmployee ? (
+                                <form onSubmit={handleUpdateSalary} className="app-card p-12 space-y-10">
+                                    <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Structured Salary</h3>
+                                    <div className="grid grid-cols-2 gap-10">
+                                        <div className="space-y-6">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Monthly Earnings</p>
+                                            <div className="space-y-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Basic Salary</label>
+                                                    <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} placeholder="Basic" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">HRA</label>
+                                                    <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} placeholder="HRA" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Other Fixed Allowances</label>
+                                                    <input type="number" className="input-app w-full font-bold" value={editingEmployee.otherAllowances} onChange={(e) => setEditingEmployee({ ...editingEmployee, otherAllowances: parseFloat(e.target.value) })} placeholder="Conveyance/Spcl" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-6">
+                                            <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory & OT</p>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                                    <span className="text-[10px] font-black uppercase">Enable PF (12%)</span>
+                                                    <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
+                                                </div>
+                                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                                    <span className="text-[10px] font-black uppercase">Enable ESI (0.75%)</span>
+                                                    <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
+                                                </div>
+                                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                                    <span className="text-[10px] font-black uppercase">Enable Prof. Tax</span>
+                                                    <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isPTEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPTEnabled: e.target.checked })} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">OT Rate Multiplier (e.g. 1.5)</label>
+                                                    <input type="number" step="0.1" className="input-app w-full font-bold" value={editingEmployee.otRateMultiplier} onChange={(e) => setEditingEmployee({ ...editingEmployee, otRateMultiplier: parseFloat(e.target.value) })} placeholder="OT Rate (e.g. 1.5)" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div className="space-y-6">
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Disbursement Channel (Banking)</p>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Bank Name</label>
-                                    <input type="text" className="input-app w-full font-bold" value={editingEmployee.bankName || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bankName: e.target.value })} placeholder="e.g. HDFC Bank" />
+                                    <div className="space-y-6">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Disbursement Channel (Banking)</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Bank Name</label>
+                                                <input type="text" className="input-app w-full font-bold" value={editingEmployee.bankName || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bankName: e.target.value })} placeholder="e.g. HDFC Bank" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Account Number</label>
+                                                <input type="text" className="input-app w-full font-bold" value={editingEmployee.accountNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, accountNumber: e.target.value })} placeholder="A/C Number" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">IFSC Code</label>
+                                                <input type="text" className="input-app w-full font-bold" value={editingEmployee.ifscCode || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, ifscCode: e.target.value })} placeholder="IFSC" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-3 pt-8 border-t border-gray-50">
+                                        <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 bg-white border border-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-50">Cancel</button>
+                                        <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center gap-2">
+                                            <Save className="w-4 h-4" />
+                                            <span>Save Structure</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="app-card h-full flex flex-col items-center justify-center text-center p-20 border-dashed border-2 border-gray-100">
+                                    <FileText className="w-16 h-16 text-gray-100 mb-6" />
+                                    <h3 className="text-xl font-black text-gray-300 tracking-tight">Financial Ledger Neutral</h3>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Account Number</label>
-                                    <input type="text" className="input-app w-full font-bold" value={editingEmployee.accountNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, accountNumber: e.target.value })} placeholder="A/C Number" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">IFSC Code</label>
-                                    <input type="text" className="input-app w-full font-bold" value={editingEmployee.ifscCode || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, ifscCode: e.target.value })} placeholder="IFSC" />
-                                </div>
-                            </div>
+                            )}
                         </div>
-                        <div className="flex justify-end gap-3 pt-8 border-t border-gray-50">
-                            <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 bg-white border border-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-50">Cancel</button>
-                            <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center gap-2">
-                                <Save className="w-4 h-4" />
-                                <span>Save Structure</span>
-                            </button>
-                        </div>
-                    </form>
-                ) : (
-                    <div className="app-card h-full flex flex-col items-center justify-center text-center p-20 border-dashed border-2 border-gray-100">
-                        <FileText className="w-16 h-16 text-gray-100 mb-6" />
-                        <h3 className="text-xl font-black text-gray-300 tracking-tight">Financial Ledger Neutral</h3>
                     </div>
-                )}
-            </div>
-        </div>
-    )
-}
+                )
+            }
 
-{/* New Run Modal */ }
-{
-    showNewRunModal && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden">
-                <div className="p-10 border-b border-gray-50 flex justify-between items-center">
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Initialize Batch</h3>
-                    <button onClick={() => setShowNewRunModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl"><X className="w-6 h-6" /></button>
-                </div>
-                <form onSubmit={handleCreateRun} className="p-10 space-y-6">
-                    <input type="text" className="input-app w-full font-bold" value={newRunData.batchName} onChange={(e) => setNewRunData({ ...newRunData, batchName: e.target.value })} placeholder="Batch Name" required />
-                    <div className="grid grid-cols-2 gap-4">
-                        <select className="input-app w-full font-bold" value={newRunData.month} onChange={(e) => setNewRunData({ ...newRunData, month: parseInt(e.target.value) })}>
-                            {Array.from({ length: 12 }).map((_, i) => (
-                                <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
-                            ))}
-                        </select>
-                        <input type="number" className="input-app w-full font-bold" value={newRunData.year} onChange={(e) => setNewRunData({ ...newRunData, year: parseInt(e.target.value) })} />
+            {/* New Run Modal */}
+            {
+                showNewRunModal && (
+                    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden">
+                            <div className="p-10 border-b border-gray-50 flex justify-between items-center">
+                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Initialize Batch</h3>
+                                <button onClick={() => setShowNewRunModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl"><X className="w-6 h-6" /></button>
+                            </div>
+                            <form onSubmit={handleCreateRun} className="p-10 space-y-6">
+                                <input type="text" className="input-app w-full font-bold" value={newRunData.batchName} onChange={(e) => setNewRunData({ ...newRunData, batchName: e.target.value })} placeholder="Batch Name" required />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <select className="input-app w-full font-bold" value={newRunData.month} onChange={(e) => setNewRunData({ ...newRunData, month: parseInt(e.target.value) })}>
+                                        {Array.from({ length: 12 }).map((_, i) => (
+                                            <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
+                                        ))}
+                                    </select>
+                                    <input type="number" className="input-app w-full font-bold" value={newRunData.year} onChange={(e) => setNewRunData({ ...newRunData, year: parseInt(e.target.value) })} />
+                                </div>
+                                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
+                                    <Plus className="w-4 h-4" />
+                                    <span>Create Ledger Batch</span>
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                    <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
-                        <Plus className="w-4 h-4" />
-                        <span>Create Ledger Batch</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-    )
-}
+                )
+            }
         </div >
     );
 };
