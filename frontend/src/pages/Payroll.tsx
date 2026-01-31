@@ -22,7 +22,7 @@ import {
     FileText,
     DownloadCloud
 } from 'lucide-react';
-import { payrollAPI, branchesAPI, departmentsAPI, employeesAPI } from '../services/api';
+import { payrollAPI, branchesAPI, departmentsAPI, employeesAPI, settingsAPI } from '../services/api';
 
 type Tab = 'runs' | 'employee-config';
 
@@ -37,6 +37,7 @@ export const Payroll = () => {
     const [showNewRunModal, setShowNewRunModal] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [companySettings, setCompanySettings] = useState<any>(null);
 
     const [newRunData, setNewRunData] = useState({
         month: new Date().getMonth() + 1,
@@ -49,7 +50,17 @@ export const Payroll = () => {
     useEffect(() => {
         fetchRuns();
         fetchEmployees();
+        fetchSettings();
     }, []);
+
+    const fetchSettings = async () => {
+        try {
+            const res = await settingsAPI.get();
+            setCompanySettings(res.data);
+        } catch (e) {
+            console.error('Failed to fetch settings', e);
+        }
+    };
 
     const fetchRuns = async () => {
         try {
@@ -403,7 +414,10 @@ export const Payroll = () => {
                             <div className="bg-white p-8 lg:p-16 space-y-12 print:p-0">
                                 <div className="flex justify-between items-start border-b-8 border-gray-900 pb-12">
                                     <div className="space-y-4">
-                                        <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase italic">Apextime Enterprise</h2>
+                                        {companySettings?.logo && (
+                                            <img src={companySettings.logo} alt="Company Logo" className="h-20 mb-4 object-contain" />
+                                        )}
+                                        <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase italic">{companySettings?.name || 'Apextime Enterprise'}</h2>
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Salary Disbursement Statement</p>
                                     </div>
                                     <div className="text-right">
