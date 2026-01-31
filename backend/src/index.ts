@@ -71,7 +71,7 @@ app.use('/api/leaves', leaveRoutes);
 app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
-app.use('/api/settings', settingsRoutes);
+// app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
