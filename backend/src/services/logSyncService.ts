@@ -1,7 +1,6 @@
 import { getSqlPool, getHikCentralPool, prisma } from '../config/database';
 import sql from 'mssql';
 import logger from '../config/logger';
-import bcrypt from 'bcryptjs';
 import { normalizeName, parseEmployeeName } from '../utils/nameUtils';
 
 interface RawLog {

@@ -413,11 +413,11 @@ router.post('/import-bank-details', async (req, res) => {
             accountNumber: accountNumber?.toString(),
             ifscCode,
             panNumber,
-            basicSalary: basicSalary ? parseFloat(basicSalary) : undefined,
-            hra: hra ? parseFloat(hra) : undefined,
-            otherAllowances: otherAllowances ? parseFloat(otherAllowances) : undefined,
-            standardDeductions: standardDeductions ? parseFloat(standardDeductions) : undefined,
-            otRateMultiplier: otRateMultiplier ? parseFloat(otRateMultiplier) : undefined,
+            basicSalary: basicSalary !== undefined ? parseFloat(String(basicSalary)) : undefined,
+            hra: hra !== undefined ? parseFloat(String(hra)) : undefined,
+            otherAllowances: otherAllowances !== undefined ? parseFloat(String(otherAllowances)) : undefined,
+            standardDeductions: standardDeductions !== undefined ? parseFloat(String(standardDeductions)) : undefined,
+            otRateMultiplier: otRateMultiplier !== undefined ? parseFloat(String(otRateMultiplier)) : undefined,
             isPFEnabled: isPFEnabled !== undefined ? (/true|yes|1/i.test(String(isPFEnabled))) : undefined,
             isESIEnabled: isESIEnabled !== undefined ? (/true|yes|1/i.test(String(isESIEnabled))) : undefined
           }
