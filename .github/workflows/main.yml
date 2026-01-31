@@ -1,0 +1,54 @@
+name: Apextime CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+          
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm install
+        
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
+        
+      - name: Build Backend (Type Check)
+        working-directory: ./backend
+        run: npm run build
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+          
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm install
+        
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          REACT_APP_API_URL: /api
