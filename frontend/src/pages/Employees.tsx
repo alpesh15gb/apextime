@@ -55,8 +55,8 @@ export const Employees = () => {
   }, [page, searchTerm, selectedDepartment, statusFilter]);
 
   const downloadBankTemplate = () => {
-    const headers = ['EmployeeCode', 'BankName', 'AccountNumber', 'IFSCCode', 'PANNumber'];
-    const dummy = ['EMP001', 'HDFC Bank', '1234567890', 'HDFC0001234', 'ABCDE1234F'];
+    const headers = ['EmployeeCode', 'BankName', 'AccountNumber', 'IFSCCode', 'PANNumber', 'BasicSalary', 'HRA', 'OtherAllowances', 'StandardDeductions', 'IsPFEnabled', 'IsESIEnabled', 'OTRateMultiplier'];
+    const dummy = ['EMP001', 'HDFC Bank', '1234567890', 'HDFC0001234', 'ABCDE1234F', '25000', '12500', '5000', '1800', 'Yes', 'Yes', '1.5'];
     const csvContent = [headers.join(','), dummy.join(',')].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -98,12 +98,34 @@ export const Employees = () => {
           rec.ifscCode = cols[getIdx('ifsc')] || cols[3];
           rec.panNumber = cols[getIdx('pan')] || cols[4];
 
+          // Financials (Optional - check index)
+          const basicIdx = headers.findIndex(h => h.includes('basic'));
+          if (basicIdx > -1) rec.basicSalary = cols[basicIdx];
+
+          const hraIdx = headers.findIndex(h => h.includes('hra'));
+          if (hraIdx > -1) rec.hra = cols[hraIdx];
+
+          const allowIdx = headers.findIndex(h => h.includes('allowance'));
+          if (allowIdx > -1) rec.otherAllowances = cols[allowIdx];
+
+          const dedIdx = headers.findIndex(h => h.includes('deduction'));
+          if (dedIdx > -1) rec.standardDeductions = cols[dedIdx];
+
+          const pfIdx = headers.findIndex(h => h.includes('pf') && h.includes('enable'));
+          if (pfIdx > -1) rec.isPFEnabled = cols[pfIdx];
+
+          const esiIdx = headers.findIndex(h => h.includes('esi') && h.includes('enable'));
+          if (esiIdx > -1) rec.isESIEnabled = cols[esiIdx];
+
+          const otIdx = headers.findIndex(h => h.includes('ot') && h.includes('rate')); // OT Rate
+          if (otIdx > -1) rec.otRateMultiplier = cols[otIdx];
+
           if (rec.employeeCode) records.push(rec);
         }
 
         if (records.length === 0) { alert('No valid records found'); return; }
 
-        if (confirm(`Importing ${records.length} bank records. Ensure CSV format: EmployeeCode, BankName, AccountNo, IFSC, PAN. Continue?`)) {
+        if (confirm(`Importing ${records.length} records. Supports Bank Details + Financial Ratios (Basic, HRA, PF, etc). Continue?`)) {
           await employeesAPI.importBankDetails({ records });
           alert('Import Successful');
           fetchEmployees();

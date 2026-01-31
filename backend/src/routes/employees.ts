@@ -389,7 +389,11 @@ router.post('/import-bank-details', async (req, res) => {
 
     for (const record of records) {
       try {
-        const { employeeCode, bankName, accountNumber, ifscCode, panNumber } = record;
+        const {
+          employeeCode, bankName, accountNumber, ifscCode, panNumber,
+          basicSalary, hra, otherAllowances, standardDeductions,
+          isPFEnabled, isESIEnabled, otRateMultiplier
+        } = record;
 
         if (!employeeCode) {
           continue;
@@ -408,7 +412,14 @@ router.post('/import-bank-details', async (req, res) => {
             bankName,
             accountNumber: accountNumber?.toString(),
             ifscCode,
-            panNumber
+            panNumber,
+            basicSalary: basicSalary ? parseFloat(basicSalary) : undefined,
+            hra: hra ? parseFloat(hra) : undefined,
+            otherAllowances: otherAllowances ? parseFloat(otherAllowances) : undefined,
+            standardDeductions: standardDeductions ? parseFloat(standardDeductions) : undefined,
+            otRateMultiplier: otRateMultiplier ? parseFloat(otRateMultiplier) : undefined,
+            isPFEnabled: isPFEnabled !== undefined ? (/true|yes|1/i.test(String(isPFEnabled))) : undefined,
+            isESIEnabled: isESIEnabled !== undefined ? (/true|yes|1/i.test(String(isESIEnabled))) : undefined
           }
         });
         results.success++;
