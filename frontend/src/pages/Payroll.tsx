@@ -74,11 +74,32 @@ export const Payroll = () => {
         e.preventDefault();
         try {
             setLoading(true);
-            await payrollAPI.createRun(newRunData);
+
+            const start = new Date(newRunData.year, newRunData.month - 1, 1);
+            const end = new Date(newRunData.year, newRunData.month, 0); // Last day of month
+
+            // Format locally to avoid UTC shifts
+            const formatDate = (d: Date) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+
+            const payload = {
+                ...newRunData,
+                periodStart: formatDate(start),
+                periodEnd: formatDate(end)
+            };
+
+            console.log('Creating Run with payload:', payload);
+
+            await payrollAPI.createRun(payload);
             setShowNewRunModal(false);
             fetchRuns();
-        } catch (error) {
-            alert('Failed to create payroll run');
+        } catch (error: any) {
+            console.error('Create run failed:', error.response?.data || error.message);
+            alert(`Failed to create payroll run: ${error.response?.data?.error || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
