@@ -21,7 +21,7 @@ services:
     container_name: apextime-backend
     environment:
       NODE_ENV: production
-      PORT: 5000
+      PORT: 5001
       JWT_SECRET: ${JWT_SECRET:-apextime-secret-key-2026}
       DATABASE_URL: postgresql://${POSTGRES_USER:-apextime}:${POSTGRES_PASSWORD:-apextime123}@postgres:5432/${POSTGRES_DB:-apextime}
       SQL_SERVER_HOST: ${SQL_SERVER_HOST:-115.98.2.20}
@@ -35,7 +35,7 @@ services:
       HIK_SERVER_PASSWORD: ${HIK_SERVER_PASSWORD:-Keystone@456}
       HIK_SERVER_DATABASE: ${HIK_SERVER_DATABASE:-hikcentral}
     expose:
-      - "5000"
+      - "5001"
     depends_on:
       - postgres
     networks:
