@@ -75,6 +75,25 @@ export class PayrollEngine {
             let totalEarnings = 0;
             const components: any = {};
 
+            // Hybrid Approach: Use flat fields from Employee record if available (Standard Mode)
+            if (employee.basicSalary && employee.basicSalary > 0) {
+                const amount = (employee.basicSalary / daysInMonth) * paidDays;
+                components['BASIC'] = amount;
+                totalEarnings += amount;
+            }
+            if (employee.hra && employee.hra > 0) {
+                const amount = (employee.hra / daysInMonth) * paidDays;
+                components['HRA'] = amount;
+                totalEarnings += amount;
+            }
+            if (employee.otherAllowances && employee.otherAllowances > 0) {
+                const amount = (employee.otherAllowances / daysInMonth) * paidDays;
+                components['ALLOWANCES'] = amount;
+                totalEarnings += amount;
+            }
+
+            // Advanced Mode: Add dynamic components (e.g. Bonuses, Special deductions)
+
             employee.salaryComponents.forEach(esc => {
                 if (esc.component.type === 'EARNING') {
                     // Pro-rate salary based on paid days
