@@ -85,3 +85,27 @@
 ::-webkit-scrollbar-thumb {
   @apply bg-gray-200 rounded-full hover:bg-gray-300;
 }
+
+@media print {
+
+  aside,
+  header,
+  nav,
+  .sidebar {
+    display: none !important;
+  }
+
+  body,
+  #root,
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Reset margin caused by Sidebar */
+  .ml-64,
+  .ml-20 {
+    margin-left: 0 !important;
+  }
+}
