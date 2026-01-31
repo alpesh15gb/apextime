@@ -170,7 +170,7 @@ export class PayrollEngine {
                     otPay: otAmount
                 },
                 create: {
-                    employeeId,
+                    employee: { connect: { id: employeeId } },
                     month,
                     year,
                     totalWorkingDays: daysInMonth,
