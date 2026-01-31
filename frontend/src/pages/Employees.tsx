@@ -15,7 +15,8 @@ import {
   Building2,
   Briefcase,
   Upload,
-  Key
+  Key,
+  Download
 } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { Employee, Department, Branch, Shift } from '../types';
@@ -52,6 +53,22 @@ export const Employees = () => {
     fetchBranches();
     fetchShifts();
   }, [page, searchTerm, selectedDepartment, statusFilter]);
+
+  const downloadBankTemplate = () => {
+    const headers = ['EmployeeCode', 'BankName', 'AccountNumber', 'IFSCCode', 'PANNumber'];
+    const dummy = ['EMP001', 'HDFC Bank', '1234567890', 'HDFC0001234', 'ABCDE1234F'];
+    const csvContent = [headers.join(','), dummy.join(',')].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bank_details_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   const handleImportBank = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -284,6 +301,13 @@ export const Employees = () => {
             className="hidden"
             accept=".csv"
           />
+          <button
+            onClick={downloadBankTemplate}
+            className="text-gray-600 hover:text-blue-600 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-200"
+            title="Download Template"
+          >
+            <Download className="w-4 h-4" /> Template
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="text-gray-600 hover:text-blue-600 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-200"
