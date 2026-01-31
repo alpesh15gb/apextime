@@ -61,7 +61,13 @@ export class PayrollEngine {
             const leaves = employee.attendanceLogs.filter(l => l.status === 'leave_paid').length;
             const halfDayCount = employee.attendanceLogs.filter(l => l.status === 'half_day').length;
 
-            const effectivePresentDays = presentDays + weeklyOffs + holidays + leaves + (halfDayCount * 0.5);
+            let effectivePresentDays = presentDays + weeklyOffs + holidays + leaves + (halfDayCount * 0.5);
+
+            // Fallback: If no logs exist (e.g. Sync Failed or Manual Employee), assume Full Month
+            if (employee.attendanceLogs.length === 0 && employee.isActive) {
+                effectivePresentDays = daysInMonth;
+            }
+
             const lopDays = Math.max(0, daysInMonth - effectivePresentDays);
             const paidDays = Math.max(0, daysInMonth - lopDays);
 
