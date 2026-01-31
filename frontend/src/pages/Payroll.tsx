@@ -486,23 +486,59 @@ export const Payroll = () => {
                                 <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Structured Salary</h3>
                                 <div className="grid grid-cols-2 gap-10">
                                     <div className="space-y-6">
-                                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Earnings</p>
+                                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Monthly Earnings</p>
                                         <div className="space-y-4">
-                                            <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} placeholder="Basic" />
-                                            <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} placeholder="HRA" />
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Basic Salary</label>
+                                                <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} placeholder="Basic" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">HRA</label>
+                                                <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} placeholder="HRA" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Other Fixed Allowances</label>
+                                                <input type="number" className="input-app w-full font-bold" value={editingEmployee.otherAllowances} onChange={(e) => setEditingEmployee({ ...editingEmployee, otherAllowances: parseFloat(e.target.value) })} placeholder="Conveyance/Spcl" />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="space-y-6">
-                                        <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory</p>
+                                        <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Statutory & OT</p>
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                                                <span className="text-[10px] font-black uppercase">Enable PF</span>
-                                                <input type="checkbox" className="w-5 h-5" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
+                                                <span className="text-[10px] font-black uppercase">Enable PF (12%)</span>
+                                                <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isPFEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPFEnabled: e.target.checked })} />
                                             </div>
                                             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                                                <span className="text-[10px] font-black uppercase">Enable ESI</span>
-                                                <input type="checkbox" className="w-5 h-5" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
+                                                <span className="text-[10px] font-black uppercase">Enable ESI (0.75%)</span>
+                                                <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isESIEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isESIEnabled: e.target.checked })} />
                                             </div>
+                                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                                                <span className="text-[10px] font-black uppercase">Enable Prof. Tax</span>
+                                                <input type="checkbox" className="w-5 h-5 rounded-md text-blue-600" checked={editingEmployee.isPTEnabled} onChange={(e) => setEditingEmployee({ ...editingEmployee, isPTEnabled: e.target.checked })} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2">OT Rate Multiplier (e.g. 1.5)</label>
+                                                <input type="number" step="0.1" className="input-app w-full font-bold" value={editingEmployee.otRateMultiplier} onChange={(e) => setEditingEmployee({ ...editingEmployee, otRateMultiplier: parseFloat(e.target.value) })} placeholder="OT Rate (e.g. 1.5)" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Disbursement Channel (Banking)</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Bank Name</label>
+                                            <input type="text" className="input-app w-full font-bold" value={editingEmployee.bankName || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bankName: e.target.value })} placeholder="e.g. HDFC Bank" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Account Number</label>
+                                            <input type="text" className="input-app w-full font-bold" value={editingEmployee.accountNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, accountNumber: e.target.value })} placeholder="A/C Number" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-gray-400 uppercase ml-2">IFSC Code</label>
+                                            <input type="text" className="input-app w-full font-bold" value={editingEmployee.ifscCode || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, ifscCode: e.target.value })} placeholder="IFSC" />
                                         </div>
                                     </div>
                                 </div>

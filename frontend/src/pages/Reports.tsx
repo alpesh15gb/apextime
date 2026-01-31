@@ -251,10 +251,10 @@ export const Reports = () => {
         />
         <ReportCard
           icon={DollarSign}
-          title="Payroll Report"
+          title="Payroll Management"
           colorClass="text-amber-500"
           bgClass="bg-amber-50"
-          onClick={() => handleDownload('excel', 'monthly')}
+          onClick={() => navigate('/payroll')}
         />
         <ReportCard
           icon={Clock}
