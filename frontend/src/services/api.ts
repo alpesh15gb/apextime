@@ -106,6 +106,7 @@ export const locationsAPI = {
 export const attendanceAPI = {
   getAll: (params?: any) => api.get('/attendance', { params }),
   getSummary: (params?: any) => api.get('/attendance/summary', { params }),
+  getMonthlyReport: (params?: any) => api.get('/attendance/monthly-report', { params }),
   update: (id: string, data: any) => api.put(`/attendance/${id}`, data),
 };
 
