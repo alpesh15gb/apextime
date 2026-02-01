@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,127 +10,131 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-<<<<<<< HEAD
-model Tenant {
-  id            String   @id @default(uuid())
-  name          String
-  slug          String   @unique
-  domain        String?  @unique
-  isActive      Boolean  @default(true)
-  settings      Json?    // Stores biometric settings, logo, etc.
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+// --------------------------------------------------------
+// MULTI-TENANCY CORE
+// --------------------------------------------------------
 
-  users             User[]
-  locations         Location[]
-  branches          Branch[]
-  departments       Department[]
-  designations      Designation[]
-  categories        Category[]
-  employees         Employee[]
-  fieldLogs         FieldLog[]
-  auditLogs         AuditLog[]
-  salaryComponents  SalaryComponent[]
+model Tenant {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  code            String   @unique
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  settings        Json?
+
+  // Relations
+  users           User[]
+  employees       Employee[]
+  departments     Department[]
+  designations    Designation[]
+  branches        Branch[]
+  locations       Location[]
+  devices         Device[]
+  attendanceLogs  AttendanceLog[]
+  shifts          Shift[]
+  employeeShifts  EmployeeShift[]
+  leaves          Leave[]
+  leaveBalances   LeaveBalance[]
+  holidays        Holiday[]
+  payrollRuns     PayrollRun[]
+  salaryComponents SalaryComponent[]
+  salaryStructures SalaryStructure[]
+  payrollSettings  PayrollSetting[]
+  fieldLogs       FieldLog[]
+  projects        Project[]
+  deviceCommands  DeviceCommand[]
+  categories      Category[]
+  leaveTypes      LeaveType[]
+  
+  // Implicit relations needing explicit fields
   employeeSalaryComponents EmployeeSalaryComponent[]
-  statutoryConfigs  StatutoryConfig[]
-  payrollRuns       PayrollRun[]
-  shifts            Shift[]
-  employeeShifts    EmployeeShift[]
-  holidays          Holiday[]
-  leaveTypes        LeaveType[]
-  leaveEntries      LeaveEntry[]
-  devices           Device[]
-  deviceUsers       DeviceUser[]
-  rawDeviceLogs     RawDeviceLog[]
-  attendanceLogs    AttendanceLog[]
-  syncStatuses      SyncStatus[]
-  payrolls          Payroll[]
-  companyProfiles   CompanyProfile[]
-  deviceCommands    DeviceCommand[]
+  payslips                 Payslip[]
+  rawDeviceLogs            RawDeviceLog[]
+  syncLogs                 SyncLog[]
 }
 
-
+// --------------------------------------------------------
+// USER & AUTH
+// --------------------------------------------------------
 
 model User {
-  id         String   @id @default(uuid())
-  tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
-  username   String
-=======
-model User {
-  id         String   @id @default(uuid())
-  username   String   @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  password   String
-  role       String   @default("admin") // admin, manager, employee
-  employeeId String?  @unique // Link to employee record if any
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  username  String
+  email     String?
+  password  String
+  role      String   @default("user") // admin, manager, employee, hr, superadmin
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  employeeId String? @unique
   employee   Employee? @relation(fields: [employeeId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  auditLogs  AuditLog[]
-<<<<<<< HEAD
+
+  RefreshToken RefreshToken[]
 
   @@unique([username, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
+  @@index([tenantId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// --------------------------------------------------------
+// ORGANIZATION STRUCTURE
+// --------------------------------------------------------
+
+model Branch {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  code        String
+  address     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employees   Employee[]
+  departments Department[]
+
+  @@unique([code, tenantId])
 }
 
 model Location {
-  id          String    @id @default(uuid())
-<<<<<<< HEAD
+  id          String   @id @default(uuid())
   tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   name        String
+  code        String
   address     String?
-  city        String?
-  state       String?
-  country     String?
-  zipCode     String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  branches    Branch[]
-}
-
-model Branch {
-  id           String       @id @default(uuid())
-<<<<<<< HEAD
-  tenantId     String
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  name         String
-  code         String
-=======
-  name         String
-  code         String       @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  locationId   String?
-  location     Location?    @relation(fields: [locationId], references: [id])
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  employees    Employee[]
-  departments  Department[]
-<<<<<<< HEAD
+  latitude    Float?
+  longitude   Float?
+  radius      Int      @default(100) // Geofence radius in meters
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employees   Employee[]
 
   @@unique([code, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 model Department {
   id          String     @id @default(uuid())
-<<<<<<< HEAD
   tenantId    String
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   name        String
   code        String
   branchId    String?
   branch      Branch?    @relation(fields: [branchId], references: [id])
-  // managers    Employee[] @relation("DeptManagers") // M-N relation
   managers    Employee[] @relation("DeptManagers")
   description String?
   isActive    Boolean    @default(true)
@@ -135,639 +142,382 @@ model Department {
   updatedAt   DateTime   @updatedAt
   employees   Employee[] @relation("EmployeeDept")
 
-<<<<<<< HEAD
   @@unique([code, branchId, tenantId])
-=======
-  @@unique([code, branchId])
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 model Designation {
   id          String     @id @default(uuid())
-<<<<<<< HEAD
   tenantId    String
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
   name        String
   code        String
-=======
-  name        String
-  code        String     @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   description String?
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   employees   Employee[]
-<<<<<<< HEAD
 
   @@unique([code, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 model Category {
-  id          String     @id @default(uuid())
-<<<<<<< HEAD
+  id          String   @id @default(uuid())
   tenantId    String
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   name        String
   code        String
-=======
-  name        String
-  code        String     @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   description String?
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  employees   Employee[]
-<<<<<<< HEAD
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([code, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
+
+// --------------------------------------------------------
+// EMPLOYEE MANAGEMENT
+// --------------------------------------------------------
 
 model Employee {
   id              String           @id @default(uuid())
-<<<<<<< HEAD
   tenantId        String
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   employeeCode    String
-=======
-  employeeCode    String           @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   firstName       String
-  lastName        String
+  lastName        String?
   email           String?
   phone           String?
+  gender          String?
+  dateOfBirth     DateTime?
+  address         String?
+  
+  // Employment Details
   branchId        String?
   branch          Branch?          @relation(fields: [branchId], references: [id])
   departmentId    String?
   department      Department?      @relation("EmployeeDept", fields: [departmentId], references: [id])
   designationId   String?
   designation     Designation?     @relation(fields: [designationId], references: [id])
-  categoryId      String?
-  category        Category?        @relation(fields: [categoryId], references: [id])
-  shiftId         String?
-  shift           Shift?           @relation(fields: [shiftId], references: [id])
+  locationId      String?
+  location        Location?        @relation(fields: [locationId], references: [id])
+  
+  reportToId      String?
+  reportTo        Employee?        @relation("ReportTo", fields: [reportToId], references: [id])
+  subordinates    Employee[]       @relation("ReportTo")
+
+  managerOfDeptId String?
+  managerOfDept   Department?      @relation("DeptManagers", fields: [managerOfDeptId], references: [id])
+
+  // Biometric & System
   deviceUserId    String?
-<<<<<<< HEAD
   sourceEmployeeId String?
-=======
-  sourceEmployeeId String?          @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   dateOfJoining   DateTime?
-  isActive        Boolean          @default(true)
+  status          String           @default("active") // active, resigned, terminated
+  
+  user            User?
+  
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   
-  user            User?
-
-  // Multi-level approval relations
-  managedDepartments   Department[] @relation("DeptManagers")
-  managerApprovedLeaves LeaveEntry[] @relation("ManagerApprovedLeaves")
-  ceoApprovedLeaves     LeaveEntry[] @relation("CEOApprovedLeaves")
-
   attendanceLogs  AttendanceLog[]
-  leaveEntries    LeaveEntry[]
   employeeShifts  EmployeeShift[]
-  payrolls        Payroll[]
-  
-  // Salary Fields (Fixed)
-  basicSalary       Float            @default(0)
-  hra               Float            @default(0)
-  conveyance        Float            @default(0)
-  medicalAllowance  Float            @default(0)
-  specialAllowance  Float            @default(0)
-  otherAllowances   Float            @default(0)
-  standardDeductions Float           @default(0)
-  
-  // Banking Details
-  bankName          String?
-  accountNumber     String?
-  ifscCode          String?
-  panNumber         String?
-  aadhaarNumber     String?
-
-  // Advanced Payroll Configuration
-  isPFEnabled       Boolean          @default(false)
-  isESIEnabled      Boolean          @default(false)
-  isPTEnabled       Boolean          @default(true) // Professional Tax
-  isOTEnabled       Boolean          @default(false)
-  otRateMultiplier  Float            @default(1.5)
-
+  salaryStructure SalaryStructure?
+  payslips        Payslip[]
+  leaves          Leave[]
+  leaveBalances   LeaveBalance[]
   fieldLogs       FieldLog[]
-  salaryComponents EmployeeSalaryComponent[]
-<<<<<<< HEAD
 
   @@unique([employeeCode, tenantId])
   @@unique([sourceEmployeeId, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
-model FieldLog {
+// --------------------------------------------------------
+// ATTENDANCE & SHIFTS
+// --------------------------------------------------------
+
+model Shift {
   id              String    @id @default(uuid())
-<<<<<<< HEAD
   tenantId        String
   tenant          Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  employeeId      String
-  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  type            String    // IN, OUT
-  timestamp       DateTime  @default(now())
-  location        String?   // lat,lng or address
-  image           String?   // Base64 or URL
-  status          String    @default("pending") // pending, approved, rejected
-  remarks         String?
-  processed       Boolean   @default(false)
-  approvedBy      String?
-  approvedAt      DateTime?
+  name            String
+  code            String?
+  startTime       DateTime  @db.Time
+  endTime         DateTime  @db.Time
+  breakDuration   Int       @default(60) // in minutes
+  gracePeriodIn   Int       @default(0)
+  gracePeriodOut  Int       @default(0)
+  isNightShift    Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  @@index([employeeId, timestamp])
-  @@index([status])
-<<<<<<< HEAD
-  @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model CompanyProfile {
-  id                String   @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  name              String
-  legalName         String?
-  address           String?
-  logo              String?
-  gstin             String?
-  pan               String?
-  pfCode            String?
-  esiCode           String?
-  tan               String?
-  bankName          String?
-  accountNumber     String?
-  ifscCode          String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-model AuditLog {
-  id                String   @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  userId            String?
-  user              User?    @relation(fields: [userId], references: [id])
-  action            String   // e.g., 'SALARY_UPDATE', 'LEAVE_APPROVE', 'PUNCH_OVERRIDE'
-  entityId          String?  // ID of the employee/leave/payroll being touched
-  entityType        String   // 'Employee', 'LeaveEntry', etc.
-  description       String
-  metadata          String?  // JSON string of before/after values
-  oldValue          String?
-  newValue          String?
-  ipAddress         String?
-  userAgent         String?
-  createdAt         DateTime @default(now())
-
-  @@index([createdAt])
-<<<<<<< HEAD
-  @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model SalaryComponent {
-  id                String   @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
-  name              String
-  code              String   // e.g., BASIC, HRA, PF_EMP
-=======
-  name              String
-  code              String   @unique // e.g., BASIC, HRA, PF_EMP
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  type              String   // EARNING, DEDUCTION
-  calculationType   String   // FIXED, PERCENTAGE, FORMULA
-  percentageOf      String?  // If calculationType is PERCENTAGE, percentage of which code?
-  value             Float    @default(0)
-  isStatutory       Boolean  @default(false)
-  isTaxable         Boolean  @default(true)
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  employeeLinks     EmployeeSalaryComponent[]
-<<<<<<< HEAD
+  employeeShifts  EmployeeShift[]
 
   @@unique([code, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model EmployeeSalaryComponent {
-  id                String          @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant          @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  employeeId        String
-  employee          Employee        @relation(fields: [employeeId], references: [id])
-  componentId       String
-  component         SalaryComponent @relation(fields: [componentId], references: [id])
-  monthlyAmount     Float           @default(0)
-  effectiveFrom     DateTime        @default(now())
-  isActive          Boolean         @default(true)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-
-  @@unique([employeeId, componentId])
-<<<<<<< HEAD
-  @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model StatutoryConfig {
-  id                String   @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant   @relation(fields: [tenantId], references: [id])
-  key               String   // e.g., PF_LIMIT, ESI_LIMIT, PT_SLABS
-=======
-  key               String   @unique // e.g., PF_LIMIT, ESI_LIMIT, PT_SLABS
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  value             String   // JSON string of config
-  description       String?
-  effectiveFrom     DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-<<<<<<< HEAD
-
-  @@unique([key, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model PayrollRun {
-  id                String    @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  month             Int
-  year              Int
-  batchName         String
-  status            String    @default("draft") // draft, processing, review, finalized, locked
-  totalEmployees    Int       @default(0)
-  totalGross        Float     @default(0)
-  totalNet          Float     @default(0)
-  processedBy       String?
-  processedAt       DateTime?
-  approvedBy        String?
-  approvedAt        DateTime?
-  periodStart       DateTime
-  periodEnd         DateTime
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  payrolls          Payroll[]
-
-<<<<<<< HEAD
-  @@unique([month, year, tenantId])
-=======
-  @@unique([month, year])
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model Shift {
-  id              String           @id @default(uuid())
-<<<<<<< HEAD
-  tenantId        String
-  tenant          Tenant           @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  name            String
-  startTime       String
-  endTime         String
-  gracePeriodIn   Int              @default(0)
-  gracePeriodOut  Int              @default(0)
-  isNightShift    Boolean          @default(false)
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  employees       Employee[]
-  employeeShifts  EmployeeShift[]
-<<<<<<< HEAD
-
-  @@unique([name, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 model EmployeeShift {
   id          String    @id @default(uuid())
-<<<<<<< HEAD
   tenantId    String
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   employeeId  String
   employee    Employee  @relation(fields: [employeeId], references: [id])
   shiftId     String
   shift       Shift     @relation(fields: [shiftId], references: [id])
   startDate   DateTime
-  endDate     DateTime?
-  createdAt   DateTime  @default(now())
+  endDate     DateTime? // Null means ongoing
+  isDefault   Boolean   @default(false)
   updatedAt   DateTime  @updatedAt
-<<<<<<< HEAD
 
   @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
+}
+
+model AttendanceLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  
+  date        DateTime @db.Date // key for the day
+  firstIn     DateTime?
+  lastOut     DateTime?
+  totalHours  Float    @default(0)
+  workingHours Float   @default(0)
+  lateArrival Float    @default(0)
+  earlyDeparture Float @default(0)
+  status      String   @default("Absent") // Present, Absent, Half Day, Late, Holiday, WeekOff
+  
+  logs        String?  // JSON array of all raw punch times for investigation
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, date, tenantId])
 }
 
 model Holiday {
   id          String   @id @default(uuid())
-<<<<<<< HEAD
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   name        String
-  date        DateTime
+  date        DateTime @db.Date
+  type        String   @default("Public") // Public, Company, etc.
   description String?
   isRecurring Boolean  @default(false)
-  createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-<<<<<<< HEAD
 
   @@unique([date, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
+// --------------------------------------------------------
+// LEAVE MANAGEMENT
+// --------------------------------------------------------
+
 model LeaveType {
-  id           String       @id @default(uuid())
-<<<<<<< HEAD
-  tenantId     String
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  name         String
-  code         String
-=======
-  name         String
-  code         String       @unique
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  description  String?
-  isPaid       Boolean      @default(true)
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  leaveEntries LeaveEntry[]
-<<<<<<< HEAD
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  code        String
+  description String?
+  isPaid      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([code, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
+}
+
+model Leave {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  employeeId   String
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+  leaveType    String       // CL, PL, SL, etc
+  startDate    DateTime
+  endDate      DateTime
+  reason       String?
+  status       String       @default("pending") // pending, approved, rejected
+  approvedBy   String?
+  updatedAt    DateTime     @updatedAt
+
+  @@index([tenantId])
+}
+
+model LeaveBalance {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  code         String
+  description  String?
+  employeeId   String
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+  year         Int
+  total        Float        @default(0)
+  used         Float        @default(0)
+  balance      Float        @default(0)
+  
+  leaveEntries LeaveEntry[]
+
+  @@unique([code, employeeId, year, tenantId])
 }
 
 model LeaveEntry {
-  id               String    @id @default(uuid())
-<<<<<<< HEAD
-  tenantId         String
-  tenant           Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  employeeId       String
-  employee         Employee  @relation(fields: [employeeId], references: [id])
-  leaveTypeId      String
-  leaveType        LeaveType @relation(fields: [leaveTypeId], references: [id])
-  startDate        DateTime
-  endDate          DateTime
-  days             Float
-  reason           String?
-  status           String    @default("pending_manager") // pending_manager, pending_ceo, approved, rejected
-  
-  managerApproval  Boolean?
-  managerApprovedAt DateTime?
-  managerId        String?
-  manager          Employee? @relation("ManagerApprovedLeaves", fields: [managerId], references: [id])
-  
-  ceoApproval      Boolean?
-  ceoApprovedAt    DateTime?
-  ceoId            String?
-  ceo              Employee? @relation("CEOApprovedLeaves", fields: [ceoId], references: [id])
-
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-<<<<<<< HEAD
-
-  @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
+  id             String       @id @default(uuid())
+  leaveBalanceId String
+  leaveBalance   LeaveBalance @relation(fields: [leaveBalanceId], references: [id])
+  date           DateTime
+  type           String       // CREDIT, DEBIT
+  amount         Float
+  reason         String?
+  createdAt      DateTime     @default(now())
 }
+
+// --------------------------------------------------------
+// PAYROLL SYSTEM
+// --------------------------------------------------------
+
+model SalaryComponent {
+  id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  name              String
+  code              String   // e.g., BASIC, HRA, PF_EMP
+  type              String   // EARNING, DEDUCTION
+  calculationType   String   // FLAT, PERCENTAGE, FORMULA
+  value             Float?   // For flat/percentage
+  formula           String?  // e.g., "BASIC * 0.12"
+  isActive          Boolean  @default(true)
+  
+  employeeLinks     EmployeeSalaryComponent[]
+
+  @@unique([code, tenantId])
+}
+
+model SalaryStructure {
+  id                String          @id @default(uuid())
+  tenantId          String
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+  employeeId        String          @unique
+  employee          Employee        @relation(fields: [employeeId], references: [id])
+  grossSalary       Float           @default(0)
+  netSalary         Float           @default(0) // Estimated
+  components        EmployeeSalaryComponent[] // Overrides or specific values
+  isActive          Boolean         @default(true)
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model EmployeeSalaryComponent {
+  id                String          @id @default(uuid())
+  tenantId          String
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+  structureId       String
+  structure         SalaryStructure @relation(fields: [structureId], references: [id])
+  componentId       String
+  component         SalaryComponent @relation(fields: [componentId], references: [id])
+  amount            Float           // The calculated or override amount
+  formula           String?         // Optional override formula
+  
+  @@unique([structureId, componentId])
+}
+
+model PayrollSetting {
+  id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  key               String   // e.g., PF_LIMIT, ESI_LIMIT, PT_SLABS
+  value             String   // JSON string of config
+  description       String?
+  updatedAt         DateTime @updatedAt
+
+  @@unique([key, tenantId])
+}
+
+model PayrollRun {
+  id                String    @id @default(uuid())
+  tenantId          String
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  month             Int
+  year              Int
+  status            String    @default("DRAFT") // DRAFT, LOCKED, PROCESSED, PAID
+  processedAt       DateTime?
+  approvedAt        DateTime?
+  totalPayout       Float     @default(0)
+  totalEmployees    Int       @default(0)
+  payslips          Payslip[]
+  createdAt         DateTime  @default(now())
+
+  @@unique([month, year, tenantId])
+}
+
+model Payslip {
+  id              String           @id @default(uuid())
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  name            String
+  payrollRunId    String
+  payrollRun      PayrollRun       @relation(fields: [payrollRunId], references: [id])
+  employeeId      String
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+  
+  grossSalary     Float
+  totalDeductions Float
+  netSalary       Float
+  
+  details         String           // JSON Blob of all components (Basic: 5000, HRA: 2000, etc) for freezing history
+  
+  generatedAt     DateTime         @default(now())
+
+  @@unique([employeeId, payrollRunId])
+}
+
+// --------------------------------------------------------
+// DEVICE & SYNC
+// --------------------------------------------------------
 
 model Device {
   id              String         @id @default(uuid())
-<<<<<<< HEAD
   tenantId        String
   tenant          Tenant         @relation(fields: [tenantId], references: [id])
-  deviceId        String
-  serialNumber    String?
   name            String
   protocol        String         @default("ESSL_ADMS") // ESSL_ADMS, MATRIX_DIRECT, REALTIME_DIRECT, HIKVISION_DIRECT, SQL_MIRROR
-=======
-  deviceId        String         @unique
-  name            String
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   ipAddress       String?
   port            Int?
+  serialNumber    String
+  username        String?
+  password        String?
   location        String?
   status          String         @default("offline")
-  lastConnected   DateTime?
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  deviceUsers     DeviceUser[]
+  lastSeen        DateTime?
+  config          String?        // JSON for extra properties (e.g. SQL Table name)
+  
   rawDeviceLogs   RawDeviceLog[]
-<<<<<<< HEAD
   commands        DeviceCommand[]
 
-  @@unique([deviceId, tenantId])
   @@unique([serialNumber, tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model DeviceUser {
-  id          String   @id @default(uuid())
-<<<<<<< HEAD
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  deviceId    String
-  device      Device   @relation(fields: [deviceId], references: [id])
-  deviceUserId String
-  employeeId  String?
-  name        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-<<<<<<< HEAD
-  @@unique([deviceId, deviceUserId, tenantId])
-=======
-  @@unique([deviceId, deviceUserId])
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 model RawDeviceLog {
   id          String   @id @default(uuid())
-<<<<<<< HEAD
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   deviceId    String
   device      Device   @relation(fields: [deviceId], references: [id])
-  userId      String
-  punchTime   DateTime
-  punchType   String?
-  isProcessed Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  
+  deviceUserId String
+  timestamp    DateTime
+  type         String?  // CheckIn, CheckOut, etc.
+  
+  isProcessed  Boolean  @default(false)
+  processedAt  DateTime?
+  
+  createdAt    DateTime @default(now())
 
-  @@index([punchTime])
-  @@index([userId, punchTime])
+  @@unique([deviceId, deviceUserId, timestamp, tenantId])
   @@index([isProcessed])
-<<<<<<< HEAD
-  @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model AttendanceLog {
-  id              String    @id @default(uuid())
-<<<<<<< HEAD
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  employeeId      String
-  employee        Employee  @relation(fields: [employeeId], references: [id])
-  date            DateTime
-  firstIn         DateTime?
-  lastOut         DateTime?
-  workingHours    Float?
-  shiftStart      DateTime?
-  shiftEnd        DateTime?
-  lateArrival     Int       @default(0)
-  earlyDeparture  Int       @default(0)
-  status          String    @default("present")
-  totalPunches    Int       @default(0)
-  rawData         String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-<<<<<<< HEAD
-  @@unique([employeeId, date, tenantId])
-  @@index([date])
-  @@index([employeeId])
-  @@index([tenantId])
-=======
-  @@unique([employeeId, date])
-  @@index([date])
-  @@index([employeeId])
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model SyncStatus {
-  id            String   @id @default(uuid())
-<<<<<<< HEAD
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  lastSyncTime  DateTime
-  recordsSynced Int      @default(0)
-  status        String
-  message       String?
-  createdAt     DateTime @default(now())
-<<<<<<< HEAD
-
-  @@index([tenantId])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-}
-
-model Payroll {
-  id                String    @id @default(uuid())
-<<<<<<< HEAD
-  tenantId          String
-  tenant            Tenant    @relation(fields: [tenantId], references: [id])
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
-  employeeId        String
-  employee          Employee  @relation(fields: [employeeId], references: [id])
-  month             Int
-  year              Int
-  totalWorkingDays  Int
-  actualPresentDays Float
-  lopDays           Float            @default(0) // Loss of Pay Days
-  paidDays          Float
-  
-  basicPaid         Float
-  hraPaid           Float
-  conveyancePaid    Float            @default(0)
-  medicalPaid       Float            @default(0)
-  specialPaid       Float            @default(0)
-  allowancesPaid    Float
-  
-  // Variable Components
-  bonus             Float            @default(0)
-  incentives        Float            @default(0)
-  arrears           Float            @default(0)
-  
-  // Overtime
-  otHours           Float            @default(0)
-  otPay             Float            @default(0)
-  
-  // Deductions (Employee Share)
-  pfDeduction       Float            @default(0)
-  esiDeduction      Float            @default(0)
-  ptDeduction       Float            @default(0) // Professional Tax
-  tdsDeduction      Float            @default(0)
-  otherDeductions   Float            @default(0)
-  
-  // Employer Contributions
-  employerPF        Float            @default(0)
-  employerESI       Float            @default(0)
-  
-  grossSalary       Float
-  totalDeductions   Float
-  netSalary         Float
-  
-  payrollRunId      String?
-  payrollRun        PayrollRun? @relation(fields: [payrollRunId], references: [id])
-  
-  status            String    @default("draft") // draft, generated, paid, locked
-  remarks           String?
-  paidAt            DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-<<<<<<< HEAD
-  @@unique([employeeId, month, year, tenantId])
-  @@index([payrollRunId])
   @@index([tenantId])
 }
 
@@ -777,8 +527,8 @@ model DeviceCommand {
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
   deviceId     String
   device       Device    @relation(fields: [deviceId], references: [id])
-  command      String    // The actual protocol command string
-  status       String    @default("pending") // pending, sent, executed, failed
+  command      String
+  status       String    @default("pending")
   response     String?   // Device response if any
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -786,8 +536,74 @@ model DeviceCommand {
 
   @@index([deviceId, status])
   @@index([tenantId])
-=======
-  @@unique([employeeId, month, year])
-  @@index([payrollRunId])
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
+}
+
+model SyncLog {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  status        String   // SUCCESS, FAILED
+  message       String?
+  recordCount   Int      @default(0)
+  lastSyncTime  DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model FieldLog {
+  id                String    @id @default(uuid())
+  tenantId          String
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  employeeId        String
+  employee          Employee  @relation(fields: [employeeId], references: [id])
+  projectId         String?
+  project           Project?  @relation(fields: [projectId], references: [id])
+  
+  type              String    @default("CHECK_IN") // CHECK_IN, CHECK_OUT
+  timestamp         DateTime  @default(now())
+  
+  checkInTime       DateTime?
+  checkInLocation   String?   // JSON {lat, lng, address}
+  checkInImage      String?
+  
+  checkOutTime      DateTime?
+  checkOutLocation  String?
+  checkOutImage     String?
+  
+  durationMinutes   Int?
+  distanceTraveled  Float?    // in km
+  
+  notes             String?
+  remarks           String?
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([employeeId, checkInTime, tenantId])
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  name        String
+  code        String
+  description String?
+  clientName  String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, ON_HOLD
+  
+  latitude    Float?
+  longitude   Float?
+  radius      Int       @default(200) // Geofence radius
+  
+  fieldLogs   FieldLog[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([code, tenantId])
 }

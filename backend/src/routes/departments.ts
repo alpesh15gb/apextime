@@ -18,11 +18,7 @@ router.get('/', async (req, res) => {
     const departments = await prisma.department.findMany({
       where,
       include: {
-        branch: {
-          include: {
-            location: true,
-          },
-        },
+        branch: true,
         managers: true, // Include managers details (M-N)
       },
       orderBy: { name: 'asc' },
@@ -96,10 +92,7 @@ router.post('/', async (req, res) => {
 
     const department = await prisma.department.create({
       data: {
-<<<<<<< HEAD
         tenantId: (req as any).user.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         name,
         code,
         branchId,

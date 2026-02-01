@@ -20,12 +20,8 @@ import {
   Building2,
   Award,
   Database,
-<<<<<<< HEAD
   FolderKanban,
   Cpu
-=======
-  FolderKanban
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -68,7 +64,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           ]
         }
       ]
-<<<<<<< HEAD
       : user?.role === 'superadmin'
         ? [
           { path: '/tenants', icon: Building2, label: 'Tenants' },
@@ -98,30 +93,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/devices', icon: Cpu, label: 'Biometric Nodes' },
           { path: '/settings', icon: Settings, label: 'Settings' },
         ];
-=======
-      : [
-        { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/employees', icon: Users, label: 'Employees' },
-        // Master Data Group
-        {
-          label: 'Masters',
-          icon: Database,
-          children: [
-            { path: '/branches', icon: Building2, label: 'Branches' },
-            { path: '/locations', icon: MapPin, label: 'Locations' },
-            { path: '/designations', icon: Award, label: 'Designations' },
-            { path: '/departments', icon: Briefcase, label: 'Departments' },
-          ]
-        },
-        { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
-        { path: '/leaves', icon: Calendar, label: 'Leave' },
-        { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
-        { path: '/payroll', icon: DollarSign, label: 'Payroll' },
-        { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
-        { path: '/projects', icon: FolderKanban, label: 'Projects' },
-        { path: '/settings', icon: Settings, label: 'Settings' },
-      ];
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev =>
@@ -148,7 +119,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="h-16 flex items-center px-6 border-b border-gray-800">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-<<<<<<< HEAD
               <span className="font-bold text-white text-lg">
                 {user?.tenantName?.[0]?.toUpperCase() || 'A'}
               </span>
@@ -157,12 +127,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <span className="font-bold text-xl tracking-wide text-white">
                 {user?.tenantName?.toUpperCase() || 'APEXTIME'}
               </span>
-=======
-              <span className="font-bold text-white text-lg">A</span>
-            </div>
-            {sidebarOpen && (
-              <span className="font-bold text-xl tracking-wide text-white">APEXTIME</span>
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
             )}
           </div>
         </div>

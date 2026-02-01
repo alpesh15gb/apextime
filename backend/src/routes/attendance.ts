@@ -57,7 +57,6 @@ router.get('/', async (req, res) => {
             include: {
               department: true,
               branch: true,
-              shift: true,
             },
           },
         },
@@ -137,7 +136,6 @@ router.get('/today/all', async (req, res) => {
         employee: {
           include: {
             department: true,
-            shift: true,
           },
         },
       },
@@ -168,7 +166,6 @@ router.post('/manual', async (req, res) => {
       workingHours = diffMs / (1000 * 60 * 60);
     }
 
-<<<<<<< HEAD
     const tenantId = (req as any).user.tenantId;
     const log = await prisma.attendanceLog.upsert({
       where: {
@@ -176,13 +173,6 @@ router.post('/manual', async (req, res) => {
           employeeId,
           date: attendanceDate,
           tenantId,
-=======
-    const log = await prisma.attendanceLog.upsert({
-      where: {
-        employeeId_date: {
-          employeeId,
-          date: attendanceDate,
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         },
       },
       update: {
@@ -192,10 +182,7 @@ router.post('/manual', async (req, res) => {
         status,
       },
       create: {
-<<<<<<< HEAD
         tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         employeeId,
         date: attendanceDate,
         firstIn: parsedFirstIn,
@@ -207,7 +194,6 @@ router.post('/manual', async (req, res) => {
         employee: {
           include: {
             department: true,
-            shift: true,
           },
         },
       },
@@ -233,7 +219,7 @@ router.get('/monthly-report', async (req, res) => {
     const daysInMonth = endOfMonth.getDate();
 
     // Build employee filter
-    const employeeWhere: any = { isActive: true };
+    const employeeWhere: any = { status: 'active' };
     if (departmentId) employeeWhere.departmentId = departmentId as string;
     if (branchId) employeeWhere.branchId = branchId as string;
 
@@ -242,12 +228,7 @@ router.get('/monthly-report', async (req, res) => {
       where: employeeWhere,
       include: {
         department: true,
-        shift: true,
-        branch: {
-          include: {
-            location: true
-          }
-        },
+        branch: true,
       },
       orderBy: { firstName: 'asc' },
     });
@@ -374,7 +355,7 @@ router.get('/monthly-report', async (req, res) => {
           employeeCode: employee.employeeCode,
           department: employee.department?.name || 'N/A',
           branch: employee.branch?.name || 'N/A',
-          location: employee.branch?.location?.name || 'N/A',
+          location: 'N/A', // Removed location rel
         },
         dailyData,
         summary: {

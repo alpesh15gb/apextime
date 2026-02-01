@@ -30,13 +30,14 @@ router.get('/stats', async (req, res) => {
     // Execute queries sequentially to prevent total failure
     try {
       totalEmployees = await prisma.employee.count();
-      activeEmployees = await prisma.employee.count({ where: { isActive: true } });
+      activeEmployees = await prisma.employee.count({ where: { status: 'active' } });
     } catch (e) { console.error('Employee count error', e); }
 
     try {
       totalDepartments = await prisma.department.count();
       totalBranches = await prisma.branch.count();
-      devicesCount = await prisma.device.count({ where: { isActive: true } });
+      // Device usually has status='offline'/'online'
+      devicesCount = await prisma.device.count();
     } catch (e) { console.error('Org count error', e); }
 
     try {
@@ -48,15 +49,15 @@ router.get('/stats', async (req, res) => {
     try {
       // Today's Status
       const presentCount = await prisma.attendanceLog.count({
-        where: { date: { gte: today }, status: 'present' }
+        where: { date: { gte: today }, status: 'Present' }
       });
 
       // Accurate Absent Count (Active employees only)
       const absentCount = await prisma.attendanceLog.count({
         where: {
           date: { gte: today },
-          status: 'absent',
-          employee: { isActive: true }
+          status: 'Absent',
+          employee: { status: 'active' }
         }
       });
 
@@ -65,7 +66,7 @@ router.get('/stats', async (req, res) => {
 
     try {
       absentEmployees = await prisma.attendanceLog.findMany({
-        where: { date: { gte: today }, status: 'absent', employee: { isActive: true } },
+        where: { date: { gte: today }, status: 'Absent', employee: { status: 'active' } },
         include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
         take: 20
       }).then(logs => logs.map(l => l.employee));
@@ -78,7 +79,7 @@ router.get('/stats', async (req, res) => {
     } catch (e) { console.error('Late arrivals error', e); }
 
     try {
-      lastSync = await prisma.syncStatus.findFirst({ orderBy: { createdAt: 'desc' } });
+      lastSync = await prisma.syncLog.findFirst({ orderBy: { createdAt: 'desc' } });
     } catch (e) { console.error('Sync status error', e); }
 
     res.json({
@@ -176,13 +177,13 @@ router.get('/chart-data', async (req, res) => {
         prisma.attendanceLog.count({
           where: {
             date: { gte: date, lt: nextDate },
-            status: 'present',
+            status: { in: ['Present', 'present'] },
           },
         }),
         prisma.attendanceLog.count({
           where: {
             date: { gte: date, lt: nextDate },
-            status: 'absent',
+            status: { in: ['Absent', 'absent'] },
           },
         }),
         prisma.attendanceLog.count({
