@@ -99,7 +99,7 @@ export const FieldLogs = () => {
                                             <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
                                             <div className="flex items-center gap-1 text-gray-400 font-bold text-xs">
                                                 <Clock className="w-3.5 h-3.5" />
-                                                {format(new Date(log.timestamp), 'dd MMM, hh:mm a')}
+                                                {new Date(log.timestamp).toISOString().substring(11, 16)}
                                             </div>
                                         </div>
                                     </div>
