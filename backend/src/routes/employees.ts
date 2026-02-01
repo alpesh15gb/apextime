@@ -118,7 +118,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Bulk update employees
-router.post('/bulk-update', async (req, res) => {
+router.patch('/bulk-update', async (req, res) => {
   try {
     const { ids, data } = req.body;
 
@@ -127,12 +127,12 @@ router.post('/bulk-update', async (req, res) => {
     }
 
     const updateData: any = {};
-    if (data.branchId !== undefined) updateData.branchId = data.branchId;
-    if (data.departmentId !== undefined) updateData.departmentId = data.departmentId;
-    if (data.shiftId !== undefined) updateData.shiftId = data.shiftId;
+    if (data.branchId !== undefined) updateData.branchId = sanitizeId(data.branchId);
+    if (data.departmentId !== undefined) updateData.departmentId = sanitizeId(data.departmentId);
+    if (data.shiftId !== undefined) updateData.shiftId = sanitizeId(data.shiftId);
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    if (data.designationId !== undefined) updateData.designationId = data.designationId;
-    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+    if (data.designationId !== undefined) updateData.designationId = sanitizeId(data.designationId);
+    if (data.categoryId !== undefined) updateData.categoryId = sanitizeId(data.categoryId);
 
     const result = await prisma.employee.updateMany({
       where: {
