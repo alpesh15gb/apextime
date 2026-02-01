@@ -79,7 +79,6 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
     let allLogs: RawLog[] = [];
 
     // --- SQL Server Connection (SQL_LOGS) ---
-    // --- SQL Server Connection (SQL_LOGS) ---
     // Source 1: Legacy Tenant Settings
     const sqlConfigs: BiometricConfig[] = [];
 

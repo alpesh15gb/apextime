@@ -66,6 +66,7 @@ const baseConfig = {
   options: {
     encrypt: false,
     trustServerCertificate: true,
+    useUTC: false, // Treat SQL Server local time as local, not UTC
   },
   connectionTimeout: 30000,
   requestTimeout: 30000,

@@ -227,7 +227,7 @@ export const Attendance = () => {
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                          {new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {log.date ? String(log.date).split('T')[0].split('-').reverse().join('/') : '--'}
                         </span>
                       </td>
                       <td className="px-6 py-5">
