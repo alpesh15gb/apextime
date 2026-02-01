@@ -28,7 +28,6 @@ export function parseEmployeeName(fullName: string): { firstName: string, lastNa
     const lastName = parts.slice(1).join(' ');
     return { firstName, lastName };
 }
-<<<<<<< HEAD
 
 /**
  * Extracts the core numeric part of an ID (e.g., "HO015" -> "15", "00107" -> "107").
@@ -41,5 +40,3 @@ export function getCoreId(id: string): string {
     // Strip leading zeros
     return digits.replace(/^0+/, '') || (digits === '0' ? '0' : '');
 }
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e

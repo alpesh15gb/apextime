@@ -65,13 +65,12 @@ router.post('/', async (req, res) => {
     const device = await prisma.device.create({
       data: {
         tenantId,
-        deviceId,
+        deviceId: serialNumber || deviceId,
         name,
         ipAddress,
         port,
         location,
         protocol: protocol || 'ESSL_ADMS',
-        serialNumber,
       },
     });
 
@@ -92,7 +91,7 @@ router.put('/:id', async (req, res) => {
     const device = await prisma.device.updateMany({
       where: { id, tenantId },
       data: {
-        deviceId,
+        deviceId: serialNumber || deviceId,
         name,
         ipAddress,
         port,
@@ -100,7 +99,6 @@ router.put('/:id', async (req, res) => {
         isActive,
         status,
         protocol,
-        serialNumber,
       },
     });
 

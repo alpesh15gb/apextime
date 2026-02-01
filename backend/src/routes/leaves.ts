@@ -122,10 +122,7 @@ router.post('/', async (req, res) => {
 
         const entry = await prisma.leaveEntry.create({
             data: {
-<<<<<<< HEAD
                 tenantId: user.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 employeeId: employee.id,
                 leaveTypeId,
                 startDate: start,

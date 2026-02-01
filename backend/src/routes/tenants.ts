@@ -35,6 +35,7 @@ router.post('/', async (req, res) => {
             data: {
                 name,
                 slug,
+                code: slug.toUpperCase(),
                 domain,
                 settings,
                 isActive: true

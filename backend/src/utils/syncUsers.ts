@@ -6,14 +6,11 @@ async function syncEmployeesToUsers() {
     const employees = await prisma.employee.findMany({
         where: {
             user: { is: null }
-<<<<<<< HEAD
         },
         select: {
             id: true,
             employeeCode: true,
             tenantId: true
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         }
     });
 
@@ -24,10 +21,7 @@ async function syncEmployeesToUsers() {
             const hashedPassword = await bcrypt.hash(emp.employeeCode, 10);
             await prisma.user.create({
                 data: {
-<<<<<<< HEAD
                     tenantId: emp.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     username: emp.employeeCode,
                     password: hashedPassword,
                     role: 'employee',

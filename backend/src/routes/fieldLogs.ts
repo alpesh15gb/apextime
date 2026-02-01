@@ -20,10 +20,7 @@ router.post('/punch', async (req, res) => {
 
         const fieldLog = await prisma.fieldLog.create({
             data: {
-<<<<<<< HEAD
                 tenantId: user.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 employeeId: user.employeeId,
                 type, // 'IN' or 'OUT'
                 location,
@@ -120,16 +117,10 @@ router.post('/approve', async (req, res) => {
             // Find existing attendance log for that day
             const existingAtt = await prisma.attendanceLog.findUnique({
                 where: {
-<<<<<<< HEAD
                     employeeId_date_tenantId: {
                         employeeId: log.employeeId,
                         date: punchDate,
                         tenantId: user.tenantId
-=======
-                    employeeId_date: {
-                        employeeId: log.employeeId,
-                        date: punchDate
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     }
                 }
             });
@@ -149,24 +140,15 @@ router.post('/approve', async (req, res) => {
 
             await prisma.attendanceLog.upsert({
                 where: {
-<<<<<<< HEAD
                     employeeId_date_tenantId: {
                         employeeId: log.employeeId,
                         date: punchDate,
                         tenantId: user.tenantId
-=======
-                    employeeId_date: {
-                        employeeId: log.employeeId,
-                        date: punchDate
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     }
                 },
                 update: updateData,
                 create: {
-<<<<<<< HEAD
                     tenantId: user.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     employeeId: log.employeeId,
                     date: punchDate,
                     firstIn: log.type === 'IN' ? log.timestamp : null,

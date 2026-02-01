@@ -191,13 +191,8 @@ router.post(
         aadhaarNumber,
       } = req.body;
 
-<<<<<<< HEAD
       // Check if employee code already exists within this tenant
       const existing = await prisma.employee.findFirst({
-=======
-      // Check if employee code already exists
-      const existing = await prisma.employee.findUnique({
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         where: { employeeCode },
       });
 
@@ -205,13 +200,8 @@ router.post(
         return res.status(400).json({ error: `Employee code '${employeeCode}' already exists` });
       }
 
-<<<<<<< HEAD
       // Also check if User with same username exists in this tenant
       const existingUser = await prisma.user.findFirst({
-=======
-      // Also check if User with same username exists
-      const existingUser = await prisma.user.findUnique({
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         where: { username: employeeCode },
       });
 
@@ -220,15 +210,10 @@ router.post(
       }
 
       const result = await prisma.$transaction(async (tx) => {
-<<<<<<< HEAD
         const tenantId = (req as any).user.tenantId;
         const employee = await tx.employee.create({
           data: {
             tenantId,
-=======
-        const employee = await tx.employee.create({
-          data: {
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
             employeeCode,
             firstName,
             lastName,
@@ -271,12 +256,8 @@ router.post(
             username: employeeCode,
             password: hashedPassword,
             role: 'employee',
-<<<<<<< HEAD
             employeeId: employee.id,
             tenantId: tenantId
-=======
-            employeeId: employee.id
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
           }
         });
 
@@ -421,11 +402,7 @@ router.post('/import-bank-details', async (req, res) => {
           continue;
         }
 
-<<<<<<< HEAD
         const employee = await prisma.employee.findFirst({ where: { employeeCode } });
-=======
-        const employee = await prisma.employee.findUnique({ where: { employeeCode } });
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
         if (!employee) {
           results.failed++;
           results.errors.push(`Employee not found: ${employeeCode}`);
@@ -491,10 +468,7 @@ router.post('/repair-user-accounts', async (req, res) => {
         const password = await bcrypt.hash(emp.employeeCode, 10);
         await prisma.user.create({
           data: {
-<<<<<<< HEAD
             tenantId: emp.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
             username: emp.employeeCode,
             password,
             role: 'employee',

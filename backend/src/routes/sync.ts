@@ -26,7 +26,7 @@ router.post('/reset', async (req, res) => {
   try {
     logger.info('Sync reset requested');
     // Delete all sync status records
-    await prisma.syncStatus.deleteMany({});
+    await prisma.syncLog.deleteMany({});
     res.json({ message: 'Sync status reset. Next sync will process all historical data.' });
   } catch (error) {
     logger.error('Sync reset failed:', error);
@@ -67,10 +67,10 @@ router.get('/test-connection', async (req, res) => {
 router.get('/status', async (req, res) => {
   try {
     const [lastSync, syncHistory] = await Promise.all([
-      prisma.syncStatus.findFirst({
+      prisma.syncLog.findFirst({
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.syncStatus.findMany({
+      prisma.syncLog.findMany({
         orderBy: { createdAt: 'desc' },
         take: 10
       })
@@ -102,7 +102,7 @@ router.get('/preview', async (req, res) => {
     const pool = await getSqlPool();
 
     // Get last sync time
-    const lastSync = await prisma.syncStatus.findFirst({
+    const lastSync = await prisma.syncLog.findFirst({
       orderBy: { createdAt: 'desc' }
     });
 

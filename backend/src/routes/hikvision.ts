@@ -23,7 +23,7 @@ router.post('/event', async (req, res) => {
         }
 
         const device = await prisma.device.findFirst({
-            where: { serialNumber: SN as string }
+            where: { deviceId: SN as string }
         });
 
         if (!device) {
@@ -48,6 +48,8 @@ router.post('/event', async (req, res) => {
                     tenantId: device.tenantId,
                     deviceId: device.id,
                     userId: userId.toString(),
+                    deviceUserId: userId.toString(),
+                    timestamp: punchTime,
                     punchTime: punchTime,
                     punchType: '0', // 0 = Generic match
                     isProcessed: false

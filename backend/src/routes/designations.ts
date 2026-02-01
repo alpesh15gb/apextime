@@ -33,12 +33,9 @@ router.post('/', async (req, res) => {
 
         const designation = await prisma.designation.create({
             data: {
-<<<<<<< HEAD
                 tenantId: (req as any).user.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                 name,
-                code,
+                code: code || name.toLowerCase().replace(/\s+/g, '-'),
                 description,
             },
         });

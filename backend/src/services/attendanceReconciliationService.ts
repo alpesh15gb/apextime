@@ -29,16 +29,10 @@ export async function reconcileAttendance(date: Date = new Date()): Promise<void
             // Check if record already exists for this date
             const existing = await prisma.attendanceLog.findUnique({
                 where: {
-<<<<<<< HEAD
                     employeeId_date_tenantId: {
                         employeeId: emp.id,
                         date: targetDate,
                         tenantId: emp.tenantId
-=======
-                    employeeId_date: {
-                        employeeId: emp.id,
-                        date: targetDate
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     }
                 }
             });
@@ -79,10 +73,7 @@ export async function reconcileAttendance(date: Date = new Date()): Promise<void
             // Create the record
             await prisma.attendanceLog.create({
                 data: {
-<<<<<<< HEAD
                     tenantId: emp.tenantId,
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                     employeeId: emp.id,
                     date: targetDate,
                     status: status,

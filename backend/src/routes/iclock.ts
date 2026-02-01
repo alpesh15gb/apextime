@@ -19,7 +19,7 @@ router.get('/cdata', async (req, res) => {
     }
 
     const device = await prisma.device.findFirst({
-        where: { serialNumber: SN as string }
+        where: { deviceId: SN as string }
     });
 
     if (!device) {
@@ -30,7 +30,7 @@ router.get('/cdata', async (req, res) => {
     // Update status to online and last connected
     await prisma.device.update({
         where: { id: device.id },
-        data: { status: 'online', lastConnected: new Date() }
+        data: { status: 'online', lastSeen: new Date() }
     });
 
     if (options === 'all') {
@@ -60,7 +60,7 @@ router.post('/cdata', async (req, res) => {
     if (!SN) return res.send('OK');
 
     const device = await prisma.device.findFirst({
-        where: { serialNumber: SN as string }
+        where: { deviceId: SN as string }
     });
 
     if (!device) return res.send('OK');
@@ -88,6 +88,8 @@ router.post('/cdata', async (req, res) => {
                                 tenantId: device.tenantId,
                                 deviceId: device.id,
                                 userId: userId,
+                                deviceUserId: userId,
+                                timestamp: punchTime,
                                 punchTime: punchTime,
                                 punchType: parts[2] || '0',
                                 isProcessed: false
@@ -113,7 +115,7 @@ router.get('/getrequest', async (req, res) => {
     if (!SN) return res.send('OK');
 
     const device = await prisma.device.findFirst({
-        where: { serialNumber: SN as string }
+        where: { deviceId: SN as string }
     });
 
     if (!device) return res.send('OK');
@@ -149,7 +151,7 @@ router.post('/devicecmd', async (req, res) => {
     if (!SN) return res.send('OK');
 
     const device = await prisma.device.findFirst({
-        where: { serialNumber: SN as string }
+        where: { deviceId: SN as string }
     });
 
     if (!device) return res.send('OK');
