@@ -19,26 +19,42 @@ router.get('/stats', async (req, res) => {
       const totalTenants = await basePrisma.tenant.count();
       const activeTenants = await basePrisma.tenant.count({ where: { isActive: true } });
       const totalUsers = await basePrisma.user.count();
-
-      // Calculate total employees across all tenants (approximate since schema is multi-tenant partitioned logically)
-      // Since 'Employee' table has tenantId, we can just query it with basePrisma if we want TRUE global count
       const totalEmployees = await basePrisma.employee.count();
 
-      const recentTenants = await basePrisma.tenant.findMany({
-        take: 5,
+      const tenants = await basePrisma.tenant.findMany({
+        take: 20,
         orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { users: true, employees: true } } }
+        include: {
+          _count: {
+            select: {
+              users: true,
+              employees: true,
+              devices: true
+            }
+          }
+        }
       });
 
+      const tenantData = tenants.map(t => ({
+        id: t.id,
+        name: t.name,
+        plan: t.plan,
+        status: t.isActive ? 'Active' : 'Inactive',
+        userCount: t._count.users,
+        employeeCount: t._count.employees,
+        deviceCount: t._count.devices,
+        createdAt: t.createdAt
+      }));
+
       return res.json({
-        type: 'superadmin', // Frontend can use this to switch views
+        type: 'superadmin',
         counts: {
           totalTenants,
           activeTenants,
           totalUsers,
           totalEmployees
         },
-        recentTenants
+        tenants: tenantData
       });
     }
 
