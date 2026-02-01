@@ -175,6 +175,7 @@ export const payrollAPI = {
   finalizeRun: (id: string) => api.post(`/payroll/runs/${id}/finalize`),
   deleteRun: (id: string) => api.delete(`/payroll/runs/${id}`),
   exportBank: (id: string) => api.get(`/payroll/runs/${id}/export-bank`, { responseType: 'blob' }),
+  exportTally: (id: string) => api.get(`/payroll/runs/${id}/export-tally`, { responseType: 'blob' }),
   generate: (data: any) => api.post('/payroll/generate', data),
   updateSalary: (employeeId: string, data: any) => api.put(`/payroll/salary/${employeeId}`, data),
   processPay: (data: any) => api.post('/payroll/process-pay', data),

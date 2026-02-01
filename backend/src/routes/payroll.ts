@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { PayrollEngine } from '../services/payrollEngine';
+import { generateTallyXml } from '../services/tallyExportService';
 
 const router = Router();
 
@@ -249,6 +250,23 @@ router.get('/runs/:id/export-bank', authenticate, async (req, res) => {
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=bank_export_${req.params.id}.csv`);
         res.status(200).send(csv);
+
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Tally XML Export
+router.get('/runs/:id/export-tally', authenticate, async (req, res) => {
+    try {
+        const run = await prisma.payrollRun.findUnique({ where: { id: req.params.id } });
+        if (!run) return res.status(404).json({ error: 'Run not found' });
+
+        const xml = await generateTallyXml((req as any).user.tenantId, run.month, run.year);
+
+        res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Content-Disposition', `attachment; filename=tally_payroll_${run.month}_${run.year}.xml`);
+        res.status(200).send(xml);
 
     } catch (error: any) {
         res.status(500).json({ error: error.message });

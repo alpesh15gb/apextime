@@ -207,6 +207,20 @@ export const Payroll = () => {
         }
     };
 
+    const handleExportTally = async (id: string) => {
+        try {
+            const res = await payrollAPI.exportTally(id);
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `tally_payroll_export_${id}.xml`);
+            document.body.appendChild(link);
+            link.click();
+        } catch (e) {
+            alert('Export failed for Tally XML');
+        }
+    };
+
     const handleDeleteRun = async (id: string) => {
         if (!window.confirm('Delete this payroll run and all its records? This cannot be undone.')) return;
         try {
@@ -375,6 +389,13 @@ export const Payroll = () => {
                                 >
                                     <DownloadCloud className="w-4 h-4" />
                                     <span>Bank Bulk Export</span>
+                                </button>
+                                <button
+                                    onClick={() => handleExportTally(selectedRun.id)}
+                                    className="px-8 py-4 bg-emerald-600/10 text-emerald-600 font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-emerald-600/20 shadow-xl shadow-emerald-50 flex items-center space-x-3"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    <span>Tally XML</span>
                                 </button>
                             </div>
                         </div>
