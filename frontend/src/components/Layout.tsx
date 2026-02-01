@@ -71,13 +71,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/settings', icon: Settings, label: 'System Settings' },
         ]
         : [
-          { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-          { path: '/employees', icon: Users, label: 'Employees' },
-          // ... rest of admin items
-          // Master Data Group
+          { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', module: 'core' },
+          { path: '/employees', icon: Users, label: 'Employees', module: 'employees' },
+
+          // Master Data Group (Only show if employees or core modules enabled)
           {
             label: 'Masters',
             icon: Database,
+            module: 'employees',
             children: [
               { path: '/branches', icon: Building2, label: 'Branches' },
               { path: '/locations', icon: MapPin, label: 'Locations' },
@@ -85,15 +86,21 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               { path: '/departments', icon: Briefcase, label: 'Departments' },
             ]
           },
-          { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
-          { path: '/leaves', icon: Calendar, label: 'Leave' },
-          { path: '/field-logs', icon: ClipboardList, label: 'Field Logs' },
-          { path: '/payroll', icon: DollarSign, label: 'Payroll' },
-          { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
-          { path: '/projects', icon: FolderKanban, label: 'Projects' },
-          { path: '/devices', icon: Cpu, label: 'Biometric Nodes' },
-          { path: '/settings', icon: Settings, label: 'Settings' },
-        ];
+          { path: '/attendance', icon: ClipboardCheck, label: 'Attendance', module: 'attendance' },
+          { path: '/leaves', icon: Calendar, label: 'Leave', module: 'leaves' },
+          { path: '/field-logs', icon: ClipboardList, label: 'Field Logs', module: 'field_logs' },
+          { path: '/payroll', icon: DollarSign, label: 'Payroll', module: 'payroll' },
+          { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
+          { path: '/projects', icon: FolderKanban, label: 'Projects', module: 'projects' },
+          { path: '/devices', icon: Cpu, label: 'Biometric Nodes', module: 'devices' },
+          { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
+        ].filter(item => {
+          // If user has no modules (legacy), show all.
+          // Or if item.module is 'core', always show.
+          if (!user?.modules || user.modules.length === 0) return true;
+          if (item.module === 'core') return true;
+          return user.modules.includes(item.module);
+        });
 
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev =>
