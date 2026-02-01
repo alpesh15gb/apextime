@@ -66,12 +66,30 @@ router.post(
         { expiresIn: '24h' }
       );
 
+      // Fetch employee details if linked
+      let employeeName = null;
+      let firstName = null;
+      let lastName = null;
+
+      if (user.employeeId) {
+        const emp = await prisma.employee.findUnique({ where: { id: user.employeeId } });
+        if (emp) {
+          firstName = emp.firstName;
+          lastName = emp.lastName;
+          employeeName = `${emp.firstName} ${emp.lastName}`;
+        }
+      }
+
       res.json({
         token,
         user: {
           id: user.id,
           username: user.username,
+          firstName: firstName,
+          lastName: lastName,
+          fullName: employeeName,
           role: user.role,
+          employeeId: user.employeeId,
           tenantId: tenant.id,
           tenantName: tenant.name,
           modules: tenant.modules

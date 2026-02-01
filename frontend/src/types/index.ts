@@ -6,6 +6,10 @@ export interface User {
   tenantName: string;
   companyCode: string; // The slug
   modules?: string[];
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  employeeId?: string;
 }
 
 export interface AuthContextType {

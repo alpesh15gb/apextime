@@ -161,11 +161,11 @@ export const EmployeePortal = () => {
             <div className="bg-white p-6 pt-10 border-b border-gray-100 flex justify-between items-center sticky top-0 z-40">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-100">
-                        {user?.username?.[0].toUpperCase()}
+                        {user?.firstName?.[0] || user?.username?.[0]?.toUpperCase()}
                     </div>
                     <div>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Employee Portal</p>
-                        <p className="text-sm font-black text-gray-900 mt-1">{user?.username}</p>
+                        <p className="text-sm font-black text-gray-900 mt-1">{user?.fullName || user?.username}</p>
                     </div>
                 </div>
                 <button
