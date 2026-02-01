@@ -22,8 +22,8 @@ export const Attendance = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toLocaleDateString('en-CA'),
+    endDate: new Date().toLocaleDateString('en-CA'),
     employeeId: user?.role === 'employee' ? user.employeeId : '',
     departmentId: '',
   });
