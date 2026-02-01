@@ -83,10 +83,15 @@ export default function Devices() {
 
     const handleEdit = (device: any) => {
         setEditingDevice(device);
+
+        // ADMS protocols store Serial Number in the deviceId field
+        const isSerialProtocol = ['ESSL_ADMS', 'MATRIX_DIRECT', 'REALTIME_DIRECT', 'HIKVISION_DIRECT'].includes(device.protocol);
+
         setFormData({
             name: device.name || '',
             deviceId: device.deviceId || '',
-            serialNumber: device.serialNumber || '',
+            // If it's a serial-based protocol, the deviceId IS the serial number
+            serialNumber: device.serialNumber || (isSerialProtocol ? device.deviceId : ''),
             protocol: device.protocol || 'ESSL_ADMS',
             ipAddress: device.ipAddress || '',
             port: device.port || 4370,
