@@ -2,21 +2,14 @@ export interface User {
   id: string;
   username: string;
   role: string;
-<<<<<<< HEAD
   tenantId: string;
   tenantName: string;
   companyCode: string; // The slug
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
 }
 
 export interface AuthContextType {
   user: User | null;
-<<<<<<< HEAD
   login: (username: string, password: string, companyCode: string) => Promise<any>;
-=======
-  login: (username: string, password: string) => Promise<void>;
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   logout: () => void;
   isLoading: boolean;
 }
@@ -117,12 +110,17 @@ export interface AttendanceLog {
 }
 
 export interface DashboardStats {
+  type?: string;
   counts: {
     totalEmployees: number;
     activeEmployees: number;
     totalDepartments: number;
     totalBranches: number;
     devicesCount: number;
+    totalTenants?: number;
+    activeTenants?: number;
+    totalUsers?: number;
+    pendingLeaves?: number;
   };
   today: {
     present: number;
@@ -137,6 +135,7 @@ export interface DashboardStats {
     recordsSynced: number;
     status: string;
   } | null;
+  recentTenants?: Array<any>;
 }
 
 export interface SyncStatus {

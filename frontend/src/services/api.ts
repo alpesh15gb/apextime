@@ -44,6 +44,11 @@ export const authAPI = {
     api.post('/auth/change-password', { username, currentPassword, newPassword, companyCode }),
 };
 
+// Dashboard API
+export const dashboardAPI = {
+  getStats: () => api.get('/dashboard/stats'),
+};
+
 // ... (other exports)
 
 // Devices API
