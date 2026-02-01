@@ -157,7 +157,7 @@ export const EmployeeDocuments = ({ employeeId }: EmployeeDocumentsProps) => {
 
                                     <div className="flex items-center gap-2">
                                         <a
-                                            href={`${BASE_URL}${doc.url}`}
+                                            href={doc.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
