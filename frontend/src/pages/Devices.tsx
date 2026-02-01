@@ -14,7 +14,8 @@ import {
     CloudRain,
     ShieldCheck,
     RefreshCw,
-    Hash
+    Hash,
+    RotateCcw
 } from 'lucide-react';
 
 export default function Devices() {
