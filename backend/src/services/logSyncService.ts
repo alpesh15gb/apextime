@@ -107,11 +107,11 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         } catch (e) { }
 
         sqlConfigs.push({
-          server: d.ipAddress,
+          server: d.ipAddress.trim(),
           port: d.port || 1433,
-          user: d.username,
-          password: d.password,
-          database: dbName
+          user: d.username.trim(),
+          password: d.password.trim(),
+          database: dbName.trim()
         });
       }
     }
