@@ -34,6 +34,7 @@ services:
       - "5001"
     volumes:
       - ./backend/uploads:/app/uploads
+      - ./backups:/app/backups
     depends_on:
       - postgres
     networks:

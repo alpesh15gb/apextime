@@ -8,6 +8,7 @@ import { prisma } from './config/database';
 import logger from './config/logger';
 import { startLogSync } from './services/logSyncService';
 import { reconcileAttendance } from './services/attendanceReconciliationService';
+import { performBackup } from './services/backupService';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -118,6 +119,16 @@ cron.schedule('30 23 * * *', async () => {
     await reconcileAttendance();
   } catch (error) {
     logger.error('Nightly reconciliation failed:', error);
+  }
+});
+
+// Nightly System Backup (at 02:00)
+cron.schedule('0 2 * * *', async () => {
+  logger.info('Starting nightly system backup...');
+  try {
+    await performBackup();
+  } catch (error) {
+    logger.error('Nightly backup failed:', error);
   }
 });
 

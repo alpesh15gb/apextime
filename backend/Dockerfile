@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install dependencies for Prisma and native modules
-RUN apk add --no-cache openssl libc6-compat netcat-openbsd tzdata
+RUN apk add --no-cache openssl libc6-compat netcat-openbsd tzdata postgresql-client zip
 
 COPY package.json ./
 RUN npm install
