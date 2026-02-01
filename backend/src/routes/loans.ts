@@ -1,7 +1,7 @@
 
 import express from 'express';
 import { prisma } from '../config/database';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import logger from '../config/logger';
 
 const router = express.Router();
@@ -9,8 +9,9 @@ const router = express.Router();
 // List all loans (optionally by employee)
 router.get('/', authenticate, async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
         const { employeeId, status } = req.query;
-        const tenantId = req.user!.tenantId;
+        const tenantId = authReq.user!.tenantId;
 
         const where: any = { tenantId };
         if (employeeId) where.employeeId = String(employeeId);
@@ -35,8 +36,9 @@ router.get('/', authenticate, async (req, res) => {
 // Create Loan
 router.post('/', authenticate, async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
         const { employeeId, amount, tenureMonths, startDate, monthlyDeduction, interestRate } = req.body;
-        const tenantId = req.user!.tenantId;
+        const tenantId = authReq.user!.tenantId;
 
         if (!employeeId || !amount || !tenureMonths || !startDate) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -70,8 +72,9 @@ router.post('/', authenticate, async (req, res) => {
 // Get Loan Details (with deductions history)
 router.get('/:id', authenticate, async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
         const { id } = req.params;
-        const tenantId = req.user!.tenantId;
+        const tenantId = authReq.user!.tenantId;
 
         const loan = await prisma.loan.findUnique({
             where: { id },
@@ -97,9 +100,10 @@ router.get('/:id', authenticate, async (req, res) => {
 // Update Loan (e.g. Stop, Close)
 router.put('/:id', authenticate, async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
         const { id } = req.params;
         const { status } = req.body;
-        const tenantId = req.user!.tenantId;
+        const tenantId = authReq.user!.tenantId;
 
         const loan = await prisma.loan.update({
             where: { id }, // In a real multi-tenant app, check tenant access first, but Prisma will just fail if ID not found. safer to findMany or use middleware check.
