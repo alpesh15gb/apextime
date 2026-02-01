@@ -71,6 +71,9 @@ router.post('/', async (req, res) => {
         port,
         location,
         protocol: protocol || 'ESSL_ADMS',
+        username: req.body.username,
+        password: req.body.password,
+        config: req.body.databaseName ? JSON.stringify({ databaseName: req.body.databaseName }) : undefined,
       },
     });
 
@@ -86,7 +89,7 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const tenantId = (req as any).user.tenantId;
-    const { deviceId, name, ipAddress, port, location, isActive, status, protocol, serialNumber } = req.body;
+    const { deviceId, name, ipAddress, port, location, isActive, status, protocol, serialNumber, username, password, databaseName } = req.body;
 
     const device = await prisma.device.updateMany({
       where: { id, tenantId },
@@ -99,6 +102,9 @@ router.put('/:id', async (req, res) => {
         isActive,
         status,
         protocol,
+        username,
+        password,
+        config: databaseName ? JSON.stringify({ databaseName }) : undefined,
       },
     });
 
