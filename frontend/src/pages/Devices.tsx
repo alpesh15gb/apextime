@@ -269,109 +269,113 @@ export default function Devices() {
                                         placeholder="e.g. Gurugram Branch"
                                     />
                                 </div>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.serialNumber}
-                                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                                    className="app-input border-blue-100 focus:border-blue-500"
-                                    placeholder="e.g. BZ8G202160012"
-                                />
-                                <p className="text-[9px] font-bold text-blue-400 mt-2 italic px-1">Node will push to: http://82.112.236.81/api/iclock using this SN</p>
-                            </div>
-                            ) : (
-                            <>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Host / IP</label>
-                                    <input
-                                        type="text"
-                                        value={formData.ipAddress}
-                                        onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
-                                        className="app-input"
-                                        placeholder="192.168.1.50"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Port</label>
-                                    <input
-                                        type="number"
-                                        value={formData.port}
-                                        onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
-                                        className="app-input"
-                                        placeholder="1433"
-                                    />
-                                </div>
-                                {(formData.protocol === 'SQL_LOGS' || formData.protocol === 'SQL_MIRROR') && (
+
+                                {['ESSL_ADMS', 'MATRIX_DIRECT', 'REALTIME_DIRECT', 'HIKVISION_DIRECT'].includes(formData.protocol) ? (
+                                    <div className="col-span-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block text-blue-600 flex items-center gap-2">
+                                            <Hash className="w-3 h-3" /> Machine Serial Number (REQUIRED)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.serialNumber}
+                                            onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                                            className="app-input border-blue-100 focus:border-blue-500"
+                                            placeholder="e.g. BZ8G202160012"
+                                        />
+                                        <p className="text-[9px] font-bold text-blue-400 mt-2 italic px-1">Node will push to: http://82.112.236.81/api/iclock using this SN</p>
+                                    </div>
+                                ) : (
                                     <>
                                         <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Username</label>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Host / IP</label>
                                             <input
                                                 type="text"
-                                                value={formData.username}
-                                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                                value={formData.ipAddress}
+                                                onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
                                                 className="app-input"
-                                                placeholder="sa"
+                                                placeholder="192.168.1.50"
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Password</label>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Port</label>
                                             <input
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                                type="number"
+                                                value={formData.port}
+                                                onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
                                                 className="app-input"
-                                                placeholder="******"
+                                                placeholder="1433"
                                             />
                                         </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Database Name</label>
-                                            <input
-                                                type="text"
-                                                value={formData.databaseName}
-                                                onChange={(e) => setFormData({ ...formData, databaseName: e.target.value })}
-                                                className="app-input"
-                                                placeholder="eTimeTrackLite1"
-                                            />
-                                        </div>
+                                        {(formData.protocol === 'SQL_LOGS' || formData.protocol === 'SQL_MIRROR') && (
+                                            <>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Username</label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.username}
+                                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                                        className="app-input"
+                                                        placeholder="sa"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">SQL Password</label>
+                                                    <input
+                                                        type="password"
+                                                        value={formData.password}
+                                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                                        className="app-input"
+                                                        placeholder="******"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Database Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.databaseName}
+                                                        onChange={(e) => setFormData({ ...formData, databaseName: e.target.value })}
+                                                        className="app-input"
+                                                        placeholder="eTimeTrackLite1"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </>
                                 )}
-                            </>
-                            )
-    }
 
-                            <div className="col-span-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Hardware ID (Machine Index)</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.deviceId}
-                                    onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
-                                    className="app-input"
-                                    placeholder="e.g. 1"
-                                />
+                                <div className="col-span-2">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Hardware ID (Machine Index)</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.deviceId}
+                                        onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
+                                        className="app-input"
+                                        placeholder="e.g. 1"
+                                    />
+                                </div>
                             </div>
-                    </div >
 
-                    <div className="flex justify-end gap-4 mt-10">
-                        <button
-                            type="button"
-                            onClick={() => setShowModal(false)}
-                            className="px-6 py-3 text-gray-400 font-black text-[10px] uppercase tracking-widest hover:text-gray-600 transition-all"
-                        >
-                            Terminate
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100"
-                        >
-                            Confirm Configuration
-                        </button>
+                            <div className="flex justify-end gap-4 mt-10">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="px-6 py-3 text-gray-400 font-black text-[10px] uppercase tracking-widest hover:text-gray-600 transition-all"
+                                >
+                                    Terminate
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100"
+                                >
+                                    Confirm Configuration
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                </form >
-                    </div >
-                </div >
-            )
-}
-        </div >
+                </div>
+            )}
+        </div>
     );
 }
