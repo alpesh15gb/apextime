@@ -20,6 +20,7 @@ model Tenant {
   slug            String   @unique
   code            String   @unique
   domain          String?  @unique
+  plan            String   @default("free") // free, pro, enterprise
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
