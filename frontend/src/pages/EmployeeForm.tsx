@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, DollarSign, Building2, User, Phone, Mail, Fingerprint, Calendar, ShieldCheck, Briefcase, CreditCard } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { EmployeeDocuments } from '../components/EmployeeDocuments';
+import { EmployeeLoans } from '../components/EmployeeLoans';
 
 export const EmployeeForm = () => {
   const { id } = useParams();
@@ -407,6 +408,11 @@ export const EmployeeForm = () => {
         {/* Documents Section (Only when editing) */}
         {isEditing && id && (
           <EmployeeDocuments employeeId={id} />
+        )}
+
+        {/* Loans Section (Only when editing) */}
+        {isEditing && id && (
+          <EmployeeLoans employeeId={id} />
         )}
 
         {/* Action Footer */}

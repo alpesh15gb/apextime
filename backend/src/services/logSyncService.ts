@@ -431,7 +431,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       // 1. Identify all (UserId, Date) pairs affected by these new logs
       const affectedPairs = new Set<string>();
       for (const log of uniqueLogs.values()) {
-        const dateStr = log.LogDate.toISOString().split('T')[0];
+        const dateStr = log.LogDate.toLocaleDateString('en-CA');
         affectedPairs.add(`${log.UserId}|${dateStr}`);
       }
 
@@ -890,7 +890,7 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         logicalDate.setDate(logicalDate.getDate() - 1);
       }
 
-      const dateKey = logicalDate.toISOString().split('T')[0];
+      const dateKey = logicalDate.toLocaleDateString('en-CA');
       if (!logicalDayGroups.has(dateKey)) {
         logicalDayGroups.set(dateKey, []);
       }
@@ -1150,7 +1150,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
     const affectedPairs = new Set<string>();
     for (const log of logs) {
-      const dStr = log.punchTime.toISOString().split('T')[0];
+      const dStr = log.punchTime.toLocaleDateString('en-CA');
       affectedPairs.add(`${log.userId}|${dStr}`);
     }
 

@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
-import { Employee, Payroll, AttendanceLog, LeaveEntry } from '@prisma/client';
+import { Loan, Employee, Payroll, AttendanceLog, LeaveEntry } from '@prisma/client';
+import { getPTAmount } from '../config/complianceConstants';
 
 export interface PayrollResult {
     success: boolean;
@@ -45,6 +46,16 @@ export class PayrollEngine {
                     salaryComponents: {
                         where: { isActive: true },
                         include: { component: true }
+                    },
+                    location: true,
+                    branch: {
+                        include: { location: true }
+                    },
+                    loans: {
+                        where: {
+                            status: 'ACTIVE',
+                            startDate: { lte: new Date(year, month, 0) }
+                        }
                     }
                 }
             });
@@ -151,13 +162,49 @@ export class PayrollEngine {
                 components['ESI_ER'] = Math.ceil(totalEarnings * 0.0325);
             }
 
-            // PT Calculation
+            // PT Calculation (Multi-State Compliance)
             if (employee.isPTEnabled) {
-                let ptAmount = 0;
-                if (totalEarnings > 12000) ptAmount = 200;
-                else if (totalEarnings > 9000) ptAmount = 150;
+                // Determine State: Direct Location > Branch Location > 'MH' (Default)
+                const state = employee.location?.state ||
+                    employee.branch?.location?.state ||
+                    employee.location?.city ||
+                    'MH';
+
+                const ptAmount = getPTAmount(state, totalEarnings, month);
                 components['PT'] = ptAmount;
                 totalDeductions += ptAmount;
+            }
+
+            // 4. Loan Deductions
+            let totalLoanDeduction = 0;
+            const loanDeductionsToCreate: any[] = [];
+
+            if (employee.loans && employee.loans.length > 0) {
+                for (const loan of employee.loans) {
+                    // Check if loan is fully paid (double check)
+                    if (loan.balanceAmount <= 0) continue;
+
+                    // Determine deduction amount (min of EMI or remaining balance)
+                    // You might want to skip if Date < startDate (handled in query)
+                    // Also check if loan tenure is exceeded? (Implicit via balance)
+
+                    let deduction = loan.monthlyDeduction;
+                    if (deduction > loan.balanceAmount) {
+                        deduction = loan.balanceAmount;
+                    }
+
+                    // Don't deduct more than Net Salary?
+                    // Usually Loans are statutory/contractual, so they take priority 
+                    // But we can limit it. For now, deduct full.
+
+                    totalLoanDeduction += deduction;
+                    totalDeductions += deduction;
+
+                    loanDeductionsToCreate.push({
+                        loanId: loan.id,
+                        amount: deduction
+                    });
+                }
             }
 
             const netSalary = Math.round(totalEarnings - totalDeductions);
@@ -194,7 +241,8 @@ export class PayrollEngine {
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
                     otHours: totalOtHours,
-                    otPay: Math.round(otAmount)
+                    otPay: Math.round(otAmount),
+                    loanDeduction: totalLoanDeduction
                 },
                 create: {
                     tenant: { connect: { id: tenantId } },
@@ -219,9 +267,35 @@ export class PayrollEngine {
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
                     otHours: totalOtHours,
-                    otPay: Math.round(otAmount)
+                    otPay: Math.round(otAmount),
+                    loanDeduction: totalLoanDeduction
                 }
             });
+
+            // 5. Update Loan Balances (Side Effect)
+            // Note: This modifies the Loan table. If we re-run payroll, we need to handle this!
+            // Ideally, Loan Balance should only update when Payroll is FINALIZED/PAID.
+            // But for simple implementation, we assume generated payroll implies deduction.
+            // BETTER: Create `LoanDeduction` records linked to this payroll.
+            // And use `LoanDeduction` to calculate remaining balance dynamically or update on finalize.
+
+            // Current approach: We delete existing loan deductions for this payroll (if re-run) and create new ones.
+            // We do NOT update Loan.balanceAmount here. We update it when 'status' becomes PAID?
+            // OR: We just store the deduction record.
+
+            // Removing old deductions for this payroll if exists
+            await prisma.loanDeduction.deleteMany({ where: { payrollId: payroll.id } });
+
+            // Create new deductions
+            if (loanDeductionsToCreate.length > 0) {
+                await prisma.loanDeduction.createMany({
+                    data: loanDeductionsToCreate.map(d => ({
+                        ...d,
+                        tenantId,
+                        payrollId: payroll.id
+                    }))
+                });
+            }
 
             return {
                 success: true,
