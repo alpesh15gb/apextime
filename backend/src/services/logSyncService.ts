@@ -79,9 +79,50 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
     let allLogs: RawLog[] = [];
 
     // --- SQL Server Connection (SQL_LOGS) ---
-    if (biometricSettings) {
+    // --- SQL Server Connection (SQL_LOGS) ---
+    // Source 1: Legacy Tenant Settings
+    const sqlConfigs: BiometricConfig[] = [];
+
+    if (biometricSettings && biometricSettings.server) {
+      sqlConfigs.push(biometricSettings);
+    }
+
+    // Source 2: Devices with Protocol 'SQL_LOGS' or 'SQL_MIRROR'
+    const sqlDevices = await prisma.device.findMany({
+      where: {
+        tenantId: tenant.id,
+        protocol: { in: ['SQL_LOGS', 'SQL_MIRROR'] },
+        isActive: true
+      }
+    });
+
+    for (const d of sqlDevices) {
+      if (d.ipAddress && d.username && d.password) {
+        let dbName = 'eTimeTrackLite1';
+        try {
+          if (d.config) {
+            const parsed = JSON.parse(d.config);
+            if (parsed.databaseName) dbName = parsed.databaseName;
+          }
+        } catch (e) { }
+
+        sqlConfigs.push({
+          server: d.ipAddress,
+          port: d.port || 1433,
+          user: d.username,
+          password: d.password,
+          database: dbName
+        });
+      }
+    }
+
+    // Iterate over all SQL configurations
+    for (const config of sqlConfigs) {
       try {
-        const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
+        // Create a unique key for the pool to avoid collisions if multiple SQL servers exist
+        const poolKey = `${tenant.id}_${config.server}_${config.database}`;
+
+        const pool = await getDynamicSqlPool(config, poolKey);
         const result = await pool.request()
           .input('lastSyncTime', sql.DateTime, lastSyncTime)
           .query<RawLog>(`
@@ -92,7 +133,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
           `);
         allLogs = [...allLogs, ...result.recordset];
       } catch (err) {
-        logger.error(`SQL Sync failed for tenant ${tenant.id}:`, err);
+        logger.error(`SQL Sync failed for tenant ${tenant.id} source ${config.server}:`, err);
       }
     }
 
@@ -249,13 +290,14 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       logger.info(`Stored ${storedCount} raw logs`);
 
       // Load device user info from SQL Server if available
-      if (biometricSettings) {
+      for (const config of sqlConfigs) {
         try {
-          const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
+          const poolKey = `${tenant.id}_${config.server}_${config.database}`;
+          const pool = await getDynamicSqlPool(config, poolKey);
           await loadDeviceUserInfoFromSqlServer(pool);
-          logger.info(`Loaded ${deviceUserInfoCache.size} device users into cache for tenant ${tenant.id}`);
+          logger.info(`Loaded user info from SQL source ${config.server}`);
         } catch (err) {
-          logger.warn(`Could not load device user info for tenant ${tenant.id}:`, err);
+          logger.warn(`Could not load device user info from ${config.server} for tenant ${tenant.id}:`, err);
         }
       }
 
