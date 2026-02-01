@@ -32,6 +32,8 @@ services:
       SQL_SERVER_DATABASE: ${SQL_SERVER_DATABASE:-etimetracklite1}
     expose:
       - "5001"
+    volumes:
+      - ./backend/uploads:/app/uploads
     depends_on:
       - postgres
     networks:

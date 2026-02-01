@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
@@ -33,6 +34,7 @@ import settingsRoutes from './routes/settings';
 import tenantRoutes from './routes/tenants';
 import iclockRoutes from './routes/iclock';
 import hikvisionRoutes from './routes/hikvision';
+import documentRoutes from './routes/documents';
 
 dotenv.config();
 
@@ -44,6 +46,7 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.text({ type: 'text/plain', limit: '10mb' }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Request logging
 app.use((req, res, next) => {
@@ -79,6 +82,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/iclock', iclockRoutes);
 app.use('/api/hikvision', hikvisionRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

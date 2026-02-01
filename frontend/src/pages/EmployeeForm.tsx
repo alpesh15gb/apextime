@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, DollarSign, Building2, User, Phone, Mail, Fingerprint, Calendar, ShieldCheck, Briefcase, CreditCard } from 'lucide-react';
 import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
+import { EmployeeDocuments } from '../components/EmployeeDocuments';
 
 export const EmployeeForm = () => {
   const { id } = useParams();
@@ -402,6 +403,13 @@ export const EmployeeForm = () => {
             </div>
           </div>
         </div>
+
+        {/* Documents Section (Only when editing) */}
+        {isEditing && id && (
+          <EmployeeDocuments employeeId={id} />
+        )}
+
+        {/* Action Footer */}
 
         {/* Action Footer */}
         <div className="flex justify-end items-center gap-6 pt-10">

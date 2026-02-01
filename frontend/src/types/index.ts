@@ -151,3 +151,15 @@ export interface SyncStatus {
   message: string;
   createdAt: string;
 }
+
+export interface EmployeeDocument {
+  id: string;
+  employeeId: string;
+  type: string;
+  name: string;
+  url: string;
+  mimeType?: string;
+  size?: number;
+  uploadedBy?: string;
+  createdAt: string;
+}

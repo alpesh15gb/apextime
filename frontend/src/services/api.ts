@@ -211,4 +211,12 @@ export const tenantsAPI = {
   resetPassword: (id: string, password?: string) => api.post(`/tenants/${id}/reset-admin`, { password }),
 };
 
+export const documentsAPI = {
+  upload: (data: FormData) => api.post('/documents/upload', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  list: (employeeId: string) => api.get(`/documents/${employeeId}`),
+  delete: (id: string) => api.delete(`/documents/${id}`),
+};
+
 export default api;
