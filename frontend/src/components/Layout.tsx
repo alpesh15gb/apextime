@@ -98,8 +98,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           // If item is core, always show
           if (item.module === 'core') return true;
 
-          // If modules is undefined (legacy session), show all
-          if (!user?.modules) return true;
+          // If modules is undefined, assume NO extra modules (strict mode)
+          if (!user?.modules) return false;
 
           // If modules is empty array (explicitly no modules), show only core (handled above)
           // So if we reach here and array is empty, return false.
