@@ -123,15 +123,29 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         const poolKey = `${tenant.id}_${config.server}_${config.database}`;
 
         const pool = await getDynamicSqlPool(config, poolKey);
-        const result = await pool.request()
-          .input('lastSyncTime', sql.DateTime, lastSyncTime)
-          .query<RawLog>(`
-            SELECT DeviceLogId, DeviceId, UserId, LogDate, 'SQL_LOGS' as TableName
-            FROM DeviceLogs
-            WHERE LogDate > @lastSyncTime
-            ORDER BY LogDate ASC
-          `);
-        allLogs = [...allLogs, ...result.recordset];
+        // DYNAMIC TABLE SUPPORT
+        // fetch all tables starting with DeviceLogs to support eTimeTrackLite partitioning
+        const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE 'DeviceLogs%'");
+        const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME);
+
+        // Also include the base 'DeviceLogs' if it exists (it was found by the LIKE query usually, but handle duplicates if logic changes)
+        // Optimization: We could filter tables based on lastSyncTime, but for now querying all with LogDate filter is safer to catch back-dated punches
+
+        for (const tableName of tables) {
+          try {
+            const result = await pool.request()
+              .input('lastSyncTime', sql.DateTime, lastSyncTime)
+              .query<RawLog>(`
+                SELECT DeviceLogId, DeviceId, UserId, LogDate, '${tableName}' as TableName
+                FROM ${tableName}
+                WHERE LogDate > @lastSyncTime
+                ORDER BY LogDate ASC
+              `);
+            allLogs.push(...result.recordset);
+          } catch (tableErr) {
+            // Ignore empty tables or permission errors per table
+          }
+        }
       } catch (err) {
         logger.error(`SQL Sync failed for tenant ${tenant.id} source ${config.server}:`, err);
       }
