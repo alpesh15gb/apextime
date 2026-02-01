@@ -49,7 +49,72 @@ export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
-// ... (other exports)
+// Master Data APIs
+export const employeesAPI = {
+  getAll: (params?: Record<string, string>) => api.get('/employees', { params }),
+  getById: (id: string) => api.get(`/employees/${id}`),
+  create: (data: any) => api.post('/employees', data),
+  update: (id: string, data: any) => api.put(`/employees/${id}`, data),
+  delete: (id: string) => api.delete(`/employees/${id}`),
+  bulkUpdate: (ids: string[], data: any) => api.patch('/employees/bulk-update', { ids, data }),
+  importBankDetails: (data: any) => api.post('/employees/import-bank-details', data),
+  repairUserAccounts: () => api.post('/employees/repair-user-accounts'),
+};
+
+export const departmentsAPI = {
+  getAll: () => api.get('/departments'),
+  create: (data: any) => api.post('/departments', data),
+  update: (id: string, data: any) => api.put(`/departments/${id}`, data),
+  delete: (id: string) => api.delete(`/departments/${id}`),
+};
+
+export const branchesAPI = {
+  getAll: () => api.get('/branches'),
+  create: (data: any) => api.post('/branches', data),
+  update: (id: string, data: any) => api.put(`/branches/${id}`, data),
+  delete: (id: string) => api.delete(`/branches/${id}`),
+};
+
+export const shiftsAPI = {
+  getAll: () => api.get('/shifts'),
+  create: (data: any) => api.post('/shifts', data),
+  update: (id: string, data: any) => api.put(`/shifts/${id}`, data),
+  delete: (id: string) => api.delete(`/shifts/${id}`),
+};
+
+export const designationsAPI = {
+  getAll: () => api.get('/designations'),
+  create: (data: any) => api.post('/designations', data),
+  update: (id: string, data: any) => api.put(`/designations/${id}`, data),
+  delete: (id: string) => api.delete(`/designations/${id}`),
+};
+
+export const categoriesAPI = {
+  getAll: () => api.get('/categories'),
+  create: (data: any) => api.post('/categories', data),
+  update: (id: string, data: any) => api.put(`/categories/${id}`, data),
+  delete: (id: string) => api.delete(`/categories/${id}`),
+};
+
+export const locationsAPI = {
+  getAll: () => api.get('/locations'),
+  create: (data: any) => api.post('/locations', data),
+  update: (id: string, data: any) => api.put(`/locations/${id}`, data),
+  delete: (id: string) => api.delete(`/locations/${id}`),
+};
+
+export const attendanceAPI = {
+  getAll: (params?: any) => api.get('/attendance', { params }),
+  getSummary: (params?: any) => api.get('/attendance/summary', { params }),
+  update: (id: string, data: any) => api.put(`/attendance/${id}`, data),
+};
+
+export const holidaysAPI = {
+  getAll: (year?: number) => api.get('/holidays', { params: { year } }),
+  create: (data: any) => api.post('/holidays', data),
+  update: (id: string, data: any) => api.put(`/holidays/${id}`, data),
+  delete: (id: string) => api.delete(`/holidays/${id}`),
+};
 
 // Devices API
 export const devicesAPI = {
@@ -115,6 +180,13 @@ export const payrollAPI = {
   processPay: (data: any) => api.post('/payroll/process-pay', data),
 };
 
+export const reportsAPI = {
+  downloadExcel: (type: string, params: any) =>
+    api.get(`/reports/${type}/download/excel`, { params, responseType: 'blob' }),
+  downloadPDF: (type: string, params: any) =>
+    api.get(`/reports/${type}/download/pdf`, { params, responseType: 'blob' }),
+};
+
 export const fieldLogsAPI = {
   punch: (data: { type: 'IN' | 'OUT', location?: string, image?: string, remarks?: string }) =>
     api.post('/field-logs/punch', data),
@@ -135,4 +207,5 @@ export const tenantsAPI = {
   create: (data: any) => api.post('/tenants', data),
   update: (id: string, data: any) => api.put(`/tenants/${id}`, data),
 };
+
 export default api;
