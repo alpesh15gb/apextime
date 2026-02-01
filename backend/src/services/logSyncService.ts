@@ -430,7 +430,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       // 1. Identify all (UserId, Date) pairs affected by these new logs
       const affectedPairs = new Set<string>();
       for (const log of uniqueLogs.values()) {
-        const dateStr = log.LogDate.toLocaleDateString('en-CA');
+        const dateStr = log.LogDate.toISOString().split('T')[0];
         affectedPairs.add(`${log.UserId}|${dateStr}`);
       }
 
@@ -440,16 +440,18 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         try {
           const [uId, dStr] = pair.split('|');
           const targetDate = new Date(dStr);
-          const nextDay = new Date(targetDate);
-          nextDay.setDate(nextDay.getDate() + 1);
+          // To support night shifts, we need to fetch logs from 8 hours before 
+          // and up to 24 hours after. Example: For Feb 2nd, fetch from Feb 1st 4 PM 
+          // to Feb 3rd 4 AM.
+          const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
+          const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
 
-          // Get ALL raw logs for this user on this day from database (including previous syncs)
           const allRawLogsMatch = await prisma.rawDeviceLog.findMany({
             where: {
               userId: uId,
               punchTime: {
-                gte: targetDate,
-                lt: nextDay
+                gte: windowStart,
+                lt: windowEnd
               }
             },
             orderBy: { punchTime: 'asc' }
@@ -881,7 +883,7 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
 
     for (const log of userLogs) {
       let logicalDate = new Date(log.LogDate);
-      const hours = log.LogDate.getHours();
+      const hours = log.LogDate.getUTCHours();
 
       // IF Shift is Night Shift AND punch is early morning (before 8 AM), 
       // treat it as previous day's shift
@@ -889,7 +891,7 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         logicalDate.setDate(logicalDate.getDate() - 1);
       }
 
-      const dateKey = logicalDate.toLocaleDateString('en-CA');
+      const dateKey = logicalDate.toISOString().split('T')[0];
       if (!logicalDayGroups.has(dateKey)) {
         logicalDayGroups.set(dateKey, []);
       }
@@ -934,11 +936,11 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         const shiftStartObj = new Date(shift.startTime);
         const shiftEndObj = new Date(shift.endTime);
 
-        // Use Local hours/minutes for shift interpretation since SQL and Server are both in IST
-        const startHour = shiftStartObj.getHours();
-        const startMinute = shiftStartObj.getMinutes();
-        const endHour = shiftEndObj.getHours();
-        const endMinute = shiftEndObj.getMinutes();
+        // Use UTC hours/minutes for shift interpretation to bypass TZ offsets
+        const startHour = shiftStartObj.getUTCHours();
+        const startMinute = shiftStartObj.getUTCMinutes();
+        const endHour = shiftEndObj.getUTCHours();
+        const endMinute = shiftEndObj.getUTCMinutes();
 
         // Shift Start is on the Logical Date
         shiftStart = new Date(dateKey);
