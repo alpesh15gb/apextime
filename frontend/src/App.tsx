@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ModuleRoute } from './components/ModuleRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -55,28 +56,33 @@ function App() {
                       path="/"
                       element={<HomeRedirect />}
                     />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/employees" element={<Employees />} />
-                    <Route path="/employees/new" element={<EmployeeForm />} />
-                    <Route path="/employees/edit/:id" element={<EmployeeForm />} />
-                    <Route path="/departments" element={<Departments />} />
-                    <Route path="/shifts" element={<Shifts />} />
-                    <Route path="/locations" element={<Locations />} />
-                    <Route path="/branches" element={<Branches />} />
-                    <Route path="/designations" element={<Designations />} />
-                    <Route path="/attendance" element={<Attendance />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/monthly-report" element={<MonthlyReport />} />
-                    <Route path="/holidays" element={<Holidays />} />
-                    <Route path="/sync-diagnostics" element={<SyncDiagnostics />} />
-                    <Route path="/payroll" element={<Payroll />} />
-                    <Route path="/leaves" element={<Leaves />} />
-                    <Route path="/field-logs" element={<FieldLogs />} />
-                    <Route path="/portal" element={<EmployeePortal />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/ceo-vault" element={<CEOAnalytics />} />
-                    <Route path="/projects" element={<Projects />} />
-                    <Route path="/devices" element={<Devices />} />
+                    <Route path="/dashboard" element={<ModuleRoute module="core"><Dashboard /></ModuleRoute>} />
+                    <Route path="/employees" element={<ModuleRoute module="employees"><Employees /></ModuleRoute>} />
+                    <Route path="/employees/new" element={<ModuleRoute module="employees"><EmployeeForm /></ModuleRoute>} />
+                    <Route path="/employees/edit/:id" element={<ModuleRoute module="employees"><EmployeeForm /></ModuleRoute>} />
+
+                    {/* Masters - Linked to Employees */}
+                    <Route path="/departments" element={<ModuleRoute module="employees"><Departments /></ModuleRoute>} />
+                    <Route path="/shifts" element={<ModuleRoute module="employees"><Shifts /></ModuleRoute>} />
+                    <Route path="/locations" element={<ModuleRoute module="employees"><Locations /></ModuleRoute>} />
+                    <Route path="/branches" element={<ModuleRoute module="employees"><Branches /></ModuleRoute>} />
+                    <Route path="/designations" element={<ModuleRoute module="employees"><Designations /></ModuleRoute>} />
+
+                    <Route path="/attendance" element={<ModuleRoute module="attendance"><Attendance /></ModuleRoute>} />
+                    <Route path="/reports" element={<ModuleRoute module="reports"><Reports /></ModuleRoute>} />
+                    <Route path="/monthly-report" element={<ModuleRoute module="reports"><MonthlyReport /></ModuleRoute>} />
+                    <Route path="/holidays" element={<ModuleRoute module="attendance"><Holidays /></ModuleRoute>} />
+                    <Route path="/sync-diagnostics" element={<ModuleRoute module="attendance"><SyncDiagnostics /></ModuleRoute>} />
+
+                    <Route path="/payroll" element={<ModuleRoute module="payroll"><Payroll /></ModuleRoute>} />
+                    <Route path="/leaves" element={<ModuleRoute module="leaves"><Leaves /></ModuleRoute>} />
+                    <Route path="/field-logs" element={<ModuleRoute module="field_logs"><FieldLogs /></ModuleRoute>} />
+
+                    <Route path="/portal" element={<ModuleRoute module="core"><EmployeePortal /></ModuleRoute>} />
+                    <Route path="/settings" element={<ModuleRoute module="core"><Settings /></ModuleRoute>} />
+                    <Route path="/ceo-vault" element={<ModuleRoute module="reports"><CEOAnalytics /></ModuleRoute>} />
+                    <Route path="/projects" element={<ModuleRoute module="projects"><Projects /></ModuleRoute>} />
+                    <Route path="/devices" element={<ModuleRoute module="devices"><Devices /></ModuleRoute>} />
                     <Route path="/tenants" element={<Tenants />} />
                   </Routes>
                 </Layout>
