@@ -66,6 +66,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       ]
       : user?.role === 'superadmin'
         ? [
+          { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
           { path: '/tenants', icon: Building2, label: 'Tenants' },
           { path: '/settings', icon: Settings, label: 'System Settings' },
         ]
@@ -230,9 +231,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
-
             <div className="h-8 w-px bg-gray-200 mx-2"></div>
-
             <div className="flex items-center space-x-3 cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
                 {user?.username?.[0]?.toUpperCase() || 'A'}

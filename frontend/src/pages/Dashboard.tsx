@@ -8,14 +8,12 @@ import {
   CheckSquare,
   FileText,
   ClipboardCheck,
-  MoreVertical,
-  Activity,
-  ArrowUp,
-  ArrowDown
+  Building2,
+  Database
 } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
 import { DashboardStats } from '../types';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -41,7 +39,8 @@ ChartJS.register(
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { user } = useAuth();
+  const [stats, setStats] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,93 +59,141 @@ export const Dashboard = () => {
     }
   };
 
-  // Chart Data
-  const lineChartData = {
-    labels: ['0 Mon', '7 Tue', '2 Wed', '3 Thu', '4 Fri', '5 Sat', '4 Sun'],
-    datasets: [
-      {
-        label: 'Attendance',
-        data: [12, 19, 15, 25, 22, 30, 28], // Mock data or stats.history
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        tension: 0.4,
-      },
-    ],
-  };
+  // --------------------------------------------------------
+  // SUPER ADMIN VIEW
+  // --------------------------------------------------------
+  if (user?.role === 'superadmin') {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-800">Super Admin Overview</h2>
 
-  const lineChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      title: { display: false },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: '#f3f4f6' },
-        ticks: { font: { size: 10 } }
-      },
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 10 } }
-      }
-    }
-  };
+        {/* Top Global Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">Total Businesses</p>
+                <h3 className="text-2xl font-bold text-gray-900">{stats?.counts?.totalTenants || 0}</h3>
+              </div>
+            </div>
+          </div>
 
-  const donutData = {
-    labels: ['Completed', 'Pending', 'Issues'],
-    datasets: [
-      {
-        data: [300, 50, 100],
-        backgroundColor: [
-          'rgb(59, 130, 246)',
-          'rgb(243, 244, 246)',
-          'rgb(16, 185, 129)',
-        ],
-        borderWidth: 0,
-      },
-    ],
-  };
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 rounded-lg text-green-600">
+                <CheckSquare className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">Active Tenants</p>
+                <h3 className="text-2xl font-bold text-gray-900">{stats?.counts?.activeTenants || 0}</h3>
+              </div>
+            </div>
+          </div>
 
-  const donutOptions = {
-    cutout: '70%',
-    plugins: {
-      legend: { display: false }
-    }
-  };
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">Total System Users</p>
+                <h3 className="text-2xl font-bold text-gray-900">{stats?.counts?.totalUsers || 0}</h3>
+              </div>
+            </div>
+          </div>
 
-  const CircularProgress = ({ value, label, subLabel, color }: any) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center h-48 border border-gray-100">
-      <div className="relative w-24 h-24 flex items-center justify-center mb-3">
-        <svg className="w-full h-full transform -rotate-90">
-          <circle
-            cx="48"
-            cy="48"
-            r="40"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="transparent"
-            className="text-gray-100"
-          />
-          <circle
-            cx="48"
-            cy="48"
-            r="40"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="transparent"
-            strokeDasharray={251.2}
-            strokeDashoffset={251.2 - (251.2 * value) / 100}
-            className={color}
-          />
-        </svg>
-        <span className="absolute text-2xl font-bold text-gray-800">{value}%</span>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
+                <Database className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 font-medium">Total Employees</p>
+                <h3 className="text-2xl font-bold text-gray-900">{stats?.counts?.totalEmployees || 0}</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gradient-to-br from-[#111827] to-gray-800 rounded-2xl p-8 text-white relative overflow-hidden group">
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold mb-2">Manage Tenants</h3>
+              <p className="text-gray-400 mb-6 max-w-sm">Create, suspend, or configure new business accounts and their subscriptions.</p>
+              <button
+                onClick={() => navigate('/tenants')}
+                className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                Go to Tenants
+              </button>
+            </div>
+            <Building2 className="absolute right-[-20px] bottom-[-20px] w-48 h-48 text-gray-700 opacity-20 group-hover:scale-110 transition-transform" />
+          </div>
+
+          <div className="bg-white rounded-2xl p-8 border border-gray-200 relative overflow-hidden group">
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold mb-2 text-gray-900">System Settings</h3>
+              <p className="text-gray-500 mb-6 max-w-sm">Configure global variables, database connections, and system-wide policies.</p>
+              <button
+                onClick={() => navigate('/settings')}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-2 rounded-lg font-medium transition-colors border border-gray-200"
+              >
+                Go to Settings
+              </button>
+            </div>
+            <Database className="absolute right-[-20px] bottom-[-20px] w-48 h-48 text-gray-100 group-hover:scale-110 transition-transform" />
+          </div>
+        </div>
+
+        {/* Recent Activity Table (Tenants) */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="font-bold text-gray-800">Recently Added Businesses</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4">Business Name</th>
+                  <th className="px-6 py-4">Slug</th>
+                  <th className="px-6 py-4">Users Count</th>
+                  <th className="px-6 py-4">Created At</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {stats?.recentTenants?.map((tenant: any) => (
+                  <tr key={tenant.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{tenant.name}</td>
+                    <td className="px-6 py-4 text-gray-500">{tenant.slug}</td>
+                    <td className="px-6 py-4">
+                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                        {tenant._count?.users || 0} users
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-500">{new Date(tenant.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+                {(!stats?.recentTenants || stats.recentTenants.length === 0) && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-400">No data available</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
-      <h4 className="font-bold text-gray-800">{label}</h4>
-      <p className="text-xs text-gray-400 mt-1">{subLabel}</p>
-    </div>
-  );
+    );
+  }
 
+  // --------------------------------------------------------
+  // REGULAR ADMIN/MANAGER VIEW (Existing Dashboard)
+  // --------------------------------------------------------
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
@@ -211,8 +258,6 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
-
-
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 gap-6">

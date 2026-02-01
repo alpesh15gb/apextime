@@ -35,9 +35,7 @@ const HomeRedirect = () => {
   if (user?.role === 'manager') {
     return <Navigate to="/leaves" replace />;
   }
-  if (user?.role === 'superadmin') {
-    return <Navigate to="/tenants" replace />;
-  }
+  // Remove strict superadmin redirect to allow dashboard access
   return <Navigate to="/dashboard" replace />;
 };
 

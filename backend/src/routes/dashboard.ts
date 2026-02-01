@@ -1,5 +1,5 @@
+import { prisma, basePrisma } from '../config/database'; // We need basePrisma for global counts
 import express from 'express';
-import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 
@@ -10,6 +10,42 @@ router.use(authenticate);
 // Get dashboard stats
 router.get('/stats', async (req, res) => {
   try {
+    const user = (req as any).user;
+
+    // ------------------------------------------------------------------
+    // SUPER ADMIN DASHBOARD LOGIC (Global Stats)
+    // ------------------------------------------------------------------
+    if (user.role === 'superadmin') {
+      const totalTenants = await basePrisma.tenant.count();
+      const activeTenants = await basePrisma.tenant.count({ where: { isActive: true } });
+      const totalUsers = await basePrisma.user.count();
+
+      // Calculate total employees across all tenants (approximate since schema is multi-tenant partitioned logically)
+      // Since 'Employee' table has tenantId, we can just query it with basePrisma if we want TRUE global count
+      const totalEmployees = await basePrisma.employee.count();
+
+      const recentTenants = await basePrisma.tenant.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { users: true, employees: true } } }
+      });
+
+      return res.json({
+        type: 'superadmin', // Frontend can use this to switch views
+        counts: {
+          totalTenants,
+          activeTenants,
+          totalUsers,
+          totalEmployees
+        },
+        recentTenants
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // REGULAR ADMIN/MANAGER DASHBOARD LOGIC (Tenant Scoped)
+    // ------------------------------------------------------------------
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -28,6 +64,7 @@ router.get('/stats', async (req, res) => {
     let lastSync = null;
 
     // Execute queries sequentially to prevent total failure
+    // Note: 'prisma' client here automatically scopes to tenantId via middleware/extensions
     try {
       totalEmployees = await prisma.employee.count();
       activeEmployees = await prisma.employee.count({ where: { status: 'active' } });
@@ -36,7 +73,6 @@ router.get('/stats', async (req, res) => {
     try {
       totalDepartments = await prisma.department.count();
       totalBranches = await prisma.branch.count();
-      // Device usually has status='offline'/'online'
       devicesCount = await prisma.device.count();
     } catch (e) { console.error('Org count error', e); }
 
@@ -57,7 +93,7 @@ router.get('/stats', async (req, res) => {
         where: {
           date: { gte: today },
           status: 'Absent',
-          employee: { status: 'active' }
+          employee: { status: 'active' } // Prisma extension handles tenantId on employee relation implicitly
         }
       });
 
@@ -83,6 +119,7 @@ router.get('/stats', async (req, res) => {
     } catch (e) { console.error('Sync status error', e); }
 
     res.json({
+      type: 'admin',
       counts: {
         totalEmployees,
         activeEmployees,
