@@ -346,22 +346,38 @@ export const MonthlyReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {report?.reportData?.map((row, idx) => (
-                    <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-blue-50/10 transition-colors">
-                      <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-blue-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
-                        <div className="font-extrabold text-gray-900 text-[10px] truncate whitespace-nowrap w-28" title={row?.employee?.name}>{row?.employee?.name || 'Unknown'}</div>
-                        <div className="text-[8px] font-bold text-gray-400 truncate opacity-0 group-hover:opacity-100 transition-opacity">{row?.employee?.employeeCode || '-'}</div>
-                      </td>
-                      {row?.dailyData?.map((dayInfo, i) => (
-                        <td key={dayInfo?.day || i} className={`p-0.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
-                          {getCellContent(dayInfo)}
+                  {Object.entries(
+                    (report?.reportData || []).reduce((acc: Record<string, typeof report.reportData>, row) => {
+                      const dept = row.employee.department || 'Unassigned';
+                      if (!acc[dept]) acc[dept] = [];
+                      acc[dept].push(row);
+                      return acc;
+                    }, {})
+                  ).map(([dept, rows]) => (
+                    <>
+                      <tr key={`dept-${dept}`} className="bg-gray-100/80">
+                        <td colSpan={days.length + 5} className="px-3 py-1.5 font-black text-[10px] text-gray-500 uppercase tracking-widest border-b border-gray-200 sticky left-0 z-10 bg-gray-100/80">
+                          {dept} ({rows.length})
                         </td>
+                      </tr>
+                      {rows.map((row, idx) => (
+                        <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-blue-50/10 transition-colors">
+                          <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-blue-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
+                            <div className="font-extrabold text-gray-900 text-[10px] truncate whitespace-nowrap w-28" title={row?.employee?.name}>{row?.employee?.name || 'Unknown'}</div>
+                            <div className="text-[8px] font-bold text-gray-400 truncate">{row?.employee?.employeeCode || '-'}</div>
+                          </td>
+                          {row?.dailyData?.map((dayInfo, i) => (
+                            <td key={dayInfo?.day || i} className={`p-0.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
+                              {getCellContent(dayInfo)}
+                            </td>
+                          ))}
+                          <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row?.summary?.presentDays || 0}</td>
+                          <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row?.summary?.absentDays || 0}</td>
+                          <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row?.summary?.lateDays || 0}</td>
+                          <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row?.summary?.totalWorkingHours || 0).toFixed(0)}</td>
+                        </tr>
                       ))}
-                      <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row?.summary?.presentDays || 0}</td>
-                      <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row?.summary?.absentDays || 0}</td>
-                      <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row?.summary?.lateDays || 0}</td>
-                      <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row?.summary?.totalWorkingHours || 0).toFixed(0)}</td>
-                    </tr>
+                    </>
                   ))}
                 </tbody>
               </table>
