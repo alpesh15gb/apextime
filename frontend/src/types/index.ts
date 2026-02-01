@@ -5,6 +5,7 @@ export interface User {
   tenantId: string;
   tenantName: string;
   companyCode: string; // The slug
+  modules?: string[];
 }
 
 export interface AuthContextType {

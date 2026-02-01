@@ -12,6 +12,7 @@ export default function Tenants() {
         slug: '',
         domain: '',
         isActive: true,
+        modules: ['employees', 'attendance', 'leaves'], // Defaults
     });
 
     useEffect(() => {
@@ -53,6 +54,7 @@ export default function Tenants() {
             slug: tenant.slug,
             domain: tenant.domain || '',
             isActive: tenant.isActive,
+            modules: tenant.modules || [],
         });
         setShowModal(true);
     };
@@ -226,36 +228,65 @@ export default function Tenants() {
                                     placeholder="e.g. hr.acme.com"
                                 />
                             </div>
-                            <div className="flex items-center mt-4">
-                                <input
-                                    type="checkbox"
-                                    id="isActive"
-                                    checked={formData.isActive}
-                                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                />
-                                <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">Business is active</label>
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-8">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                                >
-                                    {editingTenant ? 'Save Changes' : 'Initialize Business'}
-                                </button>
-                            </div>
-                        </form>
+                            <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">Business is active</label>
                     </div>
-                </div>
-            )}
-        </div>
+
+                    <div className="border-t border-gray-100 pt-4 mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Enabled Modules</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {[
+                                { id: 'attendance', label: 'Attendance' },
+                                { id: 'leaves', label: 'Leaves' },
+                                { id: 'payroll', label: 'Payroll' },
+                                { id: 'reports', label: 'Reports' },
+                                { id: 'field_logs', label: 'Field Logs' },
+                                { id: 'projects', label: 'Projects' },
+                                { id: 'devices', label: 'Biometric Devices' },
+                                { id: 'employees', label: 'Employees (Core)' },
+                            ].map(module => (
+                                <div key={module.id} className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id={`module_${module.id}`}
+                                        checked={formData.modules?.includes(module.id)}
+                                        onChange={(e) => {
+                                            const currentModules = formData.modules || [];
+                                            if (e.target.checked) {
+                                                setFormData({ ...formData, modules: [...currentModules, module.id] });
+                                            } else {
+                                                setFormData({ ...formData, modules: currentModules.filter(m => m !== module.id) });
+                                            }
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <label htmlFor={`module_${module.id}`} className="ml-2 text-sm text-gray-600 cursor-pointer select-none">
+                                        {module.label}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-8">
+                        <button
+                            type="button"
+                            onClick={() => setShowModal(false)}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                        >
+                            {editingTenant ? 'Save Changes' : 'Initialize Business'}
+                        </button>
+                    </div>
+                </form>
+                    </div>
+                </div >
+            )
+}
+        </div >
     );
 }
