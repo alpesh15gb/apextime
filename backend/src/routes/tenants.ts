@@ -1,6 +1,7 @@
 import express from 'express';
-import { prisma } from '../config/database';
+import { prisma, basePrisma } from '../config/database';
 import { authenticate, authorize } from '../middleware/auth';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -31,7 +32,8 @@ router.post('/', async (req, res) => {
     try {
         const { name, slug, domain, settings } = req.body;
 
-        const tenant = await prisma.tenant.create({
+        // Use basePrisma to bypass RLS (since we are SuperAdmin (global) creating for another tenant)
+        const tenant = await basePrisma.tenant.create({
             data: {
                 name,
                 slug,
@@ -42,8 +44,34 @@ router.post('/', async (req, res) => {
             }
         });
 
+        // Create default admin user
+        const hashedPassword = await bcrypt.hash('admin', 10);
+        await basePrisma.user.create({
+            data: {
+                tenantId: tenant.id,
+                username: 'admin',
+                password: hashedPassword,
+                role: 'admin',
+            }
+        });
+
+        // Create default shift
+        await basePrisma.shift.create({
+            data: {
+                tenantId: tenant.id,
+                name: 'General Shift',
+                code: 'GS',
+                startTime: new Date('1970-01-01T09:00:00Z'),
+                endTime: new Date('1970-01-01T18:00:00Z'),
+                gracePeriodIn: 15,
+                gracePeriodOut: 15,
+                isNightShift: false,
+            }
+        });
+
         res.status(201).json(tenant);
     } catch (error: any) {
+        console.error('Create tenant error:', error);
         if (error.code === 'P2002') {
             return res.status(400).json({ error: 'Slug or Domain already exists' });
         }
