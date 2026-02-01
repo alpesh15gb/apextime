@@ -21,6 +21,7 @@ model Tenant {
   code            String   @unique
   domain          String?  @unique
   plan            String   @default("free") // free, pro, enterprise
+  modules         String[] @default(["attendance", "leaves", "employees"]) 
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
