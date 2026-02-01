@@ -95,10 +95,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/devices', icon: Cpu, label: 'Biometric Nodes', module: 'devices' },
           { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
         ].filter(item => {
-          // If user has no modules (legacy), show all.
-          // Or if item.module is 'core', always show.
-          if (!user?.modules || user.modules.length === 0) return true;
+          // If item is core, always show
           if (item.module === 'core') return true;
+
+          // If modules is undefined (legacy session), show all
+          if (!user?.modules) return true;
+
+          // If modules is empty array (explicitly no modules), show only core (handled above)
+          // So if we reach here and array is empty, return false.
+          if (user.modules.length === 0) return false;
+
           return user.modules.includes(item.module);
         });
 

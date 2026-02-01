@@ -17,13 +17,19 @@ export const ModuleRoute: React.FC<ModuleRouteProps> = ({ module, children }) =>
 
     // Legacy support: if no modules defined (old session), allow access
     // Ideally, valid sessions should have modules. You might want to force logout here if strictness is required.
-    if (!user?.modules || user.modules.length === 0) {
-        return <>{children}</>;
-    }
-
     // Core modules are always allowed
     if (module === 'core') {
         return <>{children}</>;
+    }
+
+    // Legacy support: if modules UNDEFINED (old session), allow access
+    if (!user?.modules) {
+        return <>{children}</>;
+    }
+
+    // If modules is empty array (explicitly no modules), deny access
+    if (user.modules.length === 0) {
+        return <Navigate to="/dashboard" replace />;
     }
 
     if (user.modules.includes(module)) {
