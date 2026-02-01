@@ -96,4 +96,38 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// Reset tenant admin password
+router.post('/:id/reset-admin', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { password } = req.body;
+
+        const hashedPassword = await bcrypt.hash(password || 'admin', 10);
+
+        // Use basePrisma to bypass RLS
+        await basePrisma.user.upsert({
+            where: {
+                username_tenantId: {
+                    username: 'admin',
+                    tenantId: id
+                }
+            },
+            update: {
+                password: hashedPassword
+            },
+            create: {
+                tenantId: id,
+                username: 'admin',
+                password: hashedPassword,
+                role: 'admin'
+            }
+        });
+
+        res.json({ message: 'Admin password reset successfully' });
+    } catch (error) {
+        console.error('Reset admin password error:', error);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
 export default router;

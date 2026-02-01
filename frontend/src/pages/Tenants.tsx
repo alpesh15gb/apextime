@@ -57,6 +57,17 @@ export default function Tenants() {
         setShowModal(true);
     };
 
+    const handleResetAdmin = async (tenant: any) => {
+        if (confirm(`Are you sure you want to reset the admin password for ${tenant.name}? It will be set to 'admin'.`)) {
+            try {
+                await tenantsAPI.resetPassword(tenant.id, 'admin');
+                alert('Admin password reset to "admin" successfully.');
+            } catch (error) {
+                alert('Failed to reset password.');
+            }
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -153,8 +164,16 @@ export default function Tenants() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button
+                                                onClick={() => handleResetAdmin(tenant)}
+                                                className="p-2 text-gray-400 hover:text-red-600 transition"
+                                                title="Reset Admin Password"
+                                            >
+                                                <Shield className="w-4 h-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => handleEdit(tenant)}
                                                 className="p-2 text-gray-400 hover:text-blue-600 transition"
+                                                title="Edit Tenant"
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>

@@ -206,6 +206,7 @@ export const tenantsAPI = {
   getAll: () => api.get('/tenants'),
   create: (data: any) => api.post('/tenants', data),
   update: (id: string, data: any) => api.put(`/tenants/${id}`, data),
+  resetPassword: (id: string, password?: string) => api.post(`/tenants/${id}/reset-admin`, { password }),
 };
 
 export default api;
