@@ -237,7 +237,7 @@ export const Attendance = () => {
                               <Clock className="w-4 h-4 text-emerald-600 group-hover/time:text-white transition-colors" />
                             </div>
                             <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
-                              {log.firstIn.match(/T(\d{2}:\d{2})/)?.[1] || '-'}
+                              {new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                             </span>
                           </div>
                         ) : (
@@ -251,7 +251,7 @@ export const Attendance = () => {
                               <Clock className="w-4 h-4 text-red-600 group-hover/time:text-white transition-colors" />
                             </div>
                             <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
-                              {log.lastOut.match(/T(\d{2}:\d{2})/)?.[1] || '-'}
+                              {new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                             </span>
                           </div>
                         ) : (
