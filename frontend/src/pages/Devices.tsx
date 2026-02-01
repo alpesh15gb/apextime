@@ -62,8 +62,9 @@ export default function Devices() {
             setShowModal(false);
             resetForm();
             fetchDevices();
-        } catch (error) {
-            alert('Operation failed');
+        } catch (error: any) {
+            console.error('Operation failed:', error);
+            alert(error.response?.data?.error || error.message || 'Operation failed');
         }
     };
 
