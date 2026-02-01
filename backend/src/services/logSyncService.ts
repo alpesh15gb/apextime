@@ -934,10 +934,11 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         const shiftStartObj = new Date(shift.startTime);
         const shiftEndObj = new Date(shift.endTime);
 
-        const startHour = shiftStartObj.getUTCHours();
-        const startMinute = shiftStartObj.getUTCMinutes();
-        const endHour = shiftEndObj.getUTCHours();
-        const endMinute = shiftEndObj.getUTCMinutes();
+        // Use Local hours/minutes for shift interpretation since SQL and Server are both in IST
+        const startHour = shiftStartObj.getHours();
+        const startMinute = shiftStartObj.getMinutes();
+        const endHour = shiftEndObj.getHours();
+        const endMinute = shiftEndObj.getMinutes();
 
         // Shift Start is on the Logical Date
         shiftStart = new Date(dateKey);
@@ -947,7 +948,7 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         shiftEnd = new Date(dateKey);
         shiftEnd.setHours(endHour, endMinute, 0, 0);
 
-        if (shift.isNightShift || endHour < startHour) {
+        if (endHour < startHour || (shift.isNightShift && endHour < 12)) {
           shiftEnd.setDate(shiftEnd.getDate() + 1);
         }
 
