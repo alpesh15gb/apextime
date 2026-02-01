@@ -6,10 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 export const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-<<<<<<< HEAD
   const [companyCode, setCompanyCode] = useState('');
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +19,7 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-<<<<<<< HEAD
       const response: any = await login(username, password, companyCode);
-=======
-      const response: any = await login(username, password);
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
       const user = response?.data?.user || JSON.parse(localStorage.getItem('user') || '{}');
 
       if (user?.role === 'employee') {
@@ -105,7 +98,6 @@ export const Login = () => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-<<<<<<< HEAD
                   <ShieldCheck className="w-3 h-3" /> Company Code
                 </label>
                 <input
@@ -120,8 +112,6 @@ export const Login = () => {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-=======
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
                   <User className="w-3 h-3" /> Username
                 </label>
                 <input
@@ -182,12 +172,7 @@ export const Login = () => {
             </p>
           </div>
         </div>
-<<<<<<< HEAD
       </div >
     </div >
-=======
-      </div>
-    </div>
->>>>>>> 3d0eb0a04349ba3760c3b41b88ef47f345d6486e
   );
 };
