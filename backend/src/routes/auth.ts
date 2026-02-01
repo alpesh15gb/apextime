@@ -73,7 +73,8 @@ router.post(
           username: user.username,
           role: user.role,
           tenantId: tenant.id,
-          tenantName: tenant.name
+          tenantName: tenant.name,
+          modules: tenant.modules
         },
       });
     } catch (error) {
