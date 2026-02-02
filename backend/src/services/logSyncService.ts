@@ -1007,6 +1007,22 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       }
 
       const dateKey = logicalDate.toISOString().split('T')[0];
+
+      // Robustness: Skip logs that occurred before the employee joined
+      if (employee.dateOfJoining) {
+        // Set joining date to start of day for comparison
+        const joiningDate = new Date(employee.dateOfJoining);
+        joiningDate.setHours(0, 0, 0, 0);
+
+        const currentLogicalDate = new Date(dateKey);
+        currentLogicalDate.setHours(0, 0, 0, 0);
+
+        if (currentLogicalDate < joiningDate) {
+          // logger.debug(`Skipping log for ${employee.employeeCode} on ${dateKey} because it is before joining date ${employee.dateOfJoining.toISOString()}`);
+          continue;
+        }
+      }
+
       if (!logicalDayGroups.has(dateKey)) {
         logicalDayGroups.set(dateKey, []);
       }
