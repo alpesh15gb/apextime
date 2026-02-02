@@ -325,25 +325,37 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       }
       logger.info(`Loaded ${employeeCache.size} employees into cache`);
 
-      // Pre-ensure devices exist and create a ID mapping
+      // Pre-fetch existing devices
+      const existingDevices = await prisma.device.findMany({
+        where: { tenantId: tenant.id }
+      });
       const deviceMap = new Map<string, string>(); // machineId -> internalUuid
-      const uniqueDeviceIds = new Set<string>();
-      for (const log of uniqueLogs.values()) {
-        uniqueDeviceIds.add(log.DeviceId.toString());
-      }
+      const existingDeviceIds = new Set(existingDevices.map(d => d.deviceId));
 
-      for (const dId of uniqueDeviceIds) {
-        const device = await prisma.device.upsert({
-          where: { deviceId_tenantId: { deviceId: dId, tenantId: tenant.id } },
-          update: {},
-          create: {
-            tenantId: tenant.id,
-            deviceId: dId,
-            name: `Biometric Device ${dId}`,
-            status: 'online',
+      for (const log of uniqueLogs.values()) {
+        const dId = log.DeviceId.toString();
+
+        // Find match in existing devices
+        const matched = existingDevices.find(d => d.deviceId === dId);
+        if (matched) {
+          deviceMap.set(dId, matched.id);
+        } else {
+          // Check if we already have a generic "SQL Source" device
+          let genericDevice = existingDevices.find(d => d.deviceId === 'SQL_IMPORT_GENERIC');
+          if (!genericDevice) {
+            genericDevice = await prisma.device.create({
+              data: {
+                tenantId: tenant.id,
+                deviceId: 'SQL_IMPORT_GENERIC',
+                name: 'SQL Source (Auto-Imported)',
+                status: 'online',
+                protocol: 'SQL_SERVER'
+              }
+            });
+            existingDevices.push(genericDevice);
           }
-        });
-        deviceMap.set(dId, device.id);
+          deviceMap.set(dId, genericDevice.id);
+        }
       }
 
       // Store raw device logs (with error handling for each)
