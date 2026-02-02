@@ -100,7 +100,9 @@ router.post('/cdata*', async (req, res) => {
             if (table === 'ATTLOG' || !table) {
                 if (parts.length >= 2) {
                     const userId = parts[0];
-                    const punchTime = new Date(parts[1]);
+                    // Force IST Interpretation: Machine sends "YYYY-MM-DD HH:mm:ss"
+                    // We treat this as explicit IST by appending the offset.
+                    const punchTime = new Date(parts[1].replace(' ', 'T') + '+05:30');
 
                     if (!isNaN(punchTime.getTime())) {
                         // AUTO-CREATE EMPLOYEE LOGIC
