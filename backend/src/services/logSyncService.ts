@@ -130,31 +130,43 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
              OR TABLE_NAME IN ('HikvisionLogs', 'v_events', 't_event_log', 't_attendance_record', 'v_attendance_record')
         `);
         const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME);
-        logger.info(`Discovered ${tables.length} tables for sync: ${tables.join(', ')}`);
-        console.log(`[SYNC] Discovered ${tables.length} tables: ${tables.join(', ')}`);
+        console.log(`[SYNC] Found ${tables.length} potential sync tables.`);
 
         for (const tableName of tables) {
           try {
+            // Get columns for this table to avoid "Invalid Column" errors
+            const colsResult = await pool.request().query(`
+                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '${tableName}'
+            `);
+            const colNames = colsResult.recordset.map((c: any) => c.COLUMN_NAME.toLowerCase());
+
             let query = '';
-            const lowerTable = tableName.toLowerCase();
-            if (lowerTable.includes('hik') || lowerTable.includes('event') || lowerTable.includes('attendance')) {
-              // HikCentral Schema Variants
-              // We try to find common column names: person_id, access_datetime, serial_no
+            const isHikTable = tableName.toLowerCase().includes('hik') || tableName.toLowerCase().includes('event') || tableName.toLowerCase().includes('attendance');
+
+            if (isHikTable) {
+              // Determine best columns dynamically
+              const idCol = colNames.find(c => ['logid', 'event_id', 'id', 'recordid'].includes(c)) || '1';
+              const userCol = colNames.find(c => ['person_id', 'employee_id', 'user_id', 'person_code'].includes(c)) || 'UserId';
+              const dateCol = colNames.find(c => ['access_datetime', 'event_time', 'time_stamp', 'logdate'].includes(c)) || 'LogDate';
+              const deviceCol = colNames.find(c => ['serial_no', 'device_serial', 'device_name'].includes(c)) || "'HIK_CORE'";
+              const nameCol = colNames.find(c => ['person_name', 'name', 'employee_name'].includes(c));
+
               query = `
                     SELECT 
-                        COALESCE(LogId, event_id, id) as DeviceLogId, 
-                        COALESCE(serial_no, device_serial, device_name, 'HIK_CORE') as DeviceId, 
-                        COALESCE(person_id, employee_id, user_id) as UserId, 
-                        COALESCE(access_datetime, event_time, time_stamp) as LogDate, 
+                        ${idCol} as DeviceLogId, 
+                        ${deviceCol} as DeviceId, 
+                        ${userCol} as UserId, 
+                        ${dateCol} as LogDate, 
+                        ${nameCol ? nameCol + ' as Name' : "NULL as Name"},
                         '${tableName}' as TableName
                     FROM ${tableName}
-                    WHERE COALESCE(access_datetime, event_time, time_stamp) > @lastSyncTime
-                    ORDER BY COALESCE(access_datetime, event_time, time_stamp) ASC
+                    WHERE ${dateCol} > @lastSyncTime
+                    ORDER BY ${dateCol} ASC
                 `;
             } else {
               // eTimeTrackLite Schema
               query = `
-                    SELECT DeviceLogId, DeviceId, UserId, LogDate, '${tableName}' as TableName
+                    SELECT DeviceLogId, DeviceId, UserId, LogDate, NULL as Name, '${tableName}' as TableName
                     FROM ${tableName}
                     WHERE LogDate > @lastSyncTime
                     ORDER BY LogDate ASC
@@ -163,8 +175,21 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
 
             const result = await pool.request()
               .input('lastSyncTime', sql.DateTime, lastSyncTime)
-              .query<RawLog>(query);
-            allLogs.push(...result.recordset);
+              .query<any>(query);
+
+            for (const log of result.recordset) {
+              if (log.Name && log.UserId) {
+                const uId = log.UserId.toString();
+                if (!deviceUserInfoCache.has(uId)) {
+                  deviceUserInfoCache.set(uId, {
+                    UserId: uId,
+                    Name: log.Name,
+                    DeviceId: 0
+                  });
+                }
+              }
+              allLogs.push(log);
+            }
           } catch (tableErr) {
             logger.warn(`Failed to query table ${tableName}:`, tableErr);
           }
