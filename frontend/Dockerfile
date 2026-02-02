@@ -5,7 +5,9 @@ WORKDIR /app
 
 # Accept API URL as build argument
 ARG REACT_APP_API_URL
+ARG VITE_APP_API_URL
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV VITE_APP_API_URL=${VITE_APP_API_URL}
 
 COPY package.json ./
 RUN npm install
