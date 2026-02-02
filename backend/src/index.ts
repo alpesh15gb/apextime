@@ -89,7 +89,11 @@ app.use('/api/loans', loanRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    version: '1.0.1-hikvision-v3',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Error handling
