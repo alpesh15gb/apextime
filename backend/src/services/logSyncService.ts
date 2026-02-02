@@ -120,7 +120,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       try {
         // Create a unique key for the pool to avoid collisions if multiple SQL servers exist
         const poolKey = `${tenant.id}_${config.server}_${config.database}`;
-
+        logger.info(`Attempting SQL connection: ${config.server}:${config.port} DB: ${config.database} User: ${config.user}`);
         const pool = await getDynamicSqlPool(config, poolKey);
         // DYNAMIC TABLE SUPPORT
         const tablesResult = await pool.request().query(`
