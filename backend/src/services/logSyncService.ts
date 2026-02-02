@@ -430,7 +430,12 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       // 1. Identify all (UserId, Date) pairs affected by these new logs
       const affectedPairs = new Set<string>();
       for (const log of uniqueLogs.values()) {
-        const dateStr = log.LogDate.toISOString().split('T')[0];
+        const hours = log.LogDate.getUTCHours();
+        let logicalDate = new Date(log.LogDate);
+        if (hours < 8) {
+          logicalDate.setUTCDate(logicalDate.getUTCDate() - 1);
+        }
+        const dateStr = logicalDate.toISOString().split('T')[0];
         affectedPairs.add(`${log.UserId}|${dateStr}`);
       }
 
@@ -885,10 +890,9 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       let logicalDate = new Date(log.LogDate);
       const hours = log.LogDate.getUTCHours();
 
-      // IF Shift is Night Shift AND punch is early morning (before 8 AM), 
-      // treat it as previous day's shift
-      if (employee.shift?.isNightShift && hours < 8) {
-        logicalDate.setDate(logicalDate.getDate() - 1);
+      // GLOBAL BUSINESS DAY BOUNDARY: Punches before 8 AM belong to previous day
+      if (hours < 8) {
+        logicalDate.setUTCDate(logicalDate.getUTCDate() - 1);
       }
 
       const dateKey = logicalDate.toISOString().split('T')[0];
@@ -915,7 +919,15 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       }
 
       const firstIn = uniqueTimedLogs[0].LogDate;
-      const lastOut = uniqueTimedLogs.length > 1 ? uniqueTimedLogs[uniqueTimedLogs.length - 1].LogDate : null;
+      let lastOut = null;
+
+      // Only set lastOut if there is a second punch and it's at least 1 minute later
+      if (uniqueTimedLogs.length > 1) {
+        const lastPunch = uniqueTimedLogs[uniqueTimedLogs.length - 1].LogDate;
+        if (lastPunch.getTime() - firstIn.getTime() > 60000) {
+          lastOut = lastPunch;
+        }
+      }
 
       // Calculate working hours
       let workingHours: number | null = null;
