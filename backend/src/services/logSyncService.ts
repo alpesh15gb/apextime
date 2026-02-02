@@ -1007,6 +1007,15 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
         const joinDate = new Date(employee.dateOfJoining);
         joinDate.setHours(0, 0, 0, 0);
         if (new Date(log.LogDate).setHours(0, 0, 0, 0) < joinDate.getTime()) continue;
+      } else {
+        // APEXTIME BARRIER: If no joining date, only allow logs within 2 days of record creation or after.
+        // This prevents 2024 logs from attaching to an employee created in 2026.
+        const creationBarrier = new Date(employee.createdAt);
+        creationBarrier.setDate(creationBarrier.getDate() - 2); // 2-day grace period
+        if (new Date(log.LogDate) < creationBarrier) {
+          logger.warn(`CREATION BARRIER: Rejecting historical log for ${employee.employeeCode} (Log Date: ${log.LogDate.toISOString().split('T')[0]}) because it occurred before the employee was added to Apextime.`);
+          continue;
+        }
       }
 
       let logicalDate = new Date(log.LogDate);

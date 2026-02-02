@@ -25,11 +25,12 @@ services:
       TZ: Asia/Kolkata
       JWT_SECRET: ${JWT_SECRET:-apextime-secret-key-2026}
       DATABASE_URL: postgresql://${POSTGRES_USER:-apextime}:${POSTGRES_PASSWORD:-apextime123}@postgres:5432/${POSTGRES_DB:-apextime}
-      SQL_SERVER_HOST: ${SQL_SERVER_HOST:-115.98.2.20}
-      SQL_SERVER_PORT: ${SQL_SERVER_PORT:-1433}
-      SQL_SERVER_USER: ${SQL_SERVER_USER:-essl}
-      SQL_SERVER_PASSWORD: ${SQL_SERVER_PASSWORD:-Keystone@456}
-      SQL_SERVER_DATABASE: ${SQL_SERVER_DATABASE:-etimetracklite1}
+      # External SQL Sync Config (Moved to Tenant Settings)
+      # SQL_SERVER_HOST: ${SQL_SERVER_HOST:-115.98.2.20}
+      # SQL_SERVER_PORT: ${SQL_SERVER_PORT:-1433}
+      # SQL_SERVER_USER: ${SQL_SERVER_USER:-essl}
+      # SQL_SERVER_PASSWORD: ${SQL_SERVER_PASSWORD:-Keystone@456}
+      # SQL_SERVER_DATABASE: ${SQL_SERVER_DATABASE:-etimetracklite1}
     expose:
       - "5001"
     volumes:
