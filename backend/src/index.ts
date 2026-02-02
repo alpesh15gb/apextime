@@ -91,9 +91,17 @@ app.use('/api/loans', loanRoutes);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: '1.0.1-hikvision-v3',
+    version: '1.0.1-hikvision-v4',
     timestamp: new Date().toISOString()
   });
+});
+
+app.get('/api/testing', (req, res) => {
+  res.send('DIRECT TEST WORKING');
+});
+
+app.get('/api/hik-test', (req, res) => {
+  res.send('TOP LEVEL HIK TEST WORKING');
 });
 
 // Error handling
