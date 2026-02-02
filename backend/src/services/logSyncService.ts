@@ -131,6 +131,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         `);
         const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME);
         logger.info(`Discovered ${tables.length} tables for sync: ${tables.join(', ')}`);
+        console.log(`[SYNC] Discovered ${tables.length} tables: ${tables.join(', ')}`);
 
         for (const tableName of tables) {
           try {
@@ -639,6 +640,7 @@ async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promis
     const allTablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES");
     const allTables = allTablesResult.recordset.map((r: any) => r.TABLE_NAME);
     logger.info(`SQL Source Tables: ${allTables.join(', ')}`);
+    console.log(`[SYNC] Full SQL Table List: ${allTables.join(', ')}`);
 
     const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('Employees', 't_person', 'Person', 't_person_info', 'v_person', 't_person_base')");
     const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME.toLowerCase());
@@ -669,6 +671,7 @@ async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promis
         `);
       usersList = result.recordset.map(u => ({ ...u, Name: u.Name }));
       logger.info(`Source matched HikCentral Schema. Found ${usersList.length} users in ${table}.`);
+      console.log(`[SYNC] Found ${usersList.length} user names in table: ${table}`);
     }
 
     for (const user of usersList) {
