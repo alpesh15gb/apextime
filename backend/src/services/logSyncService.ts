@@ -435,42 +435,8 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
               }
             }
 
-            // Fallback: Check if this userId maps to a name that already exists in another employee
-            let effectiveName = userInfo?.Name;
-
-            // Try to resolve proper name if it's currently numeric
-            if (!effectiveName || /^\d+$/.test(effectiveName.trim())) {
-              const properName = await lookupProperEmployeeName(userId);
-              if (properName) effectiveName = properName;
-            }
-
-            if (effectiveName && !/^\d+$/.test(effectiveName.trim())) {
-              const normalizedSearch = normalizeName(effectiveName);
-
-              // Find all employees and check normalized names
-              const allEmps = await prisma.employee.findMany({
-                where: { tenantId: tenant.id },
-                select: { id: true, firstName: true, lastName: true, employeeCode: true, deviceUserId: true }
-              });
-
-              const existingByName = allEmps.find(e => normalizeName(e.firstName, e.lastName) === normalizedSearch);
-
-              if (existingByName) {
-                // Link this userId to the existing employee
-                logger.info(`Found existing employee ${existingByName.employeeCode} by fuzzy name match "${effectiveName}" for userId ${userId}. Linking...`);
-
-                // If the existing employee doesn't have a deviceUserId yet, or it's the numeric version of this one
-                if (!existingByName.deviceUserId || /^\d+$/.test(existingByName.deviceUserId)) {
-                  await prisma.employee.update({
-                    where: { id: existingByName.id },
-                    data: { deviceUserId: userId.toString() }
-                  });
-                }
-
-                employeeCache.set(userId, existingByName.id);
-                // Continue to name check below
-              }
-            }
+            // Name matching is disabled to prevent incorrect mappings for payroll. 
+            // Employees must be linked via explicit deviceUserId or employeeCode.
 
             if (!employeeCache.has(userId)) {
               const newEmployee = await createEmployeeFromDeviceLog(userId, tenant.id);
