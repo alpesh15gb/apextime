@@ -1,10 +1,9 @@
-
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function nukeKeystone() {
     const tenantName = 'Keystone Infra Pvt Ltd';
-    console.log(`--- NUKING DATA FOR TENANT: ${tenantName} ---`);
+    console.log(`--- INDUSTRIAL STRENGTH NUKE: ${tenantName} ---`);
 
     const tenant = await prisma.tenant.findFirst({
         where: { name: tenantName }
@@ -15,69 +14,62 @@ async function nukeKeystone() {
         return;
     }
 
-    const tId = tenant.id;
-    console.log(`Found Tenant ID: ${tId}. Starting cascade deletion...`);
+    const tid = tenant.id;
+    console.log(`Tenant ID: ${tid}. Starting surgical cleanup...`);
 
     try {
-        // 1. Attendance & Raw Logs
-        console.log('Deleting Attendance Logs...');
-        await prisma.attendanceLog.deleteMany({ where: { tenantId: tId } });
+        // 1. Transactional Data (Logs)
+        console.log('Step 1: Clearing Attendance & Raw Logs...');
+        await prisma.attendanceLog.deleteMany({ where: { tenantId: tid } });
 
-        console.log('Deleting Raw Device Logs...');
-        await prisma.rawDeviceLog.deleteMany({ where: { tenantId: tId } });
+        // Surgical Log Wipe: Get all devices first to ensure no orphans are left
+        const devices = await prisma.device.findMany({ where: { tenantId: tid } });
+        const dIds = devices.map(d => d.id);
+        console.log(`Found ${dIds.length} devices. Cleaning their logs...`);
 
-        // 2. Payroll & Payslips
-        console.log('Deleting Payslips & Payroll...');
-        await prisma.payslip.deleteMany({ where: { tenantId: tId } });
-        await prisma.payroll.deleteMany({ where: { tenantId: tId } });
+        await prisma.rawDeviceLog.deleteMany({ where: { deviceId: { in: dIds } } });
+        await prisma.rawDeviceLog.deleteMany({ where: { tenantId: tid } });
+        await prisma.deviceCommand.deleteMany({ where: { deviceId: { in: dIds } } });
 
-        // 3. Leaves & Balances
-        console.log('Deleting Leave Data...');
-        await prisma.leaveBalance.deleteMany({ where: { tenantId: tId } });
-        await prisma.leaveEntry.deleteMany({ where: { tenantId: tId } });
+        // 2. Financial & HR Data
+        console.log('Step 2: Clearing Payroll, Payslips, Loans...');
+        await prisma.loan.deleteMany({ where: { tenantId: tid } });
+        await prisma.payslip.deleteMany({ where: { tenantId: tid } });
+        await prisma.payroll.deleteMany({ where: { tenantId: tid } });
+        await prisma.employeeSalaryComponent.deleteMany({ where: { tenantId: tid } });
+        await prisma.employeeDocument.deleteMany({ where: { tenantId: tid } });
 
-        // 4. Employee Related
-        console.log('Deleting Loans, Documents, Salary Components...');
-        await prisma.loan.deleteMany({ where: { tenantId: tId } });
-        await prisma.employeeDocument.deleteMany({ where: { tenantId: tId } });
-        await prisma.employeeSalaryComponent.deleteMany({ where: { tenantId: tId } });
-        await prisma.employeeShift.deleteMany({ where: { tenantId: tId } });
-        await prisma.fieldLog.deleteMany({ where: { tenantId: tId } });
+        // 3. Leave & Attendance Master
+        console.log('Step 3: Clearing Leaves & Shifts...');
+        await prisma.leaveBalance.deleteMany({ where: { tenantId: tid } });
+        await prisma.leaveEntry.deleteMany({ where: { tenantId: tid } });
+        await prisma.employeeShift.deleteMany({ where: { tenantId: tid } });
+        await prisma.fieldLog.deleteMany({ where: { tenantId: tid } });
 
-        // 5. Employees & Users
-        // Important: Some Employees might be linked to Users.
-        console.log('Deleting Employees...');
-        // We first handle User references if any
-        const employees = await prisma.employee.findMany({ where: { tenantId: tId }, select: { id: true } });
-        const empIds = employees.map(e => e.id);
+        // 4. Employee & User Records
+        console.log('Step 4: Clearing Employees & System Users...');
+        const emps = await prisma.employee.findMany({ where: { tenantId: tid }, select: { id: true } });
+        const eIds = emps.map(e => e.id);
 
-        await prisma.user.deleteMany({ where: { employeeId: { in: empIds } } });
-        await prisma.employee.deleteMany({ where: { tenantId: tId } });
+        await prisma.user.deleteMany({ where: { employeeId: { in: eIds } } });
+        await prisma.employee.deleteMany({ where: { tenantId: tid } });
 
-        // 6. Devices
-        console.log('Deleting Devices...');
-        await prisma.device.deleteMany({ where: { tenantId: tId } });
+        // 5. Hardware & Master Structure
+        console.log('Step 5: Clearing Devices & Orgz Structure...');
+        await prisma.device.deleteMany({ where: { tenantId: tid } });
+        await prisma.holiday.deleteMany({ where: { tenantId: tid } });
+        await prisma.designation.deleteMany({ where: { tenantId: tid } });
+        await prisma.department.deleteMany({ where: { tenantId: tid } });
+        await prisma.branch.deleteMany({ where: { tenantId: tid } });
+        await prisma.category.deleteMany({ where: { tenantId: tid } });
+        await prisma.location.deleteMany({ where: { tenantId: tid } });
+        await prisma.shift.deleteMany({ where: { tenantId: tid } });
+        await prisma.syncLog.deleteMany({ where: { tenantId: tid } });
 
-        // 7. Structure (Optional - but starting fresh usually means this too)
-        console.log('Deleting Departments, Designations, Branches, Shifts...');
-        await prisma.holiday.deleteMany({ where: { tenantId: tId } });
-        await prisma.designation.deleteMany({ where: { tenantId: tId } });
-        await prisma.department.deleteMany({ where: { tenantId: tId } });
-        await prisma.branch.deleteMany({ where: { tenantId: tId } });
-        await prisma.category.deleteMany({ where: { tenantId: tId } });
-        await prisma.location.deleteMany({ where: { tenantId: tId } });
-        await prisma.shift.deleteMany({ where: { tenantId: tId } });
-
-        // 8. Sync Logs
-        await prisma.syncLog.deleteMany({ where: { tenantId: tId } });
-
-        console.log('--- CLEANUP COMPLETE ---');
-        console.log(`Tenant "${tenantName}" is now an empty shell. Ready for fresh import.`);
+        console.log('--- KEYSTONE IS NOW 100% EMPTY ---');
     } catch (error) {
-        console.error('DELETION FAILED:', error);
+        console.error('NUKE FAILED:', error);
     }
 }
 
-nukeKeystone()
-    .catch(e => console.error(e))
-    .finally(() => prisma.$disconnect());
+nukeKeystone().finally(() => prisma.$disconnect());
