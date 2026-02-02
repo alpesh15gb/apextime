@@ -284,7 +284,12 @@ export default function Devices() {
                                             className="app-input border-blue-100 focus:border-blue-500"
                                             placeholder="e.g. BZ8G202160012"
                                         />
-                                        <p className="text-[9px] font-bold text-blue-400 mt-2 italic px-1">Node will push to: {window.location.origin}/api/iclock using this SN</p>
+                                        <p className="text-[9px] font-bold text-blue-400 mt-2 italic px-1">
+                                            {formData.protocol === 'HIKVISION_DIRECT'
+                                                ? `Machine must push to: ${window.location.origin}/api/hikvision/event`
+                                                : `Node will push to: ${window.location.origin}/api/iclock using this SN`
+                                            }
+                                        </p>
                                     </div>
                                 ) : (
                                     <>

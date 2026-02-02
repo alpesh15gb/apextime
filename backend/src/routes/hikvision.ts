@@ -12,9 +12,10 @@ const router = express.Router();
 
 router.post('/event', async (req, res) => {
     try {
+        console.log(`[HIK_DIRECT] Incoming event from ${req.ip}`);
         // Log the incoming request for debugging (Hikvision can send multipart or raw JSON/XML)
         const eventData = req.body;
-        const SN = req.headers['x-device-serial'] || eventData?.serialNo || eventData?.EventNotification?.serialNo;
+        const SN = req.headers['x-device-serial'] || req.headers['x-device-id'] || eventData?.serialNo || eventData?.EventNotification?.serialNo;
 
         if (!SN) {
             // Some versions send it in the body, others in headers
@@ -32,13 +33,14 @@ router.post('/event', async (req, res) => {
         }
 
         // Hikvision Event Mapping
-        // Standard keys: employeeNo (String/Number), time (ISO Date)
-        const userId = eventData?.employeeNo || eventData?.EventNotification?.employeeNo;
-        const eventTime = eventData?.time || eventData?.EventNotification?.time;
+        const userId = eventData?.employeeNo || eventData?.EventNotification?.employeeNo || eventData?.AccessControllerEvent?.employeeNoString;
+        const eventTime = eventData?.time || eventData?.EventNotification?.time || eventData?.AccessControllerEvent?.dateTime;
+        const userName = eventData?.name || eventData?.EventNotification?.name || eventData?.AccessControllerEvent?.name;
 
         if (userId && eventTime) {
             const punchTime = new Date(eventTime);
-            const uniqueId = `HIK_DIRECT_${SN}_${userId}_${punchTime.getTime()}`;
+            const userIdStr = userId.toString();
+            const uniqueId = `HIK_DIRECT_${SN}_${userIdStr}_${punchTime.getTime()}`;
 
             await prisma.rawDeviceLog.upsert({
                 where: { id: uniqueId },
@@ -47,16 +49,49 @@ router.post('/event', async (req, res) => {
                     id: uniqueId,
                     tenantId: device.tenantId,
                     deviceId: device.id,
-                    userId: userId.toString(),
-                    deviceUserId: userId.toString(),
+                    userId: userIdStr,
+                    deviceUserId: userIdStr,
                     timestamp: punchTime,
                     punchTime: punchTime,
-                    punchType: '0', // 0 = Generic match
+                    punchType: '0',
                     isProcessed: false
                 }
             });
 
-            logger.info(`Hikvision Direct: Received log for User ${userId} from ${SN}`);
+            // Auto-create/update employee if name is available and employee doesn't have a real name yet
+            if (userName && !/^\d+$/.test(userName)) {
+                const existingEmployee = await prisma.employee.findFirst({
+                    where: { tenantId: device.tenantId, deviceUserId: userIdStr }
+                });
+
+                const nameParts = userName.trim().split(' ');
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(' ') || '';
+
+                if (existingEmployee) {
+                    if (existingEmployee.firstName === 'Employee' || /^\d+$/.test(existingEmployee.firstName)) {
+                        await prisma.employee.update({
+                            where: { id: existingEmployee.id },
+                            data: { firstName, lastName }
+                        });
+                        logger.info(`Hikvision Direct: Updated name for ${userIdStr} to ${userName}`);
+                    }
+                } else {
+                    await prisma.employee.create({
+                        data: {
+                            tenantId: device.tenantId,
+                            employeeCode: userIdStr,
+                            firstName,
+                            lastName,
+                            deviceUserId: userIdStr,
+                            isActive: true
+                        }
+                    });
+                    logger.info(`Hikvision Direct: Created new employee ${userName} (ID: ${userIdStr})`);
+                }
+            }
+
+            logger.info(`Hikvision Direct: Received log for User ${userIdStr} from ${SN}`);
         }
 
         // Hikvision expects a 200 OK or a specific XML response
