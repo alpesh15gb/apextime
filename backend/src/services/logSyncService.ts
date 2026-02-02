@@ -123,26 +123,32 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
 
         const pool = await getDynamicSqlPool(config, poolKey);
         // DYNAMIC TABLE SUPPORT
-        // fetch all tables starting with DeviceLogs to support eTimeTrackLite partitioning
-        // Also support HikCentral tables
-        const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE 'DeviceLogs%' OR TABLE_NAME IN ('HikvisionLogs', 'v_events')");
+        const tablesResult = await pool.request().query(`
+          SELECT TABLE_NAME 
+          FROM INFORMATION_SCHEMA.TABLES 
+          WHERE TABLE_NAME LIKE 'DeviceLogs%' 
+             OR TABLE_NAME IN ('HikvisionLogs', 'v_events', 't_event_log', 't_attendance_record', 'v_attendance_record')
+        `);
         const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME);
+        logger.info(`Discovered ${tables.length} tables for sync: ${tables.join(', ')}`);
 
         for (const tableName of tables) {
           try {
             let query = '';
-            if (tableName === 'HikvisionLogs' || tableName === 'v_events') {
-              // HikCentral Schema
+            const lowerTable = tableName.toLowerCase();
+            if (lowerTable.includes('hik') || lowerTable.includes('event') || lowerTable.includes('attendance')) {
+              // HikCentral Schema Variants
+              // We try to find common column names: person_id, access_datetime, serial_no
               query = `
                     SELECT 
-                        LogId as DeviceLogId, 
-                        COALESCE(serial_no, device_name, 'HIK_CORE') as DeviceId, 
-                        person_id as UserId, 
-                        access_datetime as LogDate, 
+                        COALESCE(LogId, event_id, id) as DeviceLogId, 
+                        COALESCE(serial_no, device_serial, device_name, 'HIK_CORE') as DeviceId, 
+                        COALESCE(person_id, employee_id, user_id) as UserId, 
+                        COALESCE(access_datetime, event_time, time_stamp) as LogDate, 
                         '${tableName}' as TableName
                     FROM ${tableName}
-                    WHERE access_datetime > @lastSyncTime
-                    ORDER BY access_datetime ASC
+                    WHERE COALESCE(access_datetime, event_time, time_stamp) > @lastSyncTime
+                    ORDER BY COALESCE(access_datetime, event_time, time_stamp) ASC
                 `;
             } else {
               // eTimeTrackLite Schema
