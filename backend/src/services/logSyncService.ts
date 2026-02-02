@@ -18,7 +18,7 @@ interface ProcessedAttendance {
   date: Date;
   firstIn: Date | null;
   lastOut: Date | null;
-  workingHours: number | null;
+  workingHours: number;
   totalPunches: number;
   shiftStart: Date | null;
   shiftEnd: Date | null;
@@ -369,17 +369,28 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
 
       // Store raw device logs (with error handling for each)
       let storedCount = 0;
+      let duplicateCount = 0;
       for (const log of uniqueLogs.values()) {
         try {
           const internalDeviceId = deviceMap.get(log.DeviceId.toString());
           if (!internalDeviceId) continue;
 
-          // Synthesize a globally unique record ID to prevent collisions between different tables/devices
+          // Synthesize a globally unique record ID
           const uniqueRecordId = `${log.TableName || 'DL'}_${log.DeviceId}_${log.DeviceLogId}`;
 
           await prisma.rawDeviceLog.upsert({
-            where: { id: uniqueRecordId },
-            update: {},
+            where: {
+              deviceId_deviceUserId_timestamp_tenantId: {
+                deviceId: internalDeviceId,
+                deviceUserId: log.UserId.toString(),
+                timestamp: log.LogDate,
+                tenantId: tenant.id
+              }
+            },
+            update: {
+              // If it exists, we might want to update the original log ID if this one is from a "better" table
+              // but for now, just leaving it alone is fine.
+            },
             create: {
               id: uniqueRecordId,
               tenantId: tenant.id,
@@ -393,11 +404,15 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
             },
           });
           storedCount++;
-        } catch (error) {
-          logger.warn(`Failed to store raw log ${log.DeviceLogId}: ${error instanceof Error ? error.message : 'Unknown'}`);
+        } catch (error: any) {
+          if (error.code === 'P2002') {
+            duplicateCount++;
+          } else {
+            logger.warn(`Failed to store raw log ${log.DeviceLogId}: ${error.message}`);
+          }
         }
       }
-      console.log(`[STORAGE] Successfully committed ${storedCount} raw logs to database archive.`);
+      console.log(`[STORAGE] Committed ${storedCount} raw logs (${duplicateCount} duplicates skipped).`);
       logger.info(`Stored ${storedCount} raw logs`);
 
       // Load device user info from SQL Server if available
@@ -1026,7 +1041,7 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       }
 
       // Calculate working hours
-      let workingHours: number | null = null;
+      let workingHours = 0;
       if (firstIn && lastOut) {
         const diffMs = lastOut.getTime() - firstIn.getTime();
         workingHours = diffMs / (1000 * 60 * 60);
