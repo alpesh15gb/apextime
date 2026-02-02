@@ -45,9 +45,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_APP_API_URL: /api
+        REACT_APP_API_URL: /api
     container_name: apextime-frontend
     environment:
       VITE_APP_API_URL: /api
+      REACT_APP_API_URL: /api
     networks:
       - apextime-network
 

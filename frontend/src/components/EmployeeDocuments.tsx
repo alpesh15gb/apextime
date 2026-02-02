@@ -87,8 +87,8 @@ export const EmployeeDocuments = ({ employeeId }: EmployeeDocumentsProps) => {
         }
     };
 
-    const API_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:5001/api';
-    const BASE_URL = API_URL.replace('/api', ''); // Get base for static files
+    const API_URL = import.meta.env.VITE_APP_API_URL || import.meta.env.REACT_APP_API_URL || '/api';
+    const BASE_URL = API_URL === '/api' ? '' : API_URL.replace('/api', ''); // Get base for static files
 
     return (
         <div className="app-card overflow-hidden">

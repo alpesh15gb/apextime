@@ -28,7 +28,7 @@ export const CEOAnalytics = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/ceo/ceo-vault', {
+            const response = await axios.get('/api/ceo/ceo-vault', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setData(response.data);
