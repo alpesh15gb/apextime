@@ -269,7 +269,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         tenantId: tenant.id,
         isProcessed: false
       },
-      take: 10000,
+      take: 200000,
       orderBy: { timestamp: 'desc' } // Prioritize recent punches
     });
 
@@ -995,6 +995,11 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
 
         // Exact name match or significant overlap required
         const isMatch = logName.includes(empFirst) || empFirst.includes(logName) || (empLast && logName.includes(empLast));
+
+        if (!isMatch) {
+          logger.warn(`IDENTITY LOCK: Rejecting log for ID ${employee.employeeCode} because name "${log.UserName}" does not match system name "${employee.firstName}".`);
+          continue;
+        }
       }
 
       // Standard logic: skip if explicitly before joining date
