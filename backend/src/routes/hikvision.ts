@@ -87,6 +87,7 @@ router.post('/event', async (req, res) => {
                     deviceId: device.id,
                     userId: userIdStr,
                     deviceUserId: userIdStr,
+                    userName: userName,
                     timestamp: punchTime,
                     punchTime: punchTime,
                     punchType: '0',

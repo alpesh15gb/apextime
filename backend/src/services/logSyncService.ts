@@ -10,6 +10,7 @@ interface RawLog {
   UserId: string;
   LogDate: Date;
   TableName?: string;
+  UserName?: string;
 }
 
 interface ProcessedAttendance {
@@ -188,7 +189,8 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
                   });
                 }
               }
-              allLogs.push(log);
+              // Map SQL Name to RawLog UserName for identity protection
+              allLogs.push({ ...log, UserName: log.Name?.toString() });
             }
           } catch (tableErr) {
             logger.warn(`Failed to query table ${tableName}:`, tableErr);
@@ -234,7 +236,8 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
             DeviceId: row.serial_no || row.device_name || 'HIK_UNKNOWN',
             UserId: row.person_id || 'UNKNOWN',
             LogDate: row.access_datetime,
-            TableName: 'HikvisionLogs'
+            TableName: 'HikvisionLogs',
+            UserName: row.person_name?.toString()
           };
         });
 
@@ -276,9 +279,10 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         allLogs.push({
           DeviceLogId: dLId,
           DeviceId: sl.deviceId,
-          UserId: sl.userId,
-          LogDate: sl.punchTime,
-          TableName: parts[0]
+          UserId: sl.userId!,
+          LogDate: sl.punchTime!,
+          TableName: parts[0],
+          UserName: (sl as any).userName
         });
       }
     }
@@ -369,9 +373,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
           const uniqueRecordId = `${log.TableName || 'DL'}_${log.DeviceId}_${log.DeviceLogId}`;
 
           await prisma.rawDeviceLog.upsert({
-            where: {
-              id: uniqueRecordId,
-            },
+            where: { id: uniqueRecordId },
             update: {},
             create: {
               id: uniqueRecordId,
@@ -379,6 +381,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
               deviceId: internalDeviceId,
               userId: log.UserId.toString(),
               deviceUserId: log.UserId.toString(),
+              userName: log.UserName,
               timestamp: log.LogDate,
               punchTime: log.LogDate,
               isProcessed: false,
@@ -964,34 +967,40 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
     const logicalDayGroups = new Map<string, RawLog[]>();
 
     for (const log of userLogs) {
-      let logicalDate = new Date(log.LogDate);
-      const hours = log.LogDate.getUTCHours();
+      // IDENTITY PROTECTION: Logic to separate people who share the same ID over time.
+      const logName = log.UserName?.trim().toLowerCase();
+      if (logName && !/^\d+$/.test(logName) && logName !== 'person_name' && logName !== 'employee_name') {
+        const empFirst = employee.firstName.trim().toLowerCase();
+        const empLast = (employee.lastName || '').trim().toLowerCase();
 
-      // GLOBAL BUSINESS DAY BOUNDARY: Punches before 8 AM belong to previous day
-      if (hours < 8) {
-        logicalDate.setUTCDate(logicalDate.getUTCDate() - 1);
-      }
-
-      const dateKey = logicalDate.toISOString().split('T')[0];
-
-      // Robustness: Skip logs that occurred before the employee joined
-      if (employee.dateOfJoining) {
-        // Set joining date to start of day for comparison
-        const joiningDate = new Date(employee.dateOfJoining);
-        joiningDate.setHours(0, 0, 0, 0);
-
-        const currentLogicalDate = new Date(dateKey);
-        currentLogicalDate.setHours(0, 0, 0, 0);
-
-        if (currentLogicalDate < joiningDate) {
-          // logger.debug(`Skipping log for ${employee.employeeCode} on ${dateKey} because it is before joining date ${employee.dateOfJoining.toISOString()}`);
+        // Exact name match or significant overlap required
+        const isMatch = logName.includes(empFirst) || empFirst.includes(logName) || (empLast && logName.includes(empLast));
+        if (!isMatch) {
+          logger.warn(`IDENTITY MISMATCH for ID ${employee.employeeCode}: Log says "${log.UserName}", but System says "${employee.firstName} ${employee.lastName}". Skipping.`);
+          continue;
+        }
+      } else if (!employee.dateOfJoining) {
+        // FALLBACK: If no name to check, exclude logs from >30 days before the person was added to Apextime.
+        // This stops mass-recalculating "ghost logs" from old SQL history.
+        const createdBuffer = 30 * 24 * 60 * 60 * 1000;
+        if (log.LogDate.getTime() < employee.createdAt.getTime() - createdBuffer) {
           continue;
         }
       }
 
-      if (!logicalDayGroups.has(dateKey)) {
-        logicalDayGroups.set(dateKey, []);
+      // Skip logs before official joining date (if entered)
+      if (employee.dateOfJoining) {
+        const joinDate = new Date(employee.dateOfJoining);
+        joinDate.setHours(0, 0, 0, 0);
+        if (new Date(log.LogDate).setHours(0, 0, 0, 0) < joinDate.getTime()) continue;
       }
+
+      let logicalDate = new Date(log.LogDate);
+      const hours = log.LogDate.getUTCHours();
+      if (hours < 8) logicalDate.setUTCDate(logicalDate.getUTCDate() - 1);
+
+      const dateKey = logicalDate.toISOString().split('T')[0];
+      if (!logicalDayGroups.has(dateKey)) logicalDayGroups.set(dateKey, []);
       logicalDayGroups.get(dateKey)!.push(log);
     }
 

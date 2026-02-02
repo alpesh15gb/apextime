@@ -568,6 +568,7 @@ model RawDeviceLog {
   
   deviceUserId String
   userId       String?   // Legacy/Alternative field
+  userName     String?   // Capture name for identity verification
   timestamp    DateTime
   punchTime    DateTime? // Legacy/Alternative field
   punchType    String?  // CheckIn, CheckOut, etc.
