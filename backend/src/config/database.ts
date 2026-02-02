@@ -105,13 +105,14 @@ export const getDynamicSqlPool = async (config: BiometricConfig, key: string): P
 };
 
 // Legacy support or fallback to env for backward compatibility
+// SECURE UPDATE: Removed hardcoded IPs to prevent ghost connections
 const sqlServerConfig: sql.config = {
   ...baseConfig,
-  server: process.env.SQL_SERVER_HOST || '115.98.2.20',
-  port: parseInt(process.env.SQL_SERVER_PORT || '1433'),
-  user: process.env.SQL_SERVER_USER || 'essl',
-  password: process.env.SQL_SERVER_PASSWORD || 'Keystone@456',
-  database: process.env.SQL_SERVER_DATABASE || 'etimetracklite1',
+  server: process.env.SQL_SERVER_HOST || '',
+  port: parseInt(process.env.SQL_SERVER_PORT || '0'),
+  user: process.env.SQL_SERVER_USER || '',
+  password: process.env.SQL_SERVER_PASSWORD || '',
+  database: process.env.SQL_SERVER_DATABASE || '',
 };
 
 let defaultSqlPool: sql.ConnectionPool | null = null;
@@ -151,11 +152,11 @@ export const getDynamicHikPool = async (config: BiometricConfig, key: string): P
 
 const hikCentralConfig: sql.config = {
   ...baseConfig,
-  server: process.env.HIK_SERVER_HOST || '115.98.2.20',
-  port: parseInt(process.env.HIK_SERVER_PORT || '1433'),
-  user: process.env.HIK_SERVER_USER || 'essl',
-  password: process.env.HIK_SERVER_PASSWORD || 'Keystone@456',
-  database: process.env.HIK_SERVER_DATABASE || 'hikcentral',
+  server: process.env.HIK_SERVER_HOST || '',
+  port: parseInt(process.env.HIK_SERVER_PORT || '0'),
+  user: process.env.HIK_SERVER_USER || '',
+  password: process.env.HIK_SERVER_PASSWORD || '',
+  database: process.env.HIK_SERVER_DATABASE || '',
 };
 
 let defaultHikCentralPool: sql.ConnectionPool | null = null;
