@@ -260,7 +260,9 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       where: {
         tenantId: tenant.id,
         isProcessed: false
-      }
+      },
+      take: 10000,
+      orderBy: { timestamp: 'desc' } // Prioritize recent punches
     });
 
     if (staleLogs.length > 0) {
@@ -600,14 +602,29 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         try {
           const employeeId = employeeCache.get(log.UserId.toString());
           if (employeeId) {
-            await prisma.rawDeviceLog.updateMany({
-              where: { id: log.DeviceLogId.toString() },
+            // Reconstruct the unique ID used during storage
+            const uniqueRecordId = log.TableName?.startsWith('HIK_DIRECT')
+              ? (log.DeviceLogId > 1000000 ? `HIK_DIRECT_${log.DeviceId}_${log.UserId}_${log.DeviceLogId}` : `${log.TableName}_${log.DeviceId}_${log.DeviceLogId}`)
+              : `${log.TableName || 'DL'}_${log.DeviceId}_${log.DeviceLogId}`;
+
+            await prisma.rawDeviceLog.update({
+              where: { id: uniqueRecordId },
               data: { isProcessed: true },
+            }).catch(() => {
+              // Fallback for older IDs or direct push IDs
+              return prisma.rawDeviceLog.updateMany({
+                where: {
+                  userId: log.UserId.toString(),
+                  punchTime: log.LogDate,
+                  tenantId: tenant.id
+                },
+                data: { isProcessed: true }
+              });
             });
             markedCount++;
           }
         } catch (error) {
-          logger.warn(`Failed to mark log ${log.DeviceLogId} as processed:`, error);
+          // logger.warn(`Failed to mark log ${log.DeviceLogId} as processed:`, error);
         }
       }
       logger.info(`Marked ${markedCount} logs as processed`);
