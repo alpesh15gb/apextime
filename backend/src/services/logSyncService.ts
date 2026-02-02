@@ -90,7 +90,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
     const sqlDevices = await prisma.device.findMany({
       where: {
         tenantId: tenant.id,
-        protocol: { in: ['SQL_LOGS', 'SQL_MIRROR'] },
+        protocol: { in: ['SQL_LOGS', 'SQL_MIRROR', 'HIKCENTRAL_SQL'] },
         isActive: true
       }
     });
@@ -124,25 +124,42 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         const pool = await getDynamicSqlPool(config, poolKey);
         // DYNAMIC TABLE SUPPORT
         // fetch all tables starting with DeviceLogs to support eTimeTrackLite partitioning
-        const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE 'DeviceLogs%'");
+        // Also support HikCentral tables
+        const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE 'DeviceLogs%' OR TABLE_NAME IN ('HikvisionLogs', 'v_events')");
         const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME);
-
-        // Also include the base 'DeviceLogs' if it exists (it was found by the LIKE query usually, but handle duplicates if logic changes)
-        // Optimization: We could filter tables based on lastSyncTime, but for now querying all with LogDate filter is safer to catch back-dated punches
 
         for (const tableName of tables) {
           try {
+            let query = '';
+            if (tableName === 'HikvisionLogs' || tableName === 'v_events') {
+              // HikCentral Schema
+              query = `
+                    SELECT 
+                        LogId as DeviceLogId, 
+                        COALESCE(serial_no, device_name, 'HIK_CORE') as DeviceId, 
+                        person_id as UserId, 
+                        access_datetime as LogDate, 
+                        '${tableName}' as TableName
+                    FROM ${tableName}
+                    WHERE access_datetime > @lastSyncTime
+                    ORDER BY access_datetime ASC
+                `;
+            } else {
+              // eTimeTrackLite Schema
+              query = `
+                    SELECT DeviceLogId, DeviceId, UserId, LogDate, '${tableName}' as TableName
+                    FROM ${tableName}
+                    WHERE LogDate > @lastSyncTime
+                    ORDER BY LogDate ASC
+                `;
+            }
+
             const result = await pool.request()
               .input('lastSyncTime', sql.DateTime, lastSyncTime)
-              .query<RawLog>(`
-                SELECT DeviceLogId, DeviceId, UserId, LogDate, '${tableName}' as TableName
-                FROM ${tableName}
-                WHERE LogDate > @lastSyncTime
-                ORDER BY LogDate ASC
-              `);
+              .query<RawLog>(query);
             allLogs.push(...result.recordset);
           } catch (tableErr) {
-            // Ignore empty tables or permission errors per table
+            logger.warn(`Failed to query table ${tableName}:`, tableErr);
           }
         }
       } catch (err) {

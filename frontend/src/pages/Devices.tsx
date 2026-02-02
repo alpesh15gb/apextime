@@ -256,6 +256,7 @@ export default function Devices() {
                                         <option value="REALTIME_DIRECT">3. Realtime Direct Machine</option>
                                         <option value="HIKVISION_DIRECT">4. Hikvision Direct Machine</option>
                                         <option value="SQL_LOGS">5. SQL LOGS (eTimeTrackLite)</option>
+                                        <option value="HIKCENTRAL_SQL">6. HikCentral SQL Server</option>
                                     </select>
                                 </div>
 
