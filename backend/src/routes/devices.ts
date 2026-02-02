@@ -160,12 +160,11 @@ router.post('/:id/log-recovery', async (req, res) => {
 
     if (!device) return res.status(404).json({ error: 'Device not found' });
 
-    // Format date for ZKTeco: YYYYMMDDHHMMSS
-    // Default to Year 2000 to catch ALL history
-    const formattedDate = startDate ? startDate.replace(/-/g, '') + '000000' : '20000101000000';
-
-    // Command format for ADMS: C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=Time>=XXXX
-    const recoveryCommand = `C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=Time>=${formattedDate}`;
+    // Command format for ADMS: C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=...
+    // If no date provided, use filter=* (Nuclear Option) to avoid "Time vs TimeStr" issues
+    const recoveryCommand = startDate
+      ? `C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=Time>=${startDate.replace(/-/g, '')}000000`
+      : `C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=*`;
 
     await prisma.deviceCommand.create({
       data: {
