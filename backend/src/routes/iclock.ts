@@ -11,7 +11,7 @@ const router = express.Router();
  */
 
 // 1. Initial Handshake / Config Check
-router.get('/cdata', async (req, res) => {
+router.get('/cdata*', async (req, res) => {
     const { SN, options } = req.query;
 
     if (!SN) {
@@ -54,7 +54,7 @@ router.get('/cdata', async (req, res) => {
 });
 
 // 2. Data Receiving (Logs, User Info, OpLogs)
-router.post('/cdata', async (req, res) => {
+router.post('/cdata*', async (req, res) => {
     const { SN, table } = req.query;
 
     // DEBUG: Print incoming SN so user can match it in dashboard
@@ -187,7 +187,7 @@ router.post('/cdata', async (req, res) => {
 
 // 3. Command Queue / Heartbeat
 // Machine pings this to see if there are any commands (LOG RECOVERY, REBOOT, etc.)
-router.get('/getrequest', async (req, res) => {
+router.get('/getrequest*', async (req, res) => {
     const { SN } = req.query;
     if (!SN) return res.send('OK');
 
@@ -221,7 +221,7 @@ router.get('/getrequest', async (req, res) => {
 });
 
 // 4. Command Result
-router.post('/devicecmd', async (req, res) => {
+router.post('/devicecmd*', async (req, res) => {
     const { SN } = req.query;
     const body = req.body;
 
