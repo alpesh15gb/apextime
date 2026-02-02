@@ -349,21 +349,12 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         if (matched) {
           deviceMap.set(dId, matched.id);
         } else {
-          // Check if we already have a generic "SQL Source" device
-          let genericDevice = existingDevices.find(d => d.deviceId === 'SQL_IMPORT_GENERIC');
-          if (!genericDevice) {
-            genericDevice = await prisma.device.create({
-              data: {
-                tenantId: tenant.id,
-                deviceId: 'SQL_IMPORT_GENERIC',
-                name: 'SQL Source (Auto-Imported)',
-                status: 'online',
-                protocol: 'SQL_SERVER'
-              }
-            });
-            existingDevices.push(genericDevice);
+          // STRICT MODE: If device not found, SKIP. Do NOT create generic SQL source.
+          // This prevents ghost devices from reappearing.
+          // The user must register the device ID (SN) in the dashboard manually.
+          if (!matched) {
+            // logger.warn(`Skipping log from unknown device: ${dId}`);
           }
-          deviceMap.set(dId, genericDevice.id);
         }
       }
 
