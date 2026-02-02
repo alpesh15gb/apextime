@@ -21,7 +21,8 @@ import {
   Award,
   Database,
   FolderKanban,
-  Cpu
+  Cpu,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
