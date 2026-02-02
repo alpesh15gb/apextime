@@ -975,20 +975,9 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
 
         // Exact name match or significant overlap required
         const isMatch = logName.includes(empFirst) || empFirst.includes(logName) || (empLast && logName.includes(empLast));
-        if (!isMatch) {
-          logger.warn(`IDENTITY MISMATCH for ID ${employee.employeeCode}: Log says "${log.UserName}", but System says "${employee.firstName} ${employee.lastName}". Skipping.`);
-          continue;
-        }
-      } else if (!employee.dateOfJoining) {
-        // FALLBACK: If no name to check, exclude logs from >30 days before the person was added to Apextime.
-        // This stops mass-recalculating "ghost logs" from old SQL history.
-        const createdBuffer = 30 * 24 * 60 * 60 * 1000;
-        if (log.LogDate.getTime() < employee.createdAt.getTime() - createdBuffer) {
-          continue;
-        }
       }
 
-      // Skip logs before official joining date (if entered)
+      // Standard logic: skip if explicitly before joining date
       if (employee.dateOfJoining) {
         const joinDate = new Date(employee.dateOfJoining);
         joinDate.setHours(0, 0, 0, 0);
