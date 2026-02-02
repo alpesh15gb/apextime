@@ -90,6 +90,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/leaves', icon: Calendar, label: 'Leave', module: 'leaves' },
           { path: '/field-logs', icon: ClipboardList, label: 'Field Logs', module: 'field_logs' },
           { path: '/payroll', icon: DollarSign, label: 'Payroll', module: 'payroll' },
+          { path: '/loans', icon: CreditCard, label: 'Loans', module: 'payroll' },
           { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
           { path: '/projects', icon: FolderKanban, label: 'Projects', module: 'projects' },
           { path: '/devices', icon: Cpu, label: 'Biometric Nodes', module: 'devices' },

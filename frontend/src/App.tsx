@@ -24,6 +24,7 @@ import { Settings } from './pages/Settings';
 import { CEOAnalytics } from './pages/CEOAnalytics';
 import { FieldLogs } from './pages/FieldLogs';
 import { Projects } from './pages/Projects';
+import { Loans } from './pages/Loans';
 import Tenants from './pages/Tenants';
 import Devices from './pages/Devices';
 import { useAuth } from './contexts/AuthContext';
@@ -77,6 +78,7 @@ function App() {
                     <Route path="/payroll" element={<ModuleRoute module="payroll"><Payroll /></ModuleRoute>} />
                     <Route path="/leaves" element={<ModuleRoute module="leaves"><Leaves /></ModuleRoute>} />
                     <Route path="/field-logs" element={<ModuleRoute module="field_logs"><FieldLogs /></ModuleRoute>} />
+                    <Route path="/loans" element={<ModuleRoute module="payroll"><Loans /></ModuleRoute>} />
 
                     <Route path="/portal" element={<ModuleRoute module="core"><EmployeePortal /></ModuleRoute>} />
                     <Route path="/settings" element={<ModuleRoute module="core"><Settings /></ModuleRoute>} />
