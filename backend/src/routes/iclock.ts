@@ -57,6 +57,11 @@ router.get('/cdata', async (req, res) => {
 router.post('/cdata', async (req, res) => {
     const { SN, table } = req.query;
 
+    // DEBUG: Print incoming SN so user can match it in dashboard
+    if (SN) {
+        console.log('--- INCOMING SN: ' + SN + ' ---');
+    }
+
     if (!SN) return res.send('OK');
 
     const device = await prisma.device.findFirst({
