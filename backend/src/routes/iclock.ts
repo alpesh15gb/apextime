@@ -73,6 +73,12 @@ router.post('/cdata*', async (req, res) => {
         return res.send('OK');
     }
 
+    // Update status to online immediately on PUSH
+    await prisma.device.update({
+        where: { id: device.id },
+        data: { status: 'online', lastSeen: new Date() }
+    });
+
     // ADMS sends data in the body as a string (often tab-separated)
     let body = req.body;
 
