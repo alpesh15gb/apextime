@@ -609,49 +609,40 @@ const deviceUserInfoCache = new Map<string, DeviceUserInfo>();
 
 async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promise<void> {
   try {
+    const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('Employees', 't_person', 'Person', 't_person_info')");
+    const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME.toLowerCase());
+    let usersList: any[] = [];
 
-    // Query ALL employees with EmployeeCodeInDevice (not just DeviceUsers)
-    // This ensures we get names for employees on all devices (HO, KSDK, MIPA, etc.)
-    const result = await pool.request().query(`
-      SELECT
-        e.EmployeeCodeInDevice as UserId,
-        e.EmployeeId,
-        e.EmployeeName,
-        e.Designation,
-        e.DepartmentId,
-        d.DepartmentFName as DepartmentName,
-        du.DeviceId
-      FROM Employees e
-      LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
-      LEFT JOIN DeviceUsers du ON e.EmployeeId = du.EmployeeId
-      WHERE e.EmployeeCodeInDevice IS NOT NULL
-        AND e.EmployeeCodeInDevice <> ''
-        AND e.Status = 'Working'
-    `);
+    if (tables.includes('employees')) {
+      const result = await pool.request().query(`
+        SELECT e.EmployeeCodeInDevice as UserId, e.EmployeeId, e.EmployeeName as Name, e.Designation, d.DepartmentFName as DepartmentName
+        FROM Employees e
+        LEFT JOIN Departments d ON e.DepartmentId = d.DepartmentId
+        WHERE e.EmployeeCodeInDevice IS NOT NULL AND e.Status = 'Working'
+      `);
+      usersList = result.recordset.map(u => ({ ...u, Name: u.Name }));
+    } else if (tables.includes('t_person') || tables.includes('person') || tables.includes('t_person_info')) {
+      const table = tables.includes('t_person') ? 't_person' : (tables.includes('person') ? 'Person' : 't_person_info');
+      const result = await pool.request().query(`
+            SELECT 
+                COALESCE(person_id, id, employee_no) as UserId, 
+                COALESCE(person_name, name, CAST(firstName as varchar) + ' ' + CAST(lastName as varchar)) as Name,
+                COALESCE(department_name, dept_name) as DepartmentName
+            FROM ${table}
+        `);
+      usersList = result.recordset.map(u => ({ ...u, Name: u.Name }));
+    }
 
-    for (const user of result.recordset) {
-      // Use EmployeeCodeInDevice as the key - convert to string to match app's deviceUserId
+    for (const user of usersList) {
       const deviceUserIdStr = user.UserId?.toString();
-
-      // Skip if this deviceUserId is already cached and the new name is just a number
-      // This prioritizes records with actual names (e.g., "A Lakshman Rao") over placeholder names (e.g., "37")
-      const existingEntry = deviceUserInfoCache.get(deviceUserIdStr);
-      const newName = user.EmployeeName || `User ${deviceUserIdStr}`;
-      const isNewNameJustNumber = /^\d+$/.test(newName.trim());
-      const isExistingNameJustNumber = existingEntry ? /^\d+$/.test(existingEntry.Name.trim()) : true;
-
-      if (existingEntry && !isExistingNameJustNumber && isNewNameJustNumber) {
-        // Keep the existing entry with proper name, skip this numeric one
-        continue;
-      }
+      if (!deviceUserIdStr) continue;
 
       deviceUserInfoCache.set(deviceUserIdStr, {
         UserId: deviceUserIdStr,
-        Name: newName,
-        DeviceId: user.DeviceId,
+        Name: user.Name || `User ${deviceUserIdStr}`,
+        DeviceId: 0,
         EmployeeId: user.EmployeeId?.toString(),
         Designation: user.Designation,
-        DepartmentId: user.DepartmentId?.toString(),
         DepartmentName: user.DepartmentName,
       });
     }
@@ -887,9 +878,11 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
     }
 
     if (!employeeId) {
-      logger.warn(`No employee found for device user ID: ${deviceUserId}`);
+      logger.warn(`Processor: No employee mapped for device user ID: ${deviceUserId} (Logs: ${userLogs.length})`);
       continue;
     }
+
+    logger.info(`Processor: Found employee ${employeeId} for device user ID: ${deviceUserId}`);
 
     // Get full employee details including shift
     const employee = await prisma.employee.findUnique({
