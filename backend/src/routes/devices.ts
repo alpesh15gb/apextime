@@ -161,7 +161,8 @@ router.post('/:id/log-recovery', async (req, res) => {
     if (!device) return res.status(404).json({ error: 'Device not found' });
 
     // Format date for ZKTeco: YYYYMMDDHHMMSS
-    const formattedDate = startDate ? startDate.replace(/-/g, '') + '000000' : '20240101000000';
+    // Default to Year 2000 to catch ALL history
+    const formattedDate = startDate ? startDate.replace(/-/g, '') + '000000' : '20000101000000';
 
     // Command format for ADMS: C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=Time>=XXXX
     const recoveryCommand = `C:415:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=Time>=${formattedDate}`;
