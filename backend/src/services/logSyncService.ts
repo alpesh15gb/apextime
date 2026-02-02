@@ -228,16 +228,43 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
     }
     // --- HikCentral Sync End ---
 
-    // Deduplicate logs using a globally unique key: TableName + DeviceLogId
+    // ALSO include logs that are already in RawDeviceLog but haven't been processed yet
+    // This allows us to retry processing logs where employees were missing in previous runs
+    const staleLogs = await prisma.rawDeviceLog.findMany({
+      where: {
+        tenantId: tenant.id,
+        isProcessed: false
+      }
+    });
+
+    if (staleLogs.length > 0) {
+      logger.info(`Adding ${staleLogs.length} unprocessed logs from database archive to current sync cycle.`);
+      for (const sl of staleLogs) {
+        // Map back to RawLog format
+        // The ID format is TaskName_DeviceId_DeviceLogId or TableName_DeviceId_DeviceLogId
+        const parts = sl.id.split('_');
+        const dLId = parseInt(parts[parts.length - 1]) || 0;
+
+        allLogs.push({
+          DeviceLogId: dLId,
+          DeviceId: sl.deviceId,
+          UserId: sl.userId,
+          LogDate: sl.punchTime,
+          TableName: parts[0]
+        });
+      }
+    }
+
+    // Deduplicate logs using a globally unique key: TableName + DeviceId + DeviceLogId
     const uniqueLogs = new Map<string, RawLog>();
     for (const log of allLogs) {
-      const key = `${log.TableName}_${log.DeviceLogId}`;
+      const key = `${log.TableName}_${log.DeviceId}_${log.DeviceLogId}`;
       if (!uniqueLogs.has(key)) {
         uniqueLogs.set(key, log);
       }
     }
 
-    logger.info(`Total unique logs to process: ${uniqueLogs.size}`);
+    logger.info(`Total unique logs to process (New + Unprocessed): ${uniqueLogs.size}`);
     console.log(`Found ${uniqueLogs.size} new logs to process`);
 
     if (uniqueLogs.size === 0) {
