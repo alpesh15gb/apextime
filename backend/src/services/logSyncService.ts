@@ -148,9 +148,14 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
               // Determine best columns dynamically
               const idCol = colNames.find(c => ['logid', 'event_id', 'id', 'recordid'].includes(c)) || '1';
               const userCol = colNames.find(c => ['person_id', 'employee_id', 'user_id', 'person_code'].includes(c)) || 'UserId';
-              const dateCol = colNames.find(c => ['access_datetime', 'event_time', 'time_stamp', 'logdate'].includes(c)) || 'LogDate';
-              const deviceCol = colNames.find(c => ['serial_no', 'device_serial', 'device_name'].includes(c)) || "'HIK_CORE'";
-              const nameCol = colNames.find(c => ['person_name', 'name', 'employee_name'].includes(c));
+              const dateCol = colNames.find(c => ['access_datetime', 'event_time', 'time_stamp', 'logdate', 'punch_time', 'datetime'].includes(c));
+              const deviceCol = colNames.find(c => ['serial_no', 'device_serial', 'device_name', 'machine_id'].includes(c)) || "'SQL_SOURCE'";
+              const nameCol = colNames.find(c => ['person_name', 'name', 'employee_name', 'emp_name'].includes(c));
+
+              if (!dateCol || !userCol) {
+                logger.debug(`Skipping table ${tableName}: Required columns (Date/User) not found.`);
+                continue;
+              }
 
               query = `
                     SELECT 
@@ -556,8 +561,6 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
                 status: attendance.status,
               },
               create: {
-                tenantId: tenant.id,
-                employeeId: attendance.employeeId,
                 date: attendance.date,
                 firstIn: attendance.firstIn,
                 lastOut: attendance.lastOut,
@@ -568,6 +571,8 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
                 lateArrival: attendance.lateArrival,
                 earlyDeparture: attendance.earlyDeparture,
                 status: attendance.status,
+                tenant: { connect: { id: tenant.id } },
+                employee: { connect: { id: attendance.employeeId } }
               },
             });
             recordsSynced++;
@@ -1302,7 +1307,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
               employeeId_date_tenantId: {
                 employeeId: attendance.employeeId,
                 date: attendance.date,
-                tenantId: rlTenantId, // We need to determine the tenantId for this log
+                tenantId: rlTenantId,
               },
             },
             update: {
@@ -1317,8 +1322,6 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
               status: attendance.status,
             },
             create: {
-              tenantId: rlTenantId,
-              employeeId: attendance.employeeId,
               date: attendance.date,
               firstIn: attendance.firstIn,
               lastOut: attendance.lastOut,
@@ -1329,6 +1332,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
               lateArrival: attendance.lateArrival,
               earlyDeparture: attendance.earlyDeparture,
               status: attendance.status,
+              tenant: { connect: { id: rlTenantId } },
+              employee: { connect: { id: attendance.employeeId } }
             },
           });
           recordsUpdated++;
