@@ -1,7 +1,8 @@
 import express from 'express';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
-import { startOfDay, endOfDay } from 'date-fns';
+import { sendSMS } from '../services/smsService';
+import { format } from 'date-fns';
 
 const router = express.Router();
 
@@ -160,6 +161,14 @@ router.post('/approve', async (req, res) => {
         }
 
         res.json(updatedLog);
+
+        // Send SMS Notification
+        if (updatedLog.employee.phone) {
+            const timeStr = format(new Date(updatedLog.timestamp), 'HH:mm');
+            const statusMsg = status === 'approved' ? 'APPROVED' : 'REJECTED';
+            const message = `Your Field Punch (${updatedLog.type}) at ${timeStr} has been ${statusMsg}. - Apextime`;
+            sendSMS(updatedLog.employee.phone, message);
+        }
     } catch (error) {
         console.error('Approve punch error:', error);
         res.status(500).json({ error: 'Internal server error' });

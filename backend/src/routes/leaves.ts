@@ -1,7 +1,9 @@
 import express from 'express';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
+import { sendSMS } from '../services/smsService';
 import logger from '../config/logger';
+import { format } from 'date-fns';
 
 const router = express.Router();
 
@@ -180,9 +182,21 @@ router.patch('/:id/approve-ceo', async (req, res) => {
                 ceoApproval: true,
                 ceoApprovedAt: new Date(),
                 ceoId: ceo?.id || null
+            },
+            include: {
+                employee: true,
+                leaveType: true
             }
         });
         res.json(entry);
+
+        // Send SMS Notification
+        if (entry.employee.phone) {
+            const startStr = format(new Date(entry.startDate), 'dd MMM');
+            const endStr = format(new Date(entry.endDate), 'dd MMM');
+            const message = `Your leave for ${startStr} to ${endStr} has been APPROVED. - Apextime`;
+            sendSMS(entry.employee.phone, message);
+        }
     } catch (error) {
         logger.error('CEO approval error:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -201,9 +215,20 @@ router.patch('/:id/reject', async (req, res) => {
             data: {
                 status: 'rejected',
                 reason: reason ? `${reason}` : 'Rejected by management'
+            },
+            include: {
+                employee: true,
+                leaveType: true
             }
         });
         res.json(entry);
+
+        // Send SMS Notification
+        if (entry.employee.phone) {
+            const startStr = format(new Date(entry.startDate), 'dd MMM');
+            const message = `Your leave request starting ${startStr} has been REJECTED. Remarks: ${reason || 'N/A'} - Apextime`;
+            sendSMS(entry.employee.phone, message);
+        }
     } catch (error) {
         logger.error('Leave rejection error:', error);
         res.status(500).json({ error: 'Internal server error' });
