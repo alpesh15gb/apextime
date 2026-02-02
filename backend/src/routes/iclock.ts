@@ -105,9 +105,9 @@ router.post('/cdata', async (req, res) => {
                             try {
                                 logger.info(`ADMS Auto-Create: Found new user ${userId} from device ${SN}. Creating profile...`);
 
-                                // Default Shift (General Shift)
+                                // Default Shift (General Shift by Code 'GS')
                                 const defaultShift = await prisma.shift.findFirst({
-                                    where: { tenantId: device.tenantId, isDefault: true }
+                                    where: { tenantId: device.tenantId, code: 'GS' }
                                 });
 
                                 employee = await prisma.employee.create({
@@ -120,7 +120,7 @@ router.post('/cdata', async (req, res) => {
                                         designationId: null,
                                         departmentId: null,
                                         gender: 'Male',
-                                        type: 'FullTime',
+                                        // type: 'FullTime', // Removed as it doesn't exist in schema
                                         dateOfJoining: new Date(), // Set joining date to today (First Seen)
                                         shiftId: defaultShift?.id
                                     }
