@@ -94,7 +94,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/loans', icon: CreditCard, label: 'Loans', module: 'payroll' },
           { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
           { path: '/projects', icon: FolderKanban, label: 'Projects', module: 'projects' },
-          { path: '/devices', icon: Cpu, label: 'Biometric Nodes', module: 'devices' },
+          { path: '/devices', icon: Cpu, label: 'Attendance Devices', module: 'devices' },
           { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
         ].filter(item => {
           // If item is core, always show

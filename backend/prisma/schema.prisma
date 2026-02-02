@@ -806,3 +806,82 @@ model EmployeeDocument {
   @@index([tenantId])
   @@index([employeeId])
 }
+
+// --------------------------------------------------------
+// ASSET MANAGEMENT
+// --------------------------------------------------------
+
+model AssetCategory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  assets      Asset[]
+
+  @@unique([name, tenantId])
+  @@index([tenantId])
+}
+
+model Asset {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  categoryId    String
+  category      AssetCategory @relation(fields: [categoryId], references: [id])
+  
+  name          String
+  code          String   // Unique Asset Code / Barcode
+  description   String?
+  serialNumber  String?
+  brand         String?
+  model         String?
+  purchaseDate  DateTime?
+  purchaseCost  Float?
+  currency      String   @default("INR")
+  vendor        String?
+  warrantyExpiry DateTime?
+  
+  status        String   @default("AVAILABLE") // AVAILABLE, ASSIGNED, REPAIR, RETIRED, LOST
+  condition     String   @default("GOOD") // NEW, GOOD, FAIR, POOR, DAMAGED
+  
+  assignments   AssetAssignment[]
+  
+  qrCode        String?  // URL or Base64 of QR/Barcode
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([code, tenantId])
+  @@index([tenantId])
+  @@index([categoryId])
+}
+
+model AssetAssignment {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  assetId     String
+  asset       Asset     @relation(fields: [assetId], references: [id])
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  
+  assignedDate DateTime @default(now())
+  returnDate   DateTime?
+  expectedReturnDate DateTime?
+  
+  remarks      String?
+  returnCondition String?
+  
+  status       String   @default("ACTIVE") // ACTIVE, RETURNED
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([employeeId])
+}
