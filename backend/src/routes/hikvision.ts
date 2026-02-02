@@ -10,6 +10,10 @@ const router = express.Router();
  * The machine sends XML or JSON when an event occurs.
  */
 
+router.get('/event', (req, res) => {
+    res.status(200).send('Hikvision Event Listener is Active. Please use POST to send events.');
+});
+
 router.post('/event', async (req, res) => {
     try {
         console.log(`[HIK_DIRECT] Incoming event from ${req.ip}`);
