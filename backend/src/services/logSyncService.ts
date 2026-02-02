@@ -636,7 +636,11 @@ const deviceUserInfoCache = new Map<string, DeviceUserInfo>();
 
 async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promise<void> {
   try {
-    const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('Employees', 't_person', 'Person', 't_person_info')");
+    const allTablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES");
+    const allTables = allTablesResult.recordset.map((r: any) => r.TABLE_NAME);
+    logger.info(`SQL Source Tables: ${allTables.join(', ')}`);
+
+    const tablesResult = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN ('Employees', 't_person', 'Person', 't_person_info', 'v_person', 't_person_base')");
     const tables = tablesResult.recordset.map((r: any) => r.TABLE_NAME.toLowerCase());
     let usersList: any[] = [];
 
@@ -648,8 +652,14 @@ async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promis
         WHERE e.EmployeeCodeInDevice IS NOT NULL AND e.Status = 'Working'
       `);
       usersList = result.recordset.map(u => ({ ...u, Name: u.Name }));
-    } else if (tables.includes('t_person') || tables.includes('person') || tables.includes('t_person_info')) {
-      const table = tables.includes('t_person') ? 't_person' : (tables.includes('person') ? 'Person' : 't_person_info');
+      logger.info(`Source matched eTimeTrack Schema. Found ${usersList.length} users.`);
+    } else if (tables.includes('t_person') || tables.includes('person') || tables.includes('t_person_info') || tables.includes('v_person') || tables.includes('t_person_base')) {
+      const table = tables.includes('t_person') ? 't_person' :
+        (tables.includes('person') ? 'Person' :
+          (tables.includes('t_person_info') ? 't_person_info' :
+            (tables.includes('v_person') ? 'v_person' : 't_person_base')));
+
+      logger.info(`Attempting to load names from HikCentral table: ${table}`);
       const result = await pool.request().query(`
             SELECT 
                 COALESCE(person_id, id, employee_no) as UserId, 
@@ -658,6 +668,7 @@ async function loadDeviceUserInfoFromSqlServer(pool: sql.ConnectionPool): Promis
             FROM ${table}
         `);
       usersList = result.recordset.map(u => ({ ...u, Name: u.Name }));
+      logger.info(`Source matched HikCentral Schema. Found ${usersList.length} users in ${table}.`);
     }
 
     for (const user of usersList) {
