@@ -10,8 +10,40 @@ const router = express.Router();
  * The machine sends XML or JSON when an event occurs.
  */
 
-router.get('/event', (req, res) => {
-    res.status(200).send('Hikvision Event Listener is Active. Please use POST to send events.');
+router.get('/event', async (req, res) => {
+    if (req.query.test === '1') {
+        try {
+            const device = await prisma.device.findFirst({
+                where: { protocol: 'HIKVISION_DIRECT' }
+            });
+
+            if (!device) {
+                return res.send('Hikvision Listener is Active, but no HIKVISION_DIRECT device is registered in Apextime. Please add a device with its Serial Number first.');
+            }
+
+            const userIdStr = 'TEST999';
+            const uniqueId = `HIK_TEST_${Date.now()}`;
+
+            await prisma.rawDeviceLog.create({
+                data: {
+                    id: uniqueId,
+                    tenantId: device.tenantId,
+                    deviceId: device.id,
+                    userId: userIdStr,
+                    deviceUserId: userIdStr,
+                    timestamp: new Date(),
+                    punchTime: new Date(),
+                    punchType: '0',
+                    isProcessed: false
+                }
+            });
+
+            return res.send(`SUCCESS: Simulated punch for Device ${device.deviceId} was saved to the database! Please check your Dashboard for User TEST999.`);
+        } catch (err) {
+            return res.send(`ERROR during simulation: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+    }
+    res.status(200).send('Hikvision Event Listener is Active. To test your connection, visit: /api/hikvision/event?test=1');
 });
 
 router.post('/event', async (req, res) => {
