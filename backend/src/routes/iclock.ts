@@ -53,9 +53,9 @@ router.get('/cdata', async (req, res) => {
     res.send('OK');
 });
 
-// 2. Data Receiving (Logs)
+// 2. Data Receiving (Logs, User Info, OpLogs)
 router.post('/cdata', async (req, res) => {
-    const { SN } = req.query;
+    const { SN, table } = req.query;
 
     if (!SN) return res.send('OK');
 
@@ -63,48 +63,120 @@ router.post('/cdata', async (req, res) => {
         where: { deviceId: SN as string }
     });
 
-    if (!device) return res.send('OK');
+    if (!device) {
+        logger.warn(`PUSH: Data received from unknown device SN ${SN}`);
+        return res.send('OK');
+    }
 
-    if (typeof req.body === 'string') {
-        const lines = req.body.split('\n');
+    // ADMS sends data in the body as a string (often tab-separated)
+    let body = req.body;
+
+    // Safety: Handle cases where machine might send it as a buffer or differently
+    if (Buffer.isBuffer(body)) {
+        body = body.toString('utf8');
+    }
+
+    if (typeof body === 'string' && body.length > 0) {
+        const lines = body.split('\n');
         let count = 0;
 
         for (const line of lines) {
             if (!line.trim()) continue;
             const parts = line.split('\t');
 
-            if (parts.length >= 2) {
-                const userId = parts[0];
-                const punchTime = new Date(parts[1]);
+            // Handling ATTLOG (Attendance Logs)
+            // Typical format: UserID  Time  Status  PunchType
+            if (table === 'ATTLOG' || !table) {
+                if (parts.length >= 2) {
+                    const userId = parts[0];
+                    const punchTime = new Date(parts[1]);
 
-                if (!isNaN(punchTime.getTime())) {
-                    try {
-                        const uniqueId = `${device.protocol}_${SN}_${userId}_${punchTime.getTime()}`;
-                        await prisma.rawDeviceLog.upsert({
-                            where: { id: uniqueId },
-                            update: {},
-                            create: {
-                                id: uniqueId,
+                    if (!isNaN(punchTime.getTime())) {
+                        // AUTO-CREATE EMPLOYEE LOGIC
+                        // improved to handle unknown users instantly
+                        let employee = await prisma.employee.findFirst({
+                            where: {
                                 tenantId: device.tenantId,
-                                deviceId: device.id,
-                                userId: userId,
-                                deviceUserId: userId,
-                                timestamp: punchTime,
-                                punchTime: punchTime,
-                                punchType: parts[2] || '0',
-                                isProcessed: false
+                                deviceUserId: userId
                             }
                         });
-                        count++;
-                    } catch (e) {
-                        logger.error(`${device.protocol} log save error: ${e}`);
+
+                        if (!employee) {
+                            try {
+                                logger.info(`ADMS Auto-Create: Found new user ${userId} from device ${SN}. Creating profile...`);
+
+                                // Default Shift (General Shift)
+                                const defaultShift = await prisma.shift.findFirst({
+                                    where: { tenantId: device.tenantId, isDefault: true }
+                                });
+
+                                employee = await prisma.employee.create({
+                                    data: {
+                                        tenantId: device.tenantId,
+                                        firstName: `Auto-User ${userId}`,
+                                        lastName: '(Device)',
+                                        employeeCode: userId,
+                                        deviceUserId: userId,
+                                        designationId: null,
+                                        departmentId: null,
+                                        gender: 'Male',
+                                        type: 'FullTime',
+                                        dateOfJoining: new Date(), // Set joining date to today (First Seen)
+                                        shiftId: defaultShift?.id
+                                    }
+                                });
+                            } catch (createErr) {
+                                // Handle race condition where two logs come in at exact same millisecond
+                                logger.warn(`ADMS Auto-Create Race Condition ignored for ${userId}: ${createErr}`);
+                                employee = await prisma.employee.findFirst({
+                                    where: { tenantId: device.tenantId, deviceUserId: userId }
+                                });
+                            }
+                        }
+
+                        try {
+                            const uniqueId = `ADMS_${SN}_${userId}_${punchTime.getTime()}`;
+                            await prisma.rawDeviceLog.upsert({
+                                where: { id: uniqueId },
+                                update: {
+                                    // Optionally update if we get more info
+                                    punchTime: punchTime,
+                                },
+                                create: {
+                                    id: uniqueId,
+                                    tenantId: device.tenantId,
+                                    deviceId: device.id,
+                                    userId: userId,
+                                    deviceUserId: userId,
+                                    userName: employee ? `${employee.firstName} ${employee.lastName}` : `Unknown ${userId}`,
+                                    timestamp: punchTime,
+                                    punchTime: punchTime,
+                                    punchType: parts[2] || '0',
+                                    isProcessed: false
+                                }
+                            });
+                            count++;
+                        } catch (e) {
+                            logger.error(`ADMS Log Save Error (SN: ${SN}): ${e}`);
+                        }
                     }
                 }
             }
+
+            // Handling OPERLOG (Machine Operations / User Info)
+            if (table === 'OPERLOG') {
+                // Format: OPERID  USERID  OPTYPE ...
+                // This can be used to capture user registrations
+            }
         }
-        logger.info(`${device.protocol} PUSH: Received ${count} logs from SN ${SN}`);
+
+        if (count > 0) {
+            logger.info(`ADMS PUSH [${SN}]: Successfully saved ${count} logs. (Tenant: ${device.tenantId})`);
+        }
     }
 
+    // Critical: Response MUST be text/plain "OK" for ADMS machines
+    res.set('Content-Type', 'text/plain');
     res.send('OK');
 });
 
