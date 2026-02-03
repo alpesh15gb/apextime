@@ -120,7 +120,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             },
             { path: '/student-attendance', icon: ClipboardCheck, label: 'Student Attendance', module: 'attendance' },
             { path: '/outdoor-attendance', icon: MapPin, label: 'Outdoor Logs', module: 'attendance' },
-            { path: '/outdoor-entry', icon: ClipboardList, label: 'Outdoor Entry', module: 'attendance' },
             {
               label: 'Accounts',
               icon: DollarSign,

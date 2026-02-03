@@ -164,7 +164,9 @@ export const EmployeePortal = () => {
                         {user?.firstName?.[0] || user?.username?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Employee Portal</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                            {user?.tenantType === 'SCHOOL' ? 'Teacher Portal' : 'Employee Portal'}
+                        </p>
                         <p className="text-sm font-black text-gray-900 mt-1">{user?.fullName || user?.username}</p>
                     </div>
                 </div>
@@ -182,7 +184,9 @@ export const EmployeePortal = () => {
                 {/* Visual Greeting */}
                 <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-[32px] p-8 text-white relative overflow-hidden shadow-2xl shadow-blue-200">
                     <div className="relative z-10">
-                        <h2 className="text-2xl font-black tracking-tight leading-tight">Ready for <br />Your Shift?</h2>
+                        <h2 className="text-2xl font-black tracking-tight leading-tight">
+                            {user?.tenantType === 'SCHOOL' ? 'Ready for \nYour Class?' : 'Ready for \nYour Shift?'}
+                        </h2>
                         <p className="text-blue-100 text-xs mt-3 font-bold opacity-80 uppercase tracking-widest leading-relaxed">
                             {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}
                         </p>
