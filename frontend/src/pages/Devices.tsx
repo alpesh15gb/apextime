@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Devices() {
+    const { user } = useAuth();
     const [devices, setDevices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
