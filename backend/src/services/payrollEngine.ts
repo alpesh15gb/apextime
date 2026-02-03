@@ -1,6 +1,7 @@
 import { prisma } from '../config/database';
 import { Loan, Employee, Payroll, AttendanceLog, LeaveEntry } from '@prisma/client';
-import { getPTAmount } from '../config/complianceConstants';
+import { PTCalculator } from './ptCalculator';
+import { TDSCalculator } from './tdsCalculator';
 
 export interface PayrollResult {
     success: boolean;
@@ -164,13 +165,7 @@ export class PayrollEngine {
 
             // PT Calculation (Multi-State Compliance)
             if (employee.isPTEnabled) {
-                // Determine State: Direct Location > Branch Location > 'MH' (Default)
-                const state = employee.location?.state ||
-                    employee.branch?.location?.state ||
-                    employee.location?.city ||
-                    'MH';
-
-                const ptAmount = getPTAmount(state, totalEarnings, month);
+                const ptAmount = PTCalculator.calculatePT(employee.state, totalEarnings);
                 components['PT'] = ptAmount;
                 totalDeductions += ptAmount;
             }
@@ -207,9 +202,87 @@ export class PayrollEngine {
                 }
             }
 
+            // 5. TDS Calculation (Income Tax)
+            let tdsAmount = 0;
+            try {
+                // Fetch employee's TDS declaration for current FY
+                const currentFY = month >= 4 ? `${year}-${(year + 1) % 100}` : `${year - 1}-${year % 100}`;
+                const tdsDeclaration = await prisma.tDSDeclaration.findFirst({
+                    where: {
+                        employeeId,
+                        financialYear: currentFY,
+                        status: { in: ['SUBMITTED', 'APPROVED'] }
+                    }
+                });
+
+                if (tdsDeclaration) {
+                    // Calculate annual salary projection
+                    const basicAnnual = (components['BASIC'] || 0) * 12;
+                    const hraAnnual = (components['HRA'] || 0) * 12;
+                    const allowancesAnnual = ((components['ALLOWANCES'] || 0) + otAmount) * 12;
+
+                    const salaryBreakup = {
+                        basicAnnual,
+                        hraAnnual,
+                        allowancesAnnual,
+                        otherEarnings: 0
+                    };
+
+                    const declaration = {
+                        ppf: tdsDeclaration.ppf,
+                        elss: tdsDeclaration.elss,
+                        lifeInsurance: tdsDeclaration.lifeInsurance,
+                        homeLoanPrincipal: tdsDeclaration.homeLoanPrincipal,
+                        tuitionFees: tdsDeclaration.tuitionFees,
+                        nsc: tdsDeclaration.nsc,
+                        section80D: tdsDeclaration.section80D,
+                        section80E: tdsDeclaration.section80E,
+                        section80G: tdsDeclaration.section80G,
+                        section24: tdsDeclaration.section24,
+                        rentPaid: tdsDeclaration.rentPaid,
+                        taxRegime: tdsDeclaration.taxRegime as 'OLD' | 'NEW'
+                    };
+
+                    tdsAmount = TDSCalculator.calculateMonthlyTDS(salaryBreakup, declaration, month);
+                    components['TDS'] = tdsAmount;
+                    totalDeductions += tdsAmount;
+                }
+            } catch (tdsError) {
+                console.error('TDS Calculation Error:', tdsError);
+                // Continue without TDS if calculation fails
+            }
+
+            // 6. Gratuity Accrual (4.81% of Basic)
+            const gratuityAccrual = Math.round((components['BASIC'] || 0) * 0.0481);
+            components['GRATUITY'] = gratuityAccrual;
+
+            // 7. Fetch Approved Reimbursements for this month
+            let reimbursementAmount = 0;
+            try {
+                const reimbursements = await prisma.reimbursementEntry.findMany({
+                    where: {
+                        employeeId,
+                        status: 'APPROVED',
+                        payrollId: null, // Not yet paid
+                        billDate: {
+                            gte: new Date(year, month - 1, 1),
+                            lte: new Date(year, month, 0)
+                        }
+                    }
+                });
+
+                reimbursementAmount = reimbursements.reduce((sum, r) => sum + r.amount, 0);
+                if (reimbursementAmount > 0) {
+                    totalEarnings += reimbursementAmount;
+                    components['REIMBURSEMENTS'] = reimbursementAmount;
+                }
+            } catch (reimbError) {
+                console.error('Reimbursement Fetch Error:', reimbError);
+            }
+
             const netSalary = Math.round(totalEarnings - totalDeductions);
 
-            // 4. Save to Database
+            // 8. Save to Database
             const allowancesPaid = Math.round(totalEarnings - (components['BASIC'] || 0) - (components['HRA'] || 0) - otAmount);
 
             const tenantId = employee.tenantId;
@@ -232,17 +305,39 @@ export class PayrollEngine {
                     netSalary: netSalary,
                     payrollRun: payrollRunId ? { connect: { id: payrollRunId } } : undefined,
                     status: 'generated',
+
+                    // Earnings
                     basicPaid: Math.round(components['BASIC'] || 0),
                     hraPaid: Math.round(components['HRA'] || 0),
                     allowancesPaid: Math.max(0, allowancesPaid),
+                    otHours: totalOtHours,
+                    otPay: Math.round(otAmount),
+                    bonus: Math.round(components['BONUS'] || 0),
+                    incentives: Math.round(components['INCENTIVES'] || 0),
+                    leaveEncashment: Math.round(components['LEAVE_ENCASHMENT'] || 0),
+                    reimbursements: Math.round(reimbursementAmount),
+                    arrears: Math.round(components['ARREARS'] || 0),
+
+                    // Deductions
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
+                    tdsDeduction: tdsAmount,
+                    loanDeduction: totalLoanDeduction,
+                    advanceDeduction: Math.round(components['ADVANCE'] || 0),
+                    otherDeductions: Math.round(components['OTHER_DED'] || 0),
+
+                    // Employer Contributions
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
-                    otHours: totalOtHours,
-                    otPay: Math.round(otAmount),
-                    loanDeduction: totalLoanDeduction
+                    gratuityAccrual: gratuityAccrual,
+
+                    // State for PT
+                    stateCode: employee.state,
+
+                    // Metadata
+                    processedAt: new Date(),
+                    updatedAt: new Date()
                 },
                 create: {
                     tenant: { connect: { id: tenantId } },
@@ -258,17 +353,38 @@ export class PayrollEngine {
                     netSalary: netSalary,
                     payrollRun: payrollRunId ? { connect: { id: payrollRunId } } : undefined,
                     status: 'generated',
+
+                    // Earnings
                     basicPaid: Math.round(components['BASIC'] || 0),
                     hraPaid: Math.round(components['HRA'] || 0),
                     allowancesPaid: Math.max(0, allowancesPaid),
+                    otHours: totalOtHours,
+                    otPay: Math.round(otAmount),
+                    bonus: Math.round(components['BONUS'] || 0),
+                    incentives: Math.round(components['INCENTIVES'] || 0),
+                    leaveEncashment: Math.round(components['LEAVE_ENCASHMENT'] || 0),
+                    reimbursements: Math.round(reimbursementAmount),
+                    arrears: Math.round(components['ARREARS'] || 0),
+
+                    // Deductions
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
                     ptDeduction: components['PT'] || 0,
+                    tdsDeduction: tdsAmount,
+                    loanDeduction: totalLoanDeduction,
+                    advanceDeduction: Math.round(components['ADVANCE'] || 0),
+                    otherDeductions: Math.round(components['OTHER_DED'] || 0),
+
+                    // Employer Contributions
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
-                    otHours: totalOtHours,
-                    otPay: Math.round(otAmount),
-                    loanDeduction: totalLoanDeduction
+                    gratuityAccrual: gratuityAccrual,
+
+                    // State for PT
+                    stateCode: employee.state,
+
+                    // Metadata
+                    processedAt: new Date()
                 }
             });
 
