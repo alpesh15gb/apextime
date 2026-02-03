@@ -289,4 +289,11 @@ export const studentAttendanceAPI = {
   linkBiometric: (studentId: string, biometricId: string) => api.put(`/school/attendance/student/${studentId}/biometric`, { biometricId }),
 };
 
+export const studentFieldLogAPI = {
+  create: (data: any) => api.post('/school/field-logs', data),
+  getPending: () => api.get('/school/field-logs/pending'),
+  getStudentHistory: (studentId: string) => api.get(`/school/field-logs/student/${studentId}`),
+  approve: (data: { logId: string, status: string }) => api.post('/school/field-logs/approve', data),
+};
+
 export default api;

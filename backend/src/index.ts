@@ -45,6 +45,7 @@ import schoolFinanceRoutes from './routes/schoolFinance';
 import schoolAttendanceRoutes from './routes/schoolAttendance';
 import transportRoutes from './routes/transport';
 import libraryRoutes from './routes/library';
+import studentFieldLogRoutes from './routes/studentFieldLogs';
 
 dotenv.config();
 
@@ -102,6 +103,7 @@ app.use('/api/school/finance', schoolFinanceRoutes);
 app.use('/api/school/attendance', schoolAttendanceRoutes);
 app.use('/api/transport', transportRoutes);
 app.use('/api/library', libraryRoutes);
+app.use('/api/school/field-logs', studentFieldLogRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

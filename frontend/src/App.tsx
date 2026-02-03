@@ -41,6 +41,8 @@ import { Transport } from './pages/school/Transport';
 import { Library } from './pages/school/Library';
 import { Timetable } from './pages/school/Timetable';
 import { Invoices } from './pages/school/finance/Invoices';
+import { OutdoorAttendance } from './pages/school/OutdoorAttendance';
+import { MarkOutdoorAttendance } from './pages/school/MarkOutdoorAttendance';
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -79,6 +81,8 @@ function App() {
                     <Route path="/students" element={<ModuleRoute module="employees"><Students /></ModuleRoute>} />
                     <Route path="/admissions" element={<ModuleRoute module="employees"><Admissions /></ModuleRoute>} />
                     <Route path="/student-attendance" element={<ModuleRoute module="employees"><StudentAttendance /></ModuleRoute>} />
+                    <Route path="/outdoor-attendance" element={<ModuleRoute module="employees"><OutdoorAttendance /></ModuleRoute>} />
+                    <Route path="/outdoor-entry" element={<ModuleRoute module="employees"><MarkOutdoorAttendance /></ModuleRoute>} />
 
                     {/* Academics */}
                     <Route path="/sessions" element={<ModuleRoute module="employees"><Sessions /></ModuleRoute>} />

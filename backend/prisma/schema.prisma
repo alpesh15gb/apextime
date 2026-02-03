@@ -93,6 +93,7 @@ model Tenant {
   studentAttendance        StudentAttendance[]
   examMarks                ExamMark[]
   studentDocuments         StudentDocument[]
+  studentFieldLogs         StudentFieldLog[]
   
   // School Services
   transportRoutes          TransportRoute[]
@@ -1308,6 +1309,7 @@ model Student {
   fees            FeeRecord[]
   examMarks       ExamMark[]
   documents       StudentDocument[]
+  fieldLogs       StudentFieldLog[]
   
   @@unique([tenantId, admissionNo])
   @@index([tenantId])
@@ -1506,6 +1508,7 @@ model TransportRoute {
   driverPhone String?
   
   students    Student[]
+  fieldLogs   StudentFieldLog[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1528,4 +1531,34 @@ model LibraryBook {
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+model StudentFieldLog {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  type            String   // PICKUP, DROP, TRIP_CHECKIN, TRIP_CHECKOUT
+  timestamp       DateTime @default(now())
+  
+  location        String?  // JSON string {lat, lng, address}
+  image           String?  // Base64 or URL
+  remarks         String?
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  routeId         String?
+  route           TransportRoute? @relation(fields: [routeId], references: [id])
+  
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([routeId])
 }

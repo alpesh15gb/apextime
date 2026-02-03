@@ -45,32 +45,62 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   const navItems = user?.role === 'employee'
-    ? [
-      { path: '/portal', icon: LayoutDashboard, label: 'Portal' },
-      { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
-      { path: '/leaves', icon: Calendar, label: 'My Leaves' },
-      { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
-    ]
-    : user?.role === 'manager'
+    ? (user?.tenantType === 'SCHOOL'
       ? [
-        {
-          label: 'Staff Leaves',
-          icon: Briefcase,
-          children: [
-            { path: '/leaves', icon: Calendar, label: 'Leave Approvals' },
-            { path: '/attendance', icon: ClipboardCheck, label: 'Staff Attendance' },
-          ]
-        },
-        {
-          label: 'My Info',
-          icon: Users,
-          children: [
-            { path: '/leaves', icon: Calendar, label: 'My Leaves' },
-            { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
-            { path: '/portal', icon: LayoutDashboard, label: 'My Portal' },
-          ]
-        }
+        { path: '/portal', icon: LayoutDashboard, label: 'Teacher Portal' },
+        { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
+        { path: '/leaves', icon: Calendar, label: 'My Leaves' },
+        { path: '/outdoor-entry', icon: MapPin, label: 'Outdoor Entry' },
       ]
+      : [
+        { path: '/portal', icon: LayoutDashboard, label: 'Portal' },
+        { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
+        { path: '/leaves', icon: Calendar, label: 'My Leaves' },
+        { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
+      ]
+    )
+    : user?.role === 'manager'
+      ? (user?.tenantType === 'SCHOOL'
+        ? [
+          {
+            label: 'My Class',
+            icon: GraduationCap,
+            children: [
+              { path: '/student-attendance', icon: ClipboardCheck, label: 'Daily Register' },
+              { path: '/outdoor-entry', icon: MapPin, label: 'Outdoor Entry' },
+              { path: '/outdoor-attendance', icon: ClipboardList, label: 'Pending Logs' },
+            ]
+          },
+          {
+            label: 'My Portal',
+            icon: Users,
+            children: [
+              { path: '/portal', icon: LayoutDashboard, label: 'My Stats' },
+              { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
+              { path: '/leaves', icon: Calendar, label: 'My Leaves' },
+            ]
+          }
+        ]
+        : [
+          {
+            label: 'Staff Leaves',
+            icon: Briefcase,
+            children: [
+              { path: '/leaves', icon: Calendar, label: 'Leave Approvals' },
+              { path: '/attendance', icon: ClipboardCheck, label: 'Staff Attendance' },
+            ]
+          },
+          {
+            label: 'My Info',
+            icon: Users,
+            children: [
+              { path: '/leaves', icon: Calendar, label: 'My Leaves' },
+              { path: '/field-logs', icon: ClipboardList, label: 'Field Punch' },
+              { path: '/portal', icon: LayoutDashboard, label: 'My Portal' },
+            ]
+          }
+        ]
+      )
       : user?.role === 'superadmin'
         ? [
           { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
@@ -87,6 +117,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               children: [
                 { path: '/students', icon: Users, label: 'All Students' },
                 { path: '/admissions', icon: ClipboardList, label: 'New Admission' },
+                { path: '/outdoor-attendance', icon: MapPin, label: 'Outdoor Logs' },
               ]
             },
             {
