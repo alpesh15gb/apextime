@@ -1302,6 +1302,7 @@ model Student {
   gender          String?
   dob             DateTime?
   bloodGroup      String?
+  biometricId     String?  // ID used in Biometric Device/RFID Card
   
   // Academic Class/Section
   batchId         String
