@@ -111,8 +111,38 @@ async function importUSBAttendance(filePath, tenantId) {
             continue;
         }
 
-        // Parse timestamp (format: YYYY-MM-DD HH:MM:SS)
-        const punchTime = new Date(punch.timestamp + '+05:30'); // IST
+        // Parse timestamp (format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DDHH:MM:SS)
+        let punchTime;
+        try {
+            // Split timestamp into date and time parts
+            const timestampStr = punch.timestamp.trim();
+
+            // Handle format: 2025-12-30 14:13:42 or 2025-12-3014:13:42
+            let dateStr, timeStr;
+
+            if (timestampStr.includes(' ')) {
+                [dateStr, timeStr] = timestampStr.split(' ');
+            } else {
+                // No space, split at position 10
+                dateStr = timestampStr.substring(0, 10);
+                timeStr = timestampStr.substring(10);
+            }
+
+            // Create ISO string: YYYY-MM-DDTHH:MM:SS+05:30
+            const isoString = `${dateStr}T${timeStr}+05:30`;
+            punchTime = new Date(isoString);
+
+            // Validate the date
+            if (isNaN(punchTime.getTime())) {
+                console.error(`⚠️  Invalid timestamp for ${punch.deviceUserId}: ${punch.timestamp}`);
+                skipped++;
+                continue;
+            }
+        } catch (error) {
+            console.error(`⚠️  Error parsing timestamp for ${punch.deviceUserId}: ${punch.timestamp}`);
+            skipped++;
+            continue;
+        }
 
         try {
             // Check if this punch already exists
