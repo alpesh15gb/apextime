@@ -46,6 +46,7 @@ import schoolAttendanceRoutes from './routes/schoolAttendance';
 import transportRoutes from './routes/transport';
 import libraryRoutes from './routes/library';
 import studentFieldLogRoutes from './routes/studentFieldLogs';
+import realtimeRoutes, { initializeRealtimeWebSocket } from './routes/realtime';
 
 dotenv.config();
 
@@ -104,12 +105,13 @@ app.use('/api/school/attendance', schoolAttendanceRoutes);
 app.use('/api/transport', transportRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/school/field-logs', studentFieldLogRoutes);
+app.use('/api/realtime', realtimeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: '1.0.1-hikvision-v4',
+    version: '1.0.2-realtime-websocket',
     timestamp: new Date().toISOString()
   });
 });
@@ -132,6 +134,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   console.log(`ApexTime API Server running on port ${PORT}`);
+
+  // Initialize RealTime WebSocket server
+  initializeRealtimeWebSocket(server);
+  logger.info('RealTime WebSocket server initialized');
 });
 
 // Schedule log sync every 15 minutes

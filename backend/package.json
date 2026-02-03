@@ -28,7 +28,8 @@
     "multer": "^2.0.2",
     "node-cron": "^3.0.3",
     "pdfkit": "^0.14.0",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -40,6 +41,7 @@
     "@types/node": "^20.10.0",
     "@types/node-cron": "^3.0.11",
     "@types/pdfkit": "^0.13.3",
+    "@types/ws": "^8.5.10",
     "node-fetch": "^2.7.0",
     "prisma": "^5.7.0",
     "ts-node": "^10.9.2",
