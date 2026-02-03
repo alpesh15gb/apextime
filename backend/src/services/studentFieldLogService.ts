@@ -39,12 +39,12 @@ export class StudentFieldLogService {
     }
 
     /**
-     * Get all pending logs for approval (Admin/Teacher view)
+     * Get logs for approval or history (Admin/Teacher view)
      * For schools, this includes both Student logs and Employee (Teacher) field logs
      */
-    async getPendingLogs(tenantId: string) {
+    async getLogs(tenantId: string, status: string = 'PENDING') {
         const studentLogs = await prisma.studentFieldLog.findMany({
-            where: { tenantId, status: 'PENDING' },
+            where: { tenantId, status },
             include: {
                 student: {
                     include: { batch: { include: { course: true } } }
@@ -55,8 +55,11 @@ export class StudentFieldLogService {
         });
 
         // Also fetch Employee FieldLogs for this tenant
+        // Map frontend uppercase to fieldLog lowercase 'pending'/'approved'/'rejected'
+        const employeeStatus = status.toLowerCase();
+
         const employeeLogs = await prisma.fieldLog.findMany({
-            where: { tenantId, status: 'pending' },
+            where: { tenantId, status: employeeStatus },
             include: {
                 employee: {
                     select: {

@@ -23,13 +23,14 @@ router.post('/', async (req: any, res) => {
 });
 
 /**
- * GET /api/school/field-logs/pending
- * List logs awaiting approval
+ * GET /api/school/field-logs/list
+ * List logs for approval or history
  */
-router.get('/pending', async (req: any, res) => {
+router.get('/list', async (req: any, res) => {
     try {
         const tenantId = req.user?.tenantId;
-        const logs = await logService.getPendingLogs(tenantId);
+        const { status } = req.query;
+        const logs = await logService.getLogs(tenantId, status as string || 'PENDING');
         res.json({ success: true, data: logs });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

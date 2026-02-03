@@ -8,28 +8,27 @@ import {
     Navigation,
     User,
     Clock,
-    Search,
-    Filter
+    Search
 } from 'lucide-react';
-import { studentFieldLogAPI, schoolAPI } from '../../services/api';
+import { studentFieldLogAPI } from '../../services/api';
 
 export const OutdoorAttendance = () => {
     const [pendingLogs, setPendingLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('ALL');
+    const [statusView, setStatusView] = useState<'PENDING' | 'HISTORY'>('PENDING');
 
     useEffect(() => {
-        fetchPending();
-    }, []);
+        fetchLogs();
+    }, [statusView]);
 
-    const fetchPending = async () => {
+    const fetchLogs = async () => {
         try {
             setLoading(true);
-            const res = await studentFieldLogAPI.getPending();
+            const res = await studentFieldLogAPI.getLogs(statusView === 'PENDING' ? 'PENDING' : 'APPROVED');
             const { students, employees } = res.data.data;
 
-            // Merge both for the dashboard view
             const merged = [
                 ...students.map((s: any) => ({ ...s, isStudent: true })),
                 ...employees.map((e: any) => ({ ...e, isStaff: true }))
@@ -45,18 +44,17 @@ export const OutdoorAttendance = () => {
 
     const handleAction = async (log: any, status: 'APPROVED' | 'REJECTED') => {
         try {
-            // Use different API depending on log type
-            if (log.isStaff) {
-                // Mapping Corporate status names to what the component uses
-                const backendStatus = status === 'APPROVED' ? 'approved' : 'rejected';
-                // Need to import fieldLogAPI or use a generic call
-                // For now assuming existing structure
-                await studentFieldLogAPI.approve({ logId: log.id, status, isEmployee: true });
-            } else {
-                await studentFieldLogAPI.approve({ logId: log.id, status });
-            }
+            await studentFieldLogAPI.approve({
+                logId: log.id,
+                status,
+                isEmployee: log.isStaff
+            });
 
-            setPendingLogs(prev => prev.filter(l => l.id !== log.id));
+            if (statusView === 'PENDING') {
+                setPendingLogs(prev => prev.filter(l => l.id !== log.id));
+            } else {
+                fetchLogs();
+            }
             alert(`Log ${status.toLowerCase()} successfully`);
         } catch (error) {
             alert('Action failed');
@@ -64,13 +62,11 @@ export const OutdoorAttendance = () => {
     };
 
     const filteredLogs = pendingLogs.filter(log => {
-        const matchesSearch = log.isStaff
-            ? (log.employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()))
-            : (log.student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()));
+        const student = log.isStaff ? log.employee : log.student;
+        const matchesSearch =
+            (student?.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (student?.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (log.isStaff ? student?.employeeCode || '' : student?.admissionNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesType = filterType === 'ALL' || log.type === filterType;
 
@@ -85,12 +81,22 @@ export const OutdoorAttendance = () => {
                         <Navigation className="w-8 h-8 text-indigo-600" />
                         Outdoor Check-ins
                     </h1>
-                    <p className="text-gray-500 text-sm">Approve student pickups, drops, and field trip check-ins</p>
+                    <p className="text-gray-500 text-sm">Approve student pickups, drops, and staff field logs</p>
                 </div>
 
-                <div className="flex bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
-                    <div className="text-indigo-700 font-bold text-lg">{pendingLogs.length}</div>
-                    <div className="text-indigo-600 text-xs ml-2 self-center font-medium">PENDING APPROVALS</div>
+                <div className="flex bg-white rounded-xl shadow-sm p-1 border border-gray-100">
+                    <button
+                        onClick={() => setStatusView('PENDING')}
+                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${statusView === 'PENDING' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                        Pending
+                    </button>
+                    <button
+                        onClick={() => setStatusView('HISTORY')}
+                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${statusView === 'HISTORY' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                        History
+                    </button>
                 </div>
             </div>
 
@@ -99,7 +105,7 @@ export const OutdoorAttendance = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                         type="text"
-                        placeholder="Search student or admission no..."
+                        placeholder="Search student or staff..."
                         className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,7 +127,7 @@ export const OutdoorAttendance = () => {
                     </select>
                 </div>
                 <button
-                    onClick={fetchPending}
+                    onClick={fetchLogs}
                     className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg transition-colors text-sm font-medium"
                 >
                     <Clock className="w-4 h-4" /> Refresh
@@ -136,7 +142,6 @@ export const OutdoorAttendance = () => {
                 ) : filteredLogs.length > 0 ? (
                     filteredLogs.map(log => (
                         <div key={log.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                            {/* Card Header: Student Info */}
                             <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${log.isStaff ? 'bg-purple-600' : 'bg-indigo-600'}`}>
                                     {log.isStaff ? (log.employee?.firstName?.[0] || 'S') : (log.student?.firstName?.[0] || 'St')}
@@ -164,52 +169,46 @@ export const OutdoorAttendance = () => {
                                         {log.type.replace('_', ' ')}
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-1">
-                                        {/* IST Time Display (+5.5h) */}
-                                        {new Date(new Date(log.timestamp).getTime()).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(log.timestamp).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Card Body: Evidence */}
                             <div className="flex-1 p-4 space-y-4">
                                 {log.image && (
                                     <div className="relative group rounded-xl overflow-hidden aspect-video bg-gray-100">
                                         <img
                                             src={log.image}
-                                            alt="Attendance Identity"
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                            alt="Identity Verification"
+                                            className="w-full h-full object-cover"
                                         />
-                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
                                             <div className="flex items-center text-white text-[10px] gap-1">
-                                                <Camera className="w-3 h-3" /> Identity Verification Photo
+                                                <Camera className="w-3 h-3" /> Identity Photo
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
                                 <div className="space-y-2">
-                                    <div className="flex items-start gap-2 text-sm">
-                                        <MapPin className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                        <span className="text-gray-600 leading-tight">
-                                            {(() => {
-                                                if (!log.location) return 'Coordinates Unavailable';
-                                                try {
-                                                    // Try to parse as JSON first (Web entry)
-                                                    const loc = JSON.parse(log.location);
-                                                    return loc.address || `${loc.lat}, ${loc.lng}`;
-                                                } catch (e) {
-                                                    // Fallback to raw string (APK entry)
-                                                    return log.location;
-                                                }
-                                            })()}
-                                        </span>
+                                    <div className="flex items-start gap-2 text-sm group/loc">
+                                        <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
+                                        {(() => {
+                                            if (!log.location) return <span className="text-gray-600">No Location</span>;
+                                            let lat = '', lng = '', display = log.location;
+                                            try {
+                                                const loc = JSON.parse(log.location);
+                                                lat = loc.lat; lng = loc.lng;
+                                                display = loc.address || `${lat}, ${lng}`;
+                                            } catch (e) {
+                                                const parts = log.location.split(',');
+                                                if (parts.length >= 2) { lat = parts[0]; lng = parts[1]; }
+                                            }
+                                            return lat && lng ? (
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{display}</a>
+                                            ) : <span className="text-gray-600">{display}</span>;
+                                        })()}
                                     </div>
-                                    {log.route && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                            <Bus className="w-4 h-4 text-amber-500" />
-                                            <span>Route: {log.route.name} ({log.route.vehicleNo})</span>
-                                        </div>
-                                    )}
                                     {log.remarks && (
                                         <div className="bg-amber-50 p-2 rounded-lg text-xs text-amber-800 italic border border-amber-100">
                                             "{log.remarks}"
@@ -218,28 +217,28 @@ export const OutdoorAttendance = () => {
                                 </div>
                             </div>
 
-                            {/* Card Footer: Actions */}
-                            <div className="p-4 bg-gray-50 grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => handleAction(log, 'REJECTED')}
-                                    className="flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold text-sm transition-colors"
-                                >
-                                    <XCircle className="w-4 h-4" /> Reject
-                                </button>
-                                <button
-                                    onClick={() => handleAction(log, 'APPROVED')}
-                                    className="flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-sm transition-colors"
-                                >
-                                    <CheckCircle className="w-4 h-4" /> Approve
-                                </button>
+                            <div className="p-4 bg-gray-50">
+                                {statusView === 'PENDING' ? (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={() => handleAction(log, 'REJECTED')} className="flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-gray-700 font-bold text-sm">
+                                            <XCircle className="w-4 h-4" /> Reject
+                                        </button>
+                                        <button onClick={() => handleAction(log, 'APPROVED')} className="flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 text-white font-bold text-sm">
+                                            <CheckCircle className="w-4 h-4" /> Approve
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className={`flex items-center justify-center gap-2 py-2 rounded-lg font-bold text-sm ${log.status === 'APPROVED' || log.status === 'approved' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                        {log.status}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
                 ) : (
                     <div className="col-span-full py-20 bg-white rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
                         <User className="w-16 h-16 opacity-10 mb-4" />
-                        <p className="text-lg">No pending outdoor attendance logs found</p>
-                        <p className="text-sm">New check-ins from the mobile app will appear here</p>
+                        <p className="text-lg uppercase">No {statusView} logs found</p>
                     </div>
                 )}
             </div>
