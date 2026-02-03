@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Force IST timezone for Node.js
+export TZ=Asia/Kolkata
+
 # Wait for postgres to be ready
 echo "Waiting for PostgreSQL..."
 while ! nc -z postgres 5432; do
