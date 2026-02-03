@@ -107,6 +107,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               module: 'payroll',
               children: [
                 { path: '/fees', icon: DollarSign, label: 'Fee Collection' },
+                { path: '/fees/setup', icon: Settings, label: 'Fee Setup' },
                 { path: '/invoices', icon: FileSpreadsheet, label: 'Invoices' },
               ]
             },

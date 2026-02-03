@@ -34,6 +34,8 @@ import { Admissions } from './pages/school/Admissions';
 import { Sessions } from './pages/school/Sessions';
 import { Classes } from './pages/school/Classes';
 import { Subjects } from './pages/school/Subjects';
+import { FeeSetup } from './pages/school/finance/FeeSetup';
+import { FeeCollection } from './pages/school/finance/FeeCollection';
 
 
 const HomeRedirect = () => {
@@ -77,6 +79,10 @@ function App() {
                     <Route path="/sessions" element={<ModuleRoute module="employees"><Sessions /></ModuleRoute>} />
                     <Route path="/classes" element={<ModuleRoute module="employees"><Classes /></ModuleRoute>} />
                     <Route path="/subjects" element={<ModuleRoute module="employees"><Subjects /></ModuleRoute>} />
+
+                    {/* Finance */}
+                    <Route path="/fees" element={<ModuleRoute module="payroll"><FeeCollection /></ModuleRoute>} />
+                    <Route path="/fees/setup" element={<ModuleRoute module="payroll"><FeeSetup /></ModuleRoute>} />
 
                     {/* Masters - Linked to Employees */}
                     <Route path="/departments" element={<ModuleRoute module="employees"><Departments /></ModuleRoute>} />

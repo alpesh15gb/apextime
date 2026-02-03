@@ -248,4 +248,16 @@ export const schoolAPI = {
   createSubject: (data: any) => api.post('/school/subjects', data),
 };
 
+export const financeAPI = {
+  createFeeHead: (data: any) => api.post('/school/finance/outlines', data),
+  getFeeHeads: () => api.get('/school/finance/outlines'),
+
+  createFeeStructure: (data: any) => api.post('/school/finance/structures', data),
+  getFeeStructures: (courseId?: string) => api.get('/school/finance/structures', { params: { courseId } }),
+
+  getStudentFees: (studentId: string) => api.get(`/school/finance/student/${studentId}`),
+  generateInvoice: (data: any) => api.post('/school/finance/invoice', data),
+  collectFee: (data: any) => api.post('/school/finance/collect', data),
+};
+
 export default api;
