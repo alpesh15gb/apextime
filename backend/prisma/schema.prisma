@@ -66,6 +66,12 @@ model Tenant {
   assetCategories          AssetCategory[]
   assets                   Asset[]
   assetAssignments         AssetAssignment[]
+  
+  // Payroll Enhancements
+  ctcStructures            CTCStructure[]
+  reimbursementEntries     ReimbursementEntry[]
+  salaryRevisions          SalaryRevision[]
+  tdsDeclarations          TDSDeclaration[]
 }
 
 // --------------------------------------------------------
@@ -211,6 +217,9 @@ model Employee {
   gender          String?
   dateOfBirth     DateTime?
   address         String?
+  city            String?
+  state           String?  // For PT calculation (KA, MH, WB, TN, etc.)
+  pincode         String?
   
   // Employment Details
   branchId        String?
@@ -276,6 +285,10 @@ model Employee {
   documents       EmployeeDocument[]
   loans           Loan[]
   assetAssignments AssetAssignment[]
+  ctcStructures    CTCStructure[]
+  reimbursementEntries ReimbursementEntry[]
+  salaryRevisions  SalaryRevision[]
+  tdsDeclarations  TDSDeclaration[]
 
   @@unique([employeeCode, tenantId])
   @@unique([sourceEmployeeId, tenantId])
@@ -648,27 +661,63 @@ model Payroll {
   actualPresentDays Float     @default(0)
   lopDays           Float     @default(0)
   paidDays          Float     @default(0)
+  
+  // Earnings
   grossSalary       Float     @default(0)
-  totalDeductions   Float     @default(0)
-  netSalary         Float     @default(0)
-  status            String    @default("generated")
   basicPaid         Float     @default(0)
   hraPaid           Float     @default(0)
   allowancesPaid    Float     @default(0)
+  otHours           Float     @default(0)
+  otPay             Float     @default(0)
+  bonus             Float     @default(0)
+  incentives        Float     @default(0)
+  leaveEncashment   Float     @default(0)
+  reimbursements    Float     @default(0)
+  arrears           Float     @default(0)
+  
+  // Deductions
+  totalDeductions   Float     @default(0)
   pfDeduction       Float     @default(0)
   esiDeduction      Float     @default(0)
   ptDeduction       Float     @default(0)
+  tdsDeduction      Float     @default(0)
+  loanDeduction     Float     @default(0)
+  advanceDeduction  Float     @default(0)
+  otherDeductions   Float     @default(0)
+  
+  // Employer Contributions
   employerPF        Float     @default(0)
   employerESI       Float     @default(0)
-  otHours           Float     @default(0)
-  otPay             Float     @default(0)
-  loanDeduction     Float     @default(0) // Added for Loan Management
+  gratuityAccrual   Float     @default(0)
+  
+  // Final
+  netSalary         Float     @default(0)
+  
+  // Status & Control
+  status            String    @default("generated") // generated, review, approved, paid, hold
+  isHold            Boolean   @default(false)
+  holdReason        String?
+  
+  // State for PT
+  stateCode         String?   // KA, MH, WB, TN, etc.
+  
+  // Relations
   payrollRunId      String?
   payrollRun        PayrollRun? @relation(fields: [payrollRunId], references: [id])
   loanDeductions    LoanDeduction[]
+  reimbursementEntries ReimbursementEntry[]
+  
+  // Metadata
+  processedAt       DateTime?
+  approvedAt        DateTime?
+  approvedBy        String?
+  paidAt            DateTime?
   createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([employeeId, month, year, tenantId])
+  @@index([tenantId, month, year])
+  @@index([status])
 }
 
 model Loan {
@@ -889,5 +938,142 @@ model AssetAssignment {
 
   @@index([tenantId])
   @@index([assetId])
+  @@index([employeeId])
+}
+
+// --------------------------------------------------------
+// PAYROLL ENHANCEMENTS
+// --------------------------------------------------------
+
+model CTCStructure {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  
+  // CTC Breakdown (Monthly)
+  basicSalary      Float
+  hra              Float
+  specialAllowance Float  @default(0)
+  conveyance       Float  @default(0)
+  medical          Float  @default(0)
+  lta              Float  @default(0)
+  otherAllowances  Float  @default(0)
+  
+  // Employer Contributions (Monthly)
+  employerPF       Float  @default(0)
+  employerESI      Float  @default(0)
+  gratuity         Float  @default(0)
+  
+  // Totals
+  totalMonthlyGross Float
+  totalAnnualCTC    Float
+  
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([effectiveFrom])
+}
+
+model ReimbursementEntry {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  payrollId   String?
+  payroll     Payroll? @relation(fields: [payrollId], references: [id])
+  
+  type        String   // TRAVEL, MEDICAL, FOOD, INTERNET, MOBILE, etc.
+  amount      Float
+  billDate    DateTime
+  billNumber  String?
+  description String?
+  attachment  String?  // File path or URL
+  
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, PAID
+  approvedBy  String?
+  approvedAt  DateTime?
+  rejectedReason String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([payrollId])
+}
+
+model SalaryRevision {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  
+  oldCTC      Float
+  newCTC      Float
+  oldBasic    Float
+  newBasic    Float
+  
+  effectiveFrom DateTime
+  reason      String?  // PROMOTION, ANNUAL_INCREMENT, MARKET_CORRECTION, etc.
+  
+  approvedBy  String?
+  approvedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+model TDSDeclaration {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  
+  financialYear String  // e.g. "2025-26"
+  
+  // Section 80C (Max 1.5L)
+  ppf         Float    @default(0)
+  elss        Float    @default(0)
+  lifeInsurance Float  @default(0)
+  homeLoanPrincipal Float @default(0)
+  tuitionFees Float    @default(0)
+  nsc         Float    @default(0)
+  
+  // Other Sections
+  section80D  Float    @default(0) // Health Insurance
+  section80E  Float    @default(0) // Education Loan Interest
+  section80G  Float    @default(0) // Donations
+  section24   Float    @default(0) // Home Loan Interest
+  
+  // HRA Details
+  rentPaid    Float    @default(0)
+  landlordPAN String?
+  
+  // Regime
+  taxRegime   String   @default("OLD") // OLD or NEW
+  
+  status      String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, financialYear, tenantId])
+  @@index([tenantId])
   @@index([employeeId])
 }
