@@ -195,14 +195,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       >
         {/* Logo Area */}
         <div className="h-16 flex items-center px-6 border-b border-gray-800">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="flex items-center space-x-3 min-w-0 w-full">
+            <div className="w-8 h-8 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="font-bold text-white text-lg">
                 {user?.tenantName?.[0]?.toUpperCase() || 'A'}
               </span>
             </div>
             {sidebarOpen && (
-              <span className="font-bold text-xl tracking-wide text-white">
+              <span className="font-bold text-lg tracking-wide text-white truncate">
                 {user?.tenantName?.toUpperCase() || 'APEXTIME'}
               </span>
             )}
