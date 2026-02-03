@@ -22,7 +22,9 @@ import {
   Database,
   FolderKanban,
   Cpu,
-  CreditCard
+  CreditCard,
+  Package
+
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -94,6 +96,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/loans', icon: CreditCard, label: 'Loans', module: 'payroll' },
           { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
           { path: '/projects', icon: FolderKanban, label: 'Projects', module: 'projects' },
+          { path: '/assets', icon: Package, label: 'Assets', module: 'core' },
+
           { path: '/devices', icon: Cpu, label: 'Attendance Devices', module: 'devices' },
           { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
         ].filter(item => {

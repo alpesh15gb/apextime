@@ -28,6 +28,8 @@ import { Loans } from './pages/Loans';
 import Tenants from './pages/Tenants';
 import Devices from './pages/Devices';
 import { useAuth } from './contexts/AuthContext';
+import Assets from './pages/Assets';
+
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -85,7 +87,9 @@ function App() {
                     <Route path="/ceo-vault" element={<ModuleRoute module="reports"><CEOAnalytics /></ModuleRoute>} />
                     <Route path="/projects" element={<ModuleRoute module="projects"><Projects /></ModuleRoute>} />
                     <Route path="/devices" element={<ModuleRoute module="devices"><Devices /></ModuleRoute>} />
+                    <Route path="/assets" element={<ModuleRoute module="core"><Assets /></ModuleRoute>} />
                     <Route path="/tenants" element={<Tenants />} />
+
                   </Routes>
                 </Layout>
               </ProtectedRoute>

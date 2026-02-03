@@ -37,6 +37,7 @@ import iclockRoutes from './routes/iclock';
 import hikvisionRoutes from './routes/hikvision';
 import documentRoutes from './routes/documents';
 import loanRoutes from './routes/loans';
+import assetRoutes from './routes/assets';
 
 dotenv.config();
 
@@ -86,6 +87,7 @@ app.use('/api/iclock', iclockRoutes);
 app.use('/api/hikvision', hikvisionRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/loans', loanRoutes);
+app.use('/api/assets', assetRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

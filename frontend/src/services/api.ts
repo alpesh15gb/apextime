@@ -219,4 +219,13 @@ export const documentsAPI = {
   delete: (id: string) => api.delete(`/documents/${id}`),
 };
 
+export const assetsAPI = {
+  getAll: () => api.get('/assets'),
+  create: (data: any) => api.post('/assets', data),
+  assign: (id: string, data: any) => api.post(`/assets/${id}/assign`, data),
+  return: (assignmentId: string, data: any) => api.post(`/assets/assignments/${assignmentId}/return`, data),
+  createCategory: (data: any) => api.post('/assets/categories', data),
+  getCategories: () => api.get('/assets/categories'),
+};
+
 export default api;
