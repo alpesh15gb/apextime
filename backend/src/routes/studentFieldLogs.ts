@@ -57,9 +57,9 @@ router.get('/student/:studentId', async (req: any, res) => {
 router.post('/approve', async (req: any, res) => {
     try {
         const tenantId = req.user?.tenantId;
-        const { logId, status } = req.body;
+        const { logId, status, isEmployee } = req.body;
         const approvedBy = req.user?.username;
-        const result = await logService.approveLog(tenantId, logId, status, approvedBy);
+        const result = await logService.approveLog(tenantId, logId, status, approvedBy, isEmployee);
         res.json({ success: true, data: result });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

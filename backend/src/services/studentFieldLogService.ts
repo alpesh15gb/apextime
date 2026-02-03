@@ -40,9 +40,10 @@ export class StudentFieldLogService {
 
     /**
      * Get all pending logs for approval (Admin/Teacher view)
+     * For schools, this includes both Student logs and Employee (Teacher) field logs
      */
     async getPendingLogs(tenantId: string) {
-        return prisma.studentFieldLog.findMany({
+        const studentLogs = await prisma.studentFieldLog.findMany({
             where: { tenantId, status: 'PENDING' },
             include: {
                 student: {
@@ -52,13 +53,103 @@ export class StudentFieldLogService {
             },
             orderBy: { timestamp: 'desc' }
         });
+
+        // Also fetch Employee FieldLogs for this tenant
+        const employeeLogs = await prisma.fieldLog.findMany({
+            where: { tenantId, status: 'pending' },
+            include: {
+                employee: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        employeeCode: true
+                    }
+                }
+            },
+            orderBy: { timestamp: 'desc' }
+        });
+
+        // Return a unified but distinguished response
+        return {
+            students: studentLogs,
+            employees: employeeLogs.map(log => ({
+                ...log,
+                isEmployeeLog: true, // Marker for frontend
+                type: log.type === 'IN' ? 'STAFF_IN' : 'STAFF_OUT' // Distinguishable type
+            }))
+        };
     }
 
     /**
      * Approve or Reject a log
      * If approved, it optionally updates the StudentAttendance record
      */
-    async approveLog(tenantId: string, logId: string, status: string, approvedBy: string) {
+    async approveLog(tenantId: string, logId: string, status: string, approvedBy: string, isEmployee: boolean = false) {
+        if (isEmployee) {
+            const backedStatus = status === 'APPROVED' ? 'approved' : 'rejected';
+            const log = await prisma.fieldLog.findUnique({
+                where: { id: logId }
+            });
+
+            if (!log) throw new Error('Employee Log not found');
+
+            const updated = await prisma.fieldLog.update({
+                where: { id: logId },
+                data: {
+                    status: backedStatus,
+                    approvedBy,
+                    approvedAt: new Date()
+                }
+            });
+
+            // If approved, upsert into Teacher's attendance log (standard logic)
+            if (backedStatus === 'approved') {
+                const punchDate = startOfDay(log.timestamp);
+
+                const existingAtt = await prisma.attendanceLog.findUnique({
+                    where: {
+                        employeeId_date_tenantId: {
+                            employeeId: log.employeeId,
+                            date: punchDate,
+                            tenantId: tenantId
+                        }
+                    }
+                });
+
+                const updateData: any = {};
+                if (log.type === 'IN') {
+                    if (!existingAtt || !existingAtt.firstIn || log.timestamp < existingAtt.firstIn) {
+                        updateData.firstIn = log.timestamp;
+                    }
+                } else {
+                    if (!existingAtt || !existingAtt.lastOut || log.timestamp > existingAtt.lastOut) {
+                        updateData.lastOut = log.timestamp;
+                    }
+                }
+
+                await prisma.attendanceLog.upsert({
+                    where: {
+                        employeeId_date_tenantId: {
+                            employeeId: log.employeeId,
+                            date: punchDate,
+                            tenantId: tenantId
+                        }
+                    },
+                    update: updateData,
+                    create: {
+                        tenantId: tenantId,
+                        employeeId: log.employeeId,
+                        date: punchDate,
+                        firstIn: log.type === 'IN' ? log.timestamp : null,
+                        lastOut: log.type === 'OUT' ? log.timestamp : null,
+                        status: 'present'
+                    }
+                });
+            }
+            return updated;
+        }
+
         const log = await prisma.studentFieldLog.findUnique({
             where: { id: logId },
             include: { student: true }
@@ -75,7 +166,7 @@ export class StudentFieldLogService {
             }
         });
 
-        // Sync with Daily Attendance if approved
+        // Sync with Daily Attendance (Student) if approved
         if (status === 'APPROVED') {
             const date = startOfDay(log.timestamp);
 

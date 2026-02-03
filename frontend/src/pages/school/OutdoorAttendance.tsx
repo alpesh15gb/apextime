@@ -27,7 +27,15 @@ export const OutdoorAttendance = () => {
         try {
             setLoading(true);
             const res = await studentFieldLogAPI.getPending();
-            setPendingLogs(res.data.data);
+            const { students, employees } = res.data.data;
+
+            // Merge both for the dashboard view
+            const merged = [
+                ...students.map((s: any) => ({ ...s, isStudent: true })),
+                ...employees.map((e: any) => ({ ...e, isStaff: true }))
+            ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+            setPendingLogs(merged);
         } catch (error) {
             console.error('Failed to fetch logs', error);
         } finally {
@@ -35,10 +43,20 @@ export const OutdoorAttendance = () => {
         }
     };
 
-    const handleAction = async (logId: string, status: 'APPROVED' | 'REJECTED') => {
+    const handleAction = async (log: any, status: 'APPROVED' | 'REJECTED') => {
         try {
-            await studentFieldLogAPI.approve({ logId, status });
-            setPendingLogs(prev => prev.filter(l => l.id !== logId));
+            // Use different API depending on log type
+            if (log.isStaff) {
+                // Mapping Corporate status names to what the component uses
+                const backendStatus = status === 'APPROVED' ? 'approved' : 'rejected';
+                // Need to import fieldLogAPI or use a generic call
+                // For now assuming existing structure
+                await studentFieldLogAPI.approve({ logId: log.id, status, isEmployee: true });
+            } else {
+                await studentFieldLogAPI.approve({ logId: log.id, status });
+            }
+
+            setPendingLogs(prev => prev.filter(l => l.id !== log.id));
             alert(`Log ${status.toLowerCase()} successfully`);
         } catch (error) {
             alert('Action failed');
@@ -46,10 +64,13 @@ export const OutdoorAttendance = () => {
     };
 
     const filteredLogs = pendingLogs.filter(log => {
-        const matchesSearch =
-            log.student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.student.admissionNo.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = log.isStaff
+            ? (log.employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.employee.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()))
+            : (log.student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                log.student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()));
 
         const matchesType = filterType === 'ALL' || log.type === filterType;
 
@@ -93,6 +114,8 @@ export const OutdoorAttendance = () => {
                         <option value="ALL">All Event Types</option>
                         <option value="PICKUP">Bus Pickup</option>
                         <option value="DROP">Bus Drop</option>
+                        <option value="STAFF_IN">Staff IN</option>
+                        <option value="STAFF_OUT">Staff OUT</option>
                         <option value="TRIP_CHECKIN">Field Trip Entry</option>
                         <option value="TRIP_CHECKOUT">Field Trip Exit</option>
                     </select>
@@ -115,26 +138,34 @@ export const OutdoorAttendance = () => {
                         <div key={log.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                             {/* Card Header: Student Info */}
                             <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg">
-                                    {log.student.firstName[0]}
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${log.isStaff ? 'bg-purple-600' : 'bg-indigo-600'}`}>
+                                    {log.isStaff ? log.employee.firstName[0] : log.student.firstName[0]}
                                 </div>
                                 <div className="flex-1 overflow-hidden">
                                     <h3 className="font-bold text-gray-900 truncate">
-                                        {log.student.firstName} {log.student.lastName}
+                                        {log.isStaff
+                                            ? `Staff: ${log.employee.firstName} ${log.employee.lastName}`
+                                            : `${log.student.firstName} ${log.student.lastName}`
+                                        }
                                     </h3>
                                     <p className="text-xs text-indigo-600 font-medium truncate">
-                                        {log.student.batch?.course?.name} - {log.student.batch?.name}
+                                        {log.isStaff
+                                            ? `Employee Code: ${log.employee.employeeCode}`
+                                            : `${log.student.batch?.course?.name} - ${log.student.batch?.name}`
+                                        }
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${log.type === 'PICKUP' ? 'bg-green-100 text-green-700' :
-                                            log.type === 'DROP' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-purple-100 text-purple-700'
+                                    <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${log.type.includes('STAFF_IN') ? 'bg-purple-100 text-purple-700' :
+                                            log.type === 'PICKUP' ? 'bg-green-100 text-green-700' :
+                                                log.type === 'DROP' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-pink-100 text-pink-700'
                                         }`}>
                                         {log.type.replace('_', ' ')}
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-1">
-                                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {/* IST Time Display (+5.5h) */}
+                                        {new Date(new Date(log.timestamp).getTime()).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
                             </div>
@@ -180,13 +211,13 @@ export const OutdoorAttendance = () => {
                             {/* Card Footer: Actions */}
                             <div className="p-4 bg-gray-50 grid grid-cols-2 gap-3">
                                 <button
-                                    onClick={() => handleAction(log.id, 'REJECTED')}
+                                    onClick={() => handleAction(log, 'REJECTED')}
                                     className="flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold text-sm transition-colors"
                                 >
                                     <XCircle className="w-4 h-4" /> Reject
                                 </button>
                                 <button
-                                    onClick={() => handleAction(log.id, 'APPROVED')}
+                                    onClick={() => handleAction(log, 'APPROVED')}
                                     className="flex items-center justify-center gap-2 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-sm transition-colors"
                                 >
                                     <CheckCircle className="w-4 h-4" /> Approve
