@@ -41,6 +41,7 @@ import assetRoutes from './routes/assets';
 import attendanceAdvancedRoutes from './routes/attendanceAdvanced';
 import deviceCommandsRoutes from './routes/deviceCommands';
 import schoolRoutes from './routes/school';
+import schoolFinanceRoutes from './routes/schoolFinance';
 
 dotenv.config();
 
@@ -94,6 +95,7 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/attendance', attendanceAdvancedRoutes);
 app.use('/api/devices', deviceCommandsRoutes);
 app.use('/api/school', schoolRoutes);
+app.use('/api/school/finance', schoolFinanceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
