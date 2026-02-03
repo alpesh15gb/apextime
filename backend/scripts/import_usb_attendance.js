@@ -32,16 +32,20 @@ async function importUSBAttendance(filePath, tenantId) {
         // Split by tab or multiple spaces
         const parts = line.split(/\s+/);
 
-        if (parts.length < 6) {
+        if (parts.length < 7) {
             errors.push({ line: i + 1, reason: 'Invalid format', data: line });
             continue;
         }
 
-        const [deviceUserId, timestamp, , , punchType] = parts;
+        // Format: [deviceUserId] [date] [time] [1] [255] [punchType] [0]
+        const deviceUserId = parts[0];
+        const date = parts[1];
+        const time = parts[2];
+        const punchType = parts[5];
 
         punches.push({
             deviceUserId: deviceUserId.trim(),
-            timestamp: timestamp.trim(),
+            timestamp: `${date} ${time}`,
             punchType: punchType === '1' ? 'IN' : 'OUT',
             lineNumber: i + 1
         });
