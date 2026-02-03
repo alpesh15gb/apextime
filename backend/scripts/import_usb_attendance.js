@@ -116,7 +116,7 @@ async function importUSBAttendance(filePath, tenantId) {
 
         try {
             // Check if this punch already exists
-            const existing = await prisma.attendance.findFirst({
+            const existing = await prisma.attendanceLog.findFirst({
                 where: {
                     employeeId: employee.id,
                     punchTime: punchTime
@@ -129,7 +129,7 @@ async function importUSBAttendance(filePath, tenantId) {
             }
 
             // Create attendance record
-            await prisma.attendance.create({
+            await prisma.attendanceLog.create({
                 data: {
                     employeeId: employee.id,
                     tenantId: tenantId,
