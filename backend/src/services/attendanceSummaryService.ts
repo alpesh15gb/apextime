@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -7,15 +7,11 @@ const prisma = new PrismaClient();
  * Generates monthly/period-wise summary reports
  */
 
-class AttendanceSummaryService {
+export class AttendanceSummaryService {
     /**
      * Generate summary report for a period
-     * @param {string} tenantId - Tenant ID
-     * @param {Date} startDate - Start date
-     * @param {Date} endDate - End date
-     * @param {string} groupBy - Group by field (department, designation, etc.)
      */
-    async generateSummary(tenantId, startDate, endDate, groupBy = null) {
+    async generateSummary(tenantId: string, startDate: Date, endDate: Date, groupBy: string | null = null) {
         console.log(`📊 Generating attendance summary for ${tenantId}`);
         console.log(`📅 Period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
 
@@ -59,17 +55,17 @@ class AttendanceSummaryService {
         const employeeMap = new Map();
 
         for (const log of logs) {
-            const empId = log.employee.id;
+            const empId = log.employee!.id;
 
             if (!employeeMap.has(empId)) {
                 employeeMap.set(empId, {
                     employeeId: empId,
-                    employeeCode: log.employee.employeeCode,
-                    employeeName: `${log.employee.firstName} ${log.employee.lastName}`,
-                    department: log.employee.department?.name || '-',
-                    departmentId: log.employee.department?.id,
-                    designation: log.employee.designation?.name || '-',
-                    designationId: log.employee.designation?.id,
+                    employeeCode: log.employee!.employeeCode,
+                    employeeName: `${log.employee!.firstName} ${log.employee!.lastName}`,
+                    department: log.employee!.department?.name || '-',
+                    departmentId: log.employee!.department?.id,
+                    designation: log.employee!.designation?.name || '-',
+                    designationId: log.employee!.designation?.id,
                     totalDays: 0,
                     present: 0,
                     absent: 0,
@@ -113,7 +109,7 @@ class AttendanceSummaryService {
                 lastOut: log.lastOut,
                 totalHours: log.totalHours
             });
-        });
+        };
 
         // Convert map to array and calculate averages
         const summary = Array.from(employeeMap.values()).map(emp => ({
@@ -134,7 +130,7 @@ class AttendanceSummaryService {
     /**
      * Group summary by specified field
      */
-    groupSummary(summary, groupBy) {
+    groupSummary(summary: any[], groupBy: string) {
         const grouped = new Map();
 
         for (const emp of summary) {
@@ -175,12 +171,12 @@ class AttendanceSummaryService {
             group.totalAbsent += emp.absent;
             group.totalLate += emp.late;
             group.totalHalfDay += emp.halfDay;
-        });
+        };
 
         // Calculate group averages
         for (const group of grouped.values()) {
             const totalAttendancePercentage = group.employees.reduce(
-                (sum, emp) => sum + emp.attendancePercentage,
+                (sum: number, emp: any) => sum + emp.attendancePercentage,
                 0
             );
             group.avgAttendancePercentage = totalAttendancePercentage / group.totalEmployees;
@@ -192,7 +188,7 @@ class AttendanceSummaryService {
     /**
      * Generate monthly summary for all employees
      */
-    async generateMonthlySummary(tenantId, year, month) {
+    async generateMonthlySummary(tenantId: string, year: number, month: number) {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0); // Last day of month
 
@@ -202,7 +198,7 @@ class AttendanceSummaryService {
     /**
      * Get employee-wise daily breakdown
      */
-    async getEmployeeDailyBreakdown(tenantId, employeeId, startDate, endDate) {
+    async getEmployeeDailyBreakdown(tenantId: string, employeeId: string, startDate: Date, endDate: Date) {
         const logs = await prisma.attendanceLog.findMany({
             where: {
                 tenantId,
@@ -226,21 +222,21 @@ class AttendanceSummaryService {
             workingHours: log.workingHours,
             lateArrival: log.lateArrival,
             earlyDeparture: log.earlyDeparture,
-            punches: log.logs ? JSON.parse(log.logs) : []
+            punches: log.logs ? JSON.parse(log.logs as string) : []
         }));
     }
 
     /**
      * Get department-wise summary
      */
-    async getDepartmentSummary(tenantId, startDate, endDate) {
+    async getDepartmentSummary(tenantId: string, startDate: Date, endDate: Date) {
         return this.generateSummary(tenantId, startDate, endDate, 'department');
     }
 
     /**
      * Calculate LOP (Loss of Pay) days
      */
-    calculateLOP(summary, workingDaysInMonth) {
+    calculateLOP(summary: any[], workingDaysInMonth: number) {
         return summary.map(emp => ({
             ...emp,
             expectedDays: workingDaysInMonth,
@@ -248,5 +244,3 @@ class AttendanceSummaryService {
         }));
     }
 }
-
-module.exports = AttendanceSummaryService;

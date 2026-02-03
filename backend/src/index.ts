@@ -38,6 +38,8 @@ import hikvisionRoutes from './routes/hikvision';
 import documentRoutes from './routes/documents';
 import loanRoutes from './routes/loans';
 import assetRoutes from './routes/assets';
+import attendanceAdvancedRoutes from './routes/attendanceAdvanced';
+import deviceCommandsRoutes from './routes/deviceCommands';
 
 dotenv.config();
 
@@ -88,6 +90,8 @@ app.use('/api/hikvision', hikvisionRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/assets', assetRoutes);
+app.use('/api/attendance', attendanceAdvancedRoutes);
+app.use('/api/devices', deviceCommandsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

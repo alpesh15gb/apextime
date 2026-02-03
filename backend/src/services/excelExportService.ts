@@ -1,15 +1,15 @@
-const ExcelJS = require('exceljs');
+import ExcelJS from 'exceljs';
 
 /**
  * Excel Export Service
  * Generates Excel reports for attendance data
  */
 
-class ExcelExportService {
+export class ExcelExportService {
     /**
      * Export detailed attendance report to Excel
      */
-    async exportDetailedReport(attendanceLogs, options = {}) {
+    async exportDetailedReport(attendanceLogs: any[], options: any = {}) {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Detailed Attendance');
 
@@ -27,7 +27,7 @@ class ExcelExportService {
             pattern: 'solid',
             fgColor: { argb: 'FF4472C4' }
         };
-        titleCell.font.color = { argb: 'FFFFFFFF' };
+        titleCell.font = { color: { argb: 'FFFFFFFF' } };
 
         // Add date range
         if (options.startDate && options.endDate) {
@@ -75,10 +75,10 @@ class ExcelExportService {
                 log.employee.designation || '-',
                 this.formatTime(log.firstIn),
                 this.formatTime(log.lastOut),
-                log.totalHours.toFixed(2),
-                log.workingHours.toFixed(2),
-                Math.round(log.lateArrival * 60),
-                Math.round(log.earlyDeparture * 60),
+                log.totalHours ? log.totalHours.toFixed(2) : '0.00',
+                log.workingHours ? log.workingHours.toFixed(2) : '0.00',
+                Math.round((log.lateArrival || 0) * 60),
+                Math.round((log.earlyDeparture || 0) * 60),
                 log.status,
                 log.totalPunches
             ]);
@@ -121,6 +121,7 @@ class ExcelExportService {
         // Auto-fit columns
         worksheet.columns.forEach(column => {
             let maxLength = 0;
+            // @ts-ignore
             column.eachCell({ includeEmpty: true }, cell => {
                 const columnLength = cell.value ? cell.value.toString().length : 10;
                 if (columnLength > maxLength) {
@@ -150,7 +151,7 @@ class ExcelExportService {
     /**
      * Export exception report to Excel
      */
-    async exportExceptionReport(exceptions, options = {}) {
+    async exportExceptionReport(exceptions: any[], options: any = {}) {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Exception Report');
 
@@ -168,7 +169,7 @@ class ExcelExportService {
             pattern: 'solid',
             fgColor: { argb: 'FFFF0000' }
         };
-        titleCell.font.color = { argb: 'FFFFFFFF' };
+        titleCell.font = { color: { argb: 'FFFFFFFF' } };
 
         // Add summary
         if (options.summary) {
@@ -253,6 +254,7 @@ class ExcelExportService {
         // Auto-fit columns
         worksheet.columns.forEach(column => {
             let maxLength = 0;
+            // @ts-ignore
             column.eachCell({ includeEmpty: true }, cell => {
                 const columnLength = cell.value ? cell.value.toString().length : 10;
                 if (columnLength > maxLength) {
@@ -282,7 +284,7 @@ class ExcelExportService {
     /**
      * Export summary report to Excel
      */
-    async exportSummaryReport(summaryData, options = {}) {
+    async exportSummaryReport(summaryData: any[], options: any = {}) {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Summary Report');
 
@@ -297,7 +299,7 @@ class ExcelExportService {
             pattern: 'solid',
             fgColor: { argb: 'FF4472C4' }
         };
-        titleCell.font.color = { argb: 'FFFFFFFF' };
+        titleCell.font = { color: { argb: 'FFFFFFFF' } };
 
         // Add headers
         const headerRow = worksheet.addRow([
@@ -340,6 +342,7 @@ class ExcelExportService {
         // Auto-fit columns
         worksheet.columns.forEach(column => {
             let maxLength = 0;
+            // @ts-ignore
             column.eachCell({ includeEmpty: true }, cell => {
                 const columnLength = cell.value ? cell.value.toString().length : 10;
                 if (columnLength > maxLength) {
@@ -355,7 +358,7 @@ class ExcelExportService {
     /**
      * Helper: Format date
      */
-    formatDate(date) {
+    formatDate(date: any) {
         if (!date) return '-';
         const d = new Date(date);
         return d.toISOString().split('T')[0];
@@ -364,11 +367,9 @@ class ExcelExportService {
     /**
      * Helper: Format time
      */
-    formatTime(datetime) {
+    formatTime(datetime: any) {
         if (!datetime) return '-';
         const d = new Date(datetime);
         return d.toISOString().substring(11, 19);
     }
 }
-
-module.exports = ExcelExportService;

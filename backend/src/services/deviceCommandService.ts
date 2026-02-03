@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -8,14 +8,11 @@ const prisma = new PrismaClient();
  * Supports: Upload Users, Delete Users, Sync Time, Restart, etc.
  */
 
-class DeviceCommandService {
+export class DeviceCommandService {
     /**
      * Queue a command for a device
-     * @param {string} deviceId - Device ID
-     * @param {string} commandType - Command type (UPLOAD_USER, DELETE_USER, SYNC_TIME, etc.)
-     * @param {object} payload - Command payload
      */
-    async queueCommand(deviceId, commandType, payload = {}) {
+    async queueCommand(deviceId: string, commandType: string, payload: any = {}) {
         console.log(`📤 Queuing command ${commandType} for device ${deviceId}`);
 
         const command = await prisma.deviceCommand.create({
@@ -24,7 +21,6 @@ class DeviceCommandService {
                 commandType,
                 payload: JSON.stringify(payload),
                 status: 'PENDING',
-                createdAt: new Date(),
                 priority: this.getCommandPriority(commandType)
             }
         });
@@ -35,10 +31,8 @@ class DeviceCommandService {
 
     /**
      * Upload employee to device
-     * @param {string} deviceId - Device ID
-     * @param {string} employeeId - Employee ID
      */
-    async uploadEmployeeToDevice(deviceId, employeeId) {
+    async uploadEmployeeToDevice(deviceId: string, employeeId: string) {
         // Get employee details
         const employee = await prisma.employee.findUnique({
             where: { id: employeeId },
@@ -70,14 +64,14 @@ class DeviceCommandService {
     /**
      * Upload multiple employees to device
      */
-    async uploadMultipleEmployees(deviceId, employeeIds) {
+    async uploadMultipleEmployees(deviceId: string, employeeIds: string[]) {
         const commands = [];
 
         for (const employeeId of employeeIds) {
             try {
                 const command = await this.uploadEmployeeToDevice(deviceId, employeeId);
                 commands.push(command);
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`Error uploading employee ${employeeId}:`, error.message);
             }
         }
@@ -88,7 +82,7 @@ class DeviceCommandService {
     /**
      * Upload all employees to device
      */
-    async uploadAllEmployeesToDevice(deviceId, tenantId) {
+    async uploadAllEmployeesToDevice(deviceId: string, tenantId: string) {
         const employees = await prisma.employee.findMany({
             where: {
                 tenantId,
@@ -106,7 +100,7 @@ class DeviceCommandService {
     /**
      * Delete employee from device
      */
-    async deleteEmployeeFromDevice(deviceId, employeeId) {
+    async deleteEmployeeFromDevice(deviceId: string, employeeId: string) {
         const employee = await prisma.employee.findUnique({
             where: { id: employeeId }
         });
@@ -125,14 +119,14 @@ class DeviceCommandService {
     /**
      * Clear all users from device
      */
-    async clearAllUsersFromDevice(deviceId) {
+    async clearAllUsersFromDevice(deviceId: string) {
         return this.queueCommand(deviceId, 'CLEAR_ALL_USERS', {});
     }
 
     /**
      * Sync device time
      */
-    async syncDeviceTime(deviceId) {
+    async syncDeviceTime(deviceId: string) {
         const payload = {
             timestamp: new Date().toISOString()
         };
@@ -143,14 +137,14 @@ class DeviceCommandService {
     /**
      * Restart device
      */
-    async restartDevice(deviceId) {
+    async restartDevice(deviceId: string) {
         return this.queueCommand(deviceId, 'RESTART', {});
     }
 
     /**
      * Get pending commands for device
      */
-    async getPendingCommands(deviceId) {
+    async getPendingCommands(deviceId: string) {
         const commands = await prisma.deviceCommand.findMany({
             where: {
                 deviceId,
@@ -169,7 +163,7 @@ class DeviceCommandService {
     /**
      * Mark command as completed
      */
-    async markCommandCompleted(commandId, result = null) {
+    async markCommandCompleted(commandId: string, result: any = null) {
         return prisma.deviceCommand.update({
             where: { id: commandId },
             data: {
@@ -183,7 +177,7 @@ class DeviceCommandService {
     /**
      * Mark command as failed
      */
-    async markCommandFailed(commandId, error) {
+    async markCommandFailed(commandId: string, error: string) {
         return prisma.deviceCommand.update({
             where: { id: commandId },
             data: {
@@ -197,8 +191,8 @@ class DeviceCommandService {
     /**
      * Get command priority
      */
-    getCommandPriority(commandType) {
-        const priorities = {
+    getCommandPriority(commandType: string) {
+        const priorities: Record<string, number> = {
             'RESTART': 10,
             'SYNC_TIME': 9,
             'CLEAR_ALL_USERS': 8,
@@ -214,7 +208,7 @@ class DeviceCommandService {
     /**
      * Get command statistics
      */
-    async getCommandStats(deviceId, hours = 24) {
+    async getCommandStats(deviceId: string, hours: number = 24) {
         const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
         const stats = await prisma.deviceCommand.groupBy({
@@ -238,7 +232,7 @@ class DeviceCommandService {
     /**
      * Format command for device (ZKTeco format)
      */
-    formatCommandForDevice(command) {
+    formatCommandForDevice(command: any) {
         const { commandType, payload } = command;
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
@@ -273,5 +267,3 @@ class DeviceCommandService {
         }
     }
 }
-
-module.exports = DeviceCommandService;
