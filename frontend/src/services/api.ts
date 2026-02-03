@@ -246,7 +246,12 @@ export const schoolAPI = {
   createCourse: (data: any) => api.post('/school/courses', data),
 
   getBatches: (courseId?: string) => api.get('/school/batches', { params: { courseId } }),
+  getAllBatches: () => api.get('/school/batches'),
   createBatch: (data: any) => api.post('/school/batches', data),
+
+  getStudents: (batchId?: string) => api.get('/school/students', { params: { batchId } }),
+  getAllStudents: () => api.get('/school/students'),
+  admitStudent: (data: any) => api.post('/school/students', data),
 
   getSubjects: (courseId?: string) => api.get('/school/subjects', { params: { courseId } }),
   createSubject: (data: any) => api.post('/school/subjects', data),
@@ -258,6 +263,10 @@ export const schoolAPI = {
   // Library
   getLibraryBooks: () => api.get('/library/books'),
   createLibraryBook: (data: any) => api.post('/library/books', data),
+
+  // Timetable
+  getTimetable: (batchId: string) => api.get(`/school/timetable/${batchId}`),
+  createTimetableEntry: (data: any) => api.post('/school/timetable', data),
 };
 
 export const financeAPI = {
@@ -268,6 +277,7 @@ export const financeAPI = {
   getFeeStructures: (courseId?: string) => api.get('/school/finance/structures', { params: { courseId } }),
 
   getStudentFees: (studentId: string) => api.get(`/school/finance/student/${studentId}`),
+  getInvoices: () => api.get('/school/finance/invoices'),
   generateInvoice: (data: any) => api.post('/school/finance/invoice', data),
   collectFee: (data: any) => api.post('/school/finance/collect', data),
 };

@@ -103,28 +103,54 @@ export class StudentAttendanceService {
         const date = new Date(dateString);
         const start = startOfDay(date);
 
-        const attendance = await prisma.studentAttendance.findMany({
-            where: {
-                student: { tenantId },
-                date: start
-            },
-            include: {
-                student: {
-                    include: { batch: { include: { course: true } } }
-                }
-            }
+        // Fetch all active students
+        const students = await prisma.student.findMany({
+            where: { tenantId, status: 'ACTIVE' },
+            include: { batch: { include: { course: true } } },
+            orderBy: { firstName: 'asc' }
         });
 
-        return attendance;
+        // Fetch existing attendance records
+        const attendance = await prisma.studentAttendance.findMany({
+            where: { tenantId, date: start }
+        });
+
+        const attendanceMap = new Map(attendance.map(a => [a.studentId, a]));
+
+        // Merge
+        return students.map(student => {
+            const record = attendanceMap.get(student.id);
+            return {
+                id: record?.id || `temp-${student.id}`,
+                studentId: student.id,
+                student: student,
+                date: start,
+                status: record?.status || 'ABSENT',
+                remarks: record?.remarks || (record ? '-' : 'Not Processed'),
+                isManual: !record
+            };
+        });
     }
 
     /**
      * Manually Update Attendance
      */
-    async updateAttendance(id: string, status: string, remarks?: string) {
-        return prisma.studentAttendance.update({
-            where: { id },
-            data: { status, remarks }
+    async updateAttendance(tenantId: string, studentId: string, date: Date, status: string, remarks?: string) {
+        return prisma.studentAttendance.upsert({
+            where: {
+                studentId_date: {
+                    studentId,
+                    date: startOfDay(date)
+                }
+            },
+            update: { status, remarks, updatedAt: new Date() },
+            create: {
+                tenantId,
+                studentId,
+                date: startOfDay(date),
+                status,
+                remarks: remarks || 'Manual Update'
+            }
         });
     }
 }

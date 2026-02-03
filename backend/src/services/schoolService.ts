@@ -7,6 +7,11 @@ export class SchoolService {
      * Create a new Academic Session
      */
     async createSession(tenantId: string, data: any) {
+        // Validation
+        if (!data.name || !data.startDate || !data.endDate) {
+            throw new Error('Name, Start Date and End Date are required');
+        }
+
         // If this is set as current, unset others
         if (data.isCurrent) {
             await prisma.academicSession.updateMany({
@@ -17,7 +22,11 @@ export class SchoolService {
 
         return prisma.academicSession.create({
             data: {
-                ...data,
+                name: data.name,
+                code: data.code || null,
+                startDate: new Date(data.startDate),
+                endDate: new Date(data.endDate),
+                isCurrent: !!data.isCurrent,
                 tenantId
             }
         });
@@ -27,9 +36,15 @@ export class SchoolService {
      * Create a Course (e.g. Class 10)
      */
     async createCourse(tenantId: string, data: any) {
+        if (!data.name) throw new Error('Course name is required');
+
         return prisma.course.create({
             data: {
-                ...data,
+                name: data.name,
+                code: data.code || null,
+                description: data.description || null,
+                duration: data.duration ? parseInt(String(data.duration)) : null,
+                type: data.type || 'CLASS',
                 tenantId
             }
         });
@@ -39,9 +54,19 @@ export class SchoolService {
      * Create a Batch (e.g. Section A)
      */
     async createBatch(tenantId: string, data: any) {
+        if (!data.name || !data.courseId || !data.sessionId) {
+            throw new Error('Name, Course, and Session are required');
+        }
+
         return prisma.batch.create({
             data: {
-                ...data,
+                name: data.name,
+                courseId: data.courseId,
+                sessionId: data.sessionId,
+                maxStrength: data.maxStrength ? parseInt(String(data.maxStrength)) : null,
+                inchargeId: data.inchargeId || null,
+                startDate: data.startDate ? new Date(data.startDate) : null,
+                endDate: data.endDate ? new Date(data.endDate) : null,
                 tenantId
             }
         });
@@ -65,6 +90,15 @@ export class SchoolService {
             throw new Error(`Admission Number ${data.admissionNo} already exists`);
         }
 
+        // Fetch session from batch if not provided
+        let sessionId = data.sessionId;
+        if (!sessionId && data.batchId) {
+            const batch = await prisma.batch.findUnique({ where: { id: data.batchId } });
+            sessionId = batch?.sessionId;
+        }
+
+        if (!sessionId) throw new Error('Academic Session is required');
+
         // Create Guardian if provided
         let guardianId = data.guardianId;
         if (data.guardian) {
@@ -83,20 +117,21 @@ export class SchoolService {
                 firstName: data.firstName,
                 lastName: data.lastName,
                 admissionNo: data.admissionNo,
-                rollNo: data.rollNo,
-                email: data.email,
-                phone: data.phone,
-                gender: data.gender,
+                rollNo: data.rollNo || null,
+                email: data.email || null,
+                phone: data.phone || null,
+                gender: data.gender || null,
                 dob: data.dob ? new Date(data.dob) : null,
-                bloodGroup: data.bloodGroup,
-                sessionId: data.sessionId,
+                bloodGroup: data.bloodGroup || null,
+                sessionId: sessionId,
                 batchId: data.batchId,
                 guardianId: guardianId,
                 dateOfAdmission: new Date(data.dateOfAdmission),
-                address: data.address,
-                city: data.city,
-                state: data.state,
-                zipCode: data.zipCode,
+                address: data.address || null,
+                city: data.city || null,
+                state: data.state || null,
+                zipCode: data.zipCode || null,
+                transportRouteId: data.transportRouteId || null,
                 tenantId
             }
         });
@@ -176,9 +211,14 @@ export class SchoolService {
     // --------------------------------------------------------
 
     async createSubject(tenantId: string, data: any) {
+        if (!data.name) throw new Error('Subject name is required');
+
         return prisma.subject.create({
             data: {
-                ...data,
+                name: data.name,
+                code: data.code || null,
+                type: data.type || 'THEORY',
+                courseId: data.courseId || null,
                 tenantId
             }
         });
@@ -194,6 +234,38 @@ export class SchoolService {
                 course: true
             },
             orderBy: { name: 'asc' }
+        });
+    }
+
+    // --------------------------------------------------------
+    // TIMETABLE MANAGEMENT
+    // --------------------------------------------------------
+
+    async createTimetableEntry(tenantId: string, data: any) {
+        return prisma.timetableEntry.create({
+            data: {
+                tenantId,
+                batchId: data.batchId,
+                subjectId: data.subjectId,
+                teacherId: data.teacherId || null,
+                dayOfWeek: parseInt(data.dayOfWeek),
+                startTime: data.startTime,
+                endTime: data.endTime
+            }
+        });
+    }
+
+    async getTimetable(tenantId: string, batchId: string) {
+        return prisma.timetableEntry.findMany({
+            where: { tenantId, batchId },
+            include: {
+                subject: true,
+                teacher: true
+            },
+            orderBy: [
+                { dayOfWeek: 'asc' },
+                { startTime: 'asc' }
+            ]
         });
     }
 }

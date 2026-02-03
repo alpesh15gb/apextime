@@ -88,4 +88,14 @@ router.get('/student/:studentId', async (req: any, res) => {
     }
 });
 
+router.get('/invoices', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const result = await financeService.getInvoices(tenantId);
+        res.json({ success: true, data: result });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 export default router;

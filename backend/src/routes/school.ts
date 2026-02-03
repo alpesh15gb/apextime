@@ -146,4 +146,27 @@ router.get('/subjects', async (req: any, res) => {
     }
 });
 
+/**
+ * Timetable Routes
+ */
+router.post('/timetable', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const entry = await schoolService.createTimetableEntry(tenantId, req.body);
+        res.json({ success: true, data: entry });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/timetable/:batchId', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const data = await schoolService.getTimetable(tenantId, req.params.batchId);
+        res.json({ success: true, data });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 export default router;

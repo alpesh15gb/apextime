@@ -39,7 +39,8 @@ import { FeeCollection } from './pages/school/finance/FeeCollection';
 import { StudentAttendance } from './pages/school/StudentAttendance';
 import { Transport } from './pages/school/Transport';
 import { Library } from './pages/school/Library';
-
+import { Timetable } from './pages/school/Timetable';
+import { Invoices } from './pages/school/finance/Invoices';
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -83,10 +84,12 @@ function App() {
                     <Route path="/sessions" element={<ModuleRoute module="employees"><Sessions /></ModuleRoute>} />
                     <Route path="/classes" element={<ModuleRoute module="employees"><Classes /></ModuleRoute>} />
                     <Route path="/subjects" element={<ModuleRoute module="employees"><Subjects /></ModuleRoute>} />
+                    <Route path="/timetable" element={<ModuleRoute module="employees"><Timetable /></ModuleRoute>} />
 
                     {/* Finance */}
                     <Route path="/fees" element={<ModuleRoute module="payroll"><FeeCollection /></ModuleRoute>} />
                     <Route path="/fees/setup" element={<ModuleRoute module="payroll"><FeeSetup /></ModuleRoute>} />
+                    <Route path="/invoices" element={<ModuleRoute module="payroll"><Invoices /></ModuleRoute>} />
 
                     {/* School Services */}
                     <Route path="/transport" element={<ModuleRoute module="core"><Transport /></ModuleRoute>} />

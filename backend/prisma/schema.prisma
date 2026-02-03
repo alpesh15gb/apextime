@@ -1175,7 +1175,6 @@ model AcademicSession {
   students        Student[]
   batches         Batch[]
   
-  @@unique([tenantId, isCurrent]) // Only one current session per tenant
   @@index([tenantId])
 }
 

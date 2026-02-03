@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Building2, Plus, Users, ChevronRight } from 'lucide-react';
-import { schoolAPI } from '../../services/api';
+import { Building2, Plus, Users, ChevronRight, Calendar } from 'lucide-react';
+import { schoolAPI, employeesAPI } from '../../services/api';
 
 interface Course {
     id: string;
@@ -15,7 +15,11 @@ interface Course {
 interface Batch {
     id: string;
     name: string;
-    capacity: number;
+    maxStrength: number;
+    incharge?: {
+        firstName: string;
+        lastName: string;
+    };
     _count?: {
         students: number;
     };
@@ -25,16 +29,18 @@ export const Classes = () => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
     const [batches, setBatches] = useState<Batch[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [teachers, setTeachers] = useState<any[]>([]);
 
     // Modals
     const [showCourseModal, setShowCourseModal] = useState(false);
     const [showBatchModal, setShowBatchModal] = useState(false);
 
     const [courseForm, setCourseForm] = useState({ name: '', code: '', description: '' });
-    const [batchForm, setBatchForm] = useState({ name: '', capacity: 40 });
+    const [batchForm, setBatchForm] = useState({ name: '', maxStrength: 40, sessionId: '', inchargeId: '' });
 
     useEffect(() => {
-        fetchCourses();
+        fetchInitialData();
     }, []);
 
     useEffect(() => {
@@ -45,12 +51,35 @@ export const Classes = () => {
         }
     }, [selectedCourse]);
 
+    const fetchInitialData = async () => {
+        try {
+            const [coursesRes, sessionsRes, teachersRes] = await Promise.all([
+                schoolAPI.getCourses(),
+                schoolAPI.getSessions(),
+                employeesAPI.getAll()
+            ]);
+
+            setCourses(coursesRes.data.data);
+            setSessions(sessionsRes.data.data);
+            setTeachers(teachersRes.data);
+
+            if (coursesRes.data.data.length > 0) {
+                setSelectedCourse(coursesRes.data.data[0]);
+            }
+
+            // Pre-select current session if available
+            const currentSession = sessionsRes.data.data.find((s: any) => s.isCurrent);
+            if (currentSession) {
+                setBatchForm(prev => ({ ...prev, sessionId: currentSession.id }));
+            }
+        } catch (error) {
+            console.error('Failed to fetch initial data', error);
+        }
+    };
+
     const fetchCourses = async () => {
         const res = await schoolAPI.getCourses();
         setCourses(res.data.data);
-        if (res.data.data.length > 0 && !selectedCourse) {
-            setSelectedCourse(res.data.data[0]);
-        }
     };
 
     const fetchBatches = async (courseId: string) => {
@@ -71,10 +100,16 @@ export const Classes = () => {
     const handleCreateBatch = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedCourse) return;
+        if (!batchForm.sessionId) {
+            alert('Please select an Academic Session');
+            return;
+        }
+
         try {
             await schoolAPI.createBatch({ ...batchForm, courseId: selectedCourse.id });
             setShowBatchModal(false);
-            setBatchForm({ name: '', capacity: 40 });
+            const currentSessionId = batchForm.sessionId;
+            setBatchForm({ name: '', maxStrength: 40, sessionId: currentSessionId, inchargeId: '' });
             fetchBatches(selectedCourse.id);
         } catch (e) { alert('Error creating section'); }
     };
@@ -144,8 +179,15 @@ export const Classes = () => {
                                     <div className="font-bold text-lg">{batch.name}</div>
                                     <div className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">{batch._count?.students || 0} Students</div>
                                 </div>
-                                <div className="text-sm text-gray-500 flex items-center gap-1">
-                                    <Users className="w-3 h-3" /> Capacity: {batch.capacity}
+                                <div className="space-y-1">
+                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Users className="w-3 h-3" /> Cap: {batch.maxStrength}
+                                    </div>
+                                    {batch.incharge && (
+                                        <div className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" /> {batch.incharge.firstName} {batch.incharge.lastName}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )) : (
@@ -163,7 +205,7 @@ export const Classes = () => {
             {/* Course Modal */}
             {showCourseModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl w-full max-w-sm p-6">
+                    <div className="bg-white rounded-xl w-full max-w-sm p-6 shadow-2xl">
                         <h3 className="text-lg font-bold mb-4">Add Class</h3>
                         <form onSubmit={handleCreateCourse} className="space-y-4">
                             <div>
@@ -176,7 +218,7 @@ export const Classes = () => {
                             </div>
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setShowCourseModal(false)} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Create</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Create Class</button>
                             </div>
                         </form>
                     </div>
@@ -186,20 +228,52 @@ export const Classes = () => {
             {/* Batch Modal */}
             {showBatchModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl w-full max-w-sm p-6">
+                    <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
                         <h3 className="text-lg font-bold mb-4">Add Section</h3>
                         <form onSubmit={handleCreateBatch} className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium">Section Name (e.g. A)</label>
-                                <input required type="text" className="w-full rounded-lg border-gray-300" value={batchForm.name} onChange={e => setBatchForm({ ...batchForm, name: e.target.value })} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium">Section Name (e.g. A)</label>
+                                    <input required type="text" className="w-full rounded-lg border-gray-300" value={batchForm.name} onChange={e => setBatchForm({ ...batchForm, name: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium">Capacity</label>
+                                    <input type="number" className="w-full rounded-lg border-gray-300" value={batchForm.maxStrength} onChange={e => setBatchForm({ ...batchForm, maxStrength: Number(e.target.value) })} />
+                                </div>
                             </div>
+
                             <div>
-                                <label className="text-sm font-medium">Capacity</label>
-                                <input type="number" className="w-full rounded-lg border-gray-300" value={batchForm.capacity} onChange={e => setBatchForm({ ...batchForm, capacity: Number(e.target.value) })} />
+                                <label className="text-sm font-medium">Academic Session</label>
+                                <select
+                                    required
+                                    className="w-full rounded-lg border-gray-300"
+                                    value={batchForm.sessionId}
+                                    onChange={e => setBatchForm({ ...batchForm, sessionId: e.target.value })}
+                                >
+                                    <option value="">Select Session</option>
+                                    {sessions.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} {s.isCurrent ? '(Current)' : ''}</option>
+                                    ))}
+                                </select>
                             </div>
+
+                            <div>
+                                <label className="text-sm font-medium">Class Teacher (Optional)</label>
+                                <select
+                                    className="w-full rounded-lg border-gray-300"
+                                    value={batchForm.inchargeId}
+                                    onChange={e => setBatchForm({ ...batchForm, inchargeId: e.target.value })}
+                                >
+                                    <option value="">Select Teacher</option>
+                                    {teachers.map(t => (
+                                        <option key={t.id} value={t.id}>{t.firstName} {t.lastName} ({t.employeeCode})</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={() => setShowBatchModal(false)} className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Create</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Create Section</button>
                             </div>
                         </form>
                     </div>

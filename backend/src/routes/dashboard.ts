@@ -145,10 +145,23 @@ router.get('/stats', async (req, res) => {
         const studentCount = await prisma.student.count();
         const courseCount = await prisma.course.count();
         const batchCount = await prisma.batch.count();
+
+        // Student Attendance Today
+        const studentsPresent = await prisma.studentAttendance.count({
+          where: { date: { gte: today }, status: 'PRESENT' }
+        });
+        const studentsAbsent = await prisma.studentAttendance.count({
+          where: { date: { gte: today }, status: 'ABSENT' }
+        });
+
         schoolStats = {
           totalStudents: studentCount,
           totalCourses: courseCount,
-          totalBatches: batchCount
+          totalBatches: batchCount,
+          attendance: {
+            present: studentsPresent,
+            absent: studentsAbsent
+          }
         };
       } catch (e) { console.error('School stats error', e); }
     }

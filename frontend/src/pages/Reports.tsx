@@ -16,13 +16,20 @@ import {
   AlertCircle,
   PieChart,
   DollarSign,
-  LayoutGrid
+  LayoutGrid,
+  GraduationCap,
+  Bus,
+  Library
 } from 'lucide-react';
 import { reportsAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
 import { Department, Branch, Shift } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Reports = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSchool = user?.modules?.includes('school');
+
   const [generating, setGenerating] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -61,12 +68,11 @@ export const Reports = () => {
   const handleDownload = async (format: 'excel' | 'pdf', reportType: string = 'daily') => {
     try {
       setGenerating(true);
-      const params: Record<string, string> = {};
-
-      // Use date range logic (simplified to daily/monthly mapping for existing API)
-      // If ranges match, use daily. If start/end diff > 1 day, maybe warn or defaulted to daily for Start Date?
-      // For now, we map 'start' to the date parameter.
-      params.date = dateRange.start;
+      const params: Record<string, string> = {
+        startDate: dateRange.start,
+        endDate: dateRange.end,
+        date: dateRange.start
+      };
 
       if (filters.departmentId) params.departmentId = filters.departmentId;
       if (filters.branchId) params.branchId = filters.branchId;
@@ -100,184 +106,152 @@ export const Reports = () => {
     }
   };
 
-  const ReportCard = ({ icon: Icon, title, colorClass, bgClass, onClick }: any) => (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex items-center justify-between group cursor-pointer" onClick={onClick}>
+  const ReportCard = ({ icon: Icon, title, description, colorClass, bgClass, onClick }: any) => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex items-center justify-between group cursor-pointer" onClick={onClick}>
       <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-full ${bgClass} ${colorClass}`}>
+        <div className={`p-4 rounded-xl ${bgClass} ${colorClass} group-hover:scale-110 transition-transform`}>
           <Icon className="w-6 h-6" />
         </div>
         <div>
-          <h3 className="font-bold text-gray-800 text-sm">{title}</h3>
-          <span className="text-xs text-blue-600 font-medium flex items-center gap-1 mt-1 group-hover:underline">
-            View Report <ChevronRight className="w-3 h-3" />
-          </span>
+          <h3 className="font-bold text-gray-800">{title}</h3>
+          <p className="text-xs text-gray-400 mt-1">{description || 'Generate detailed report'}</p>
         </div>
       </div>
+      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-600 transition-colors" />
     </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Reports</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Report Center</h1>
+          <p className="text-gray-500 text-sm mt-1">Analytics and data exports for your institution</p>
+        </div>
       </div>
 
       {/* Filter Card */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 className="font-bold text-gray-800 mb-4 text-sm">Filters</h3>
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <Filter className="w-5 h-5 text-blue-600" /> General Filters
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-          {/* Date Range */}
           <div className="lg:col-span-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-2">Date Range</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Date Range</label>
             <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl text-sm p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
-              <span className="text-gray-400">-</span>
+              <span className="text-gray-300">to</span>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl text-sm p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
-
-          {/* Department */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2">Department</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Department</label>
             <select
               value={filters.departmentId}
               onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl text-sm p-2.5"
             >
-              <option value="">All</option>
+              <option value="">All Departments</option>
               {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </div>
-
-          {/* Branch / Employer */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2">Employer</label>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Branch</label>
             <select
               value={filters.branchId}
               onChange={(e) => setFilters({ ...filters, branchId: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl text-sm p-2.5"
             >
-              <option value="">All</option>
+              <option value="">All Branches</option>
               {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2">Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-            >
-              <option value="">All Employees</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-            </select>
-          </div>
-
-          {/* Shift */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-2">Shift</label>
-            <select
-              value={filters.shiftId}
-              onChange={(e) => setFilters({ ...filters, shiftId: e.target.value })}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg text-sm p-2.5 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-            >
-              <option value="">All</option>
-              {shifts.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
-          <button
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            onClick={() => console.log('Apply Filters')}
-          >
-            Apply
-          </button>
-          <button
-            onClick={() => handleDownload('pdf')}
-            disabled={generating}
-            className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <FilePdf className="w-4 h-4" /> PDF
-          </button>
-          <button
-            onClick={() => handleDownload('excel')}
-            disabled={generating}
-            className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <FileSpreadsheet className="w-4 h-4" /> Excel
-          </button>
         </div>
       </div>
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 ml-0 gap-6">
-        <ReportCard
-          icon={LayoutGrid}
-          title="Monthly Matrix"
-          colorClass="text-blue-600"
-          bgClass="bg-blue-50"
-          onClick={() => navigate('/monthly-report')}
-        />
-        <ReportCard
-          icon={Calendar}
-          title="Daily Attendance"
-          colorClass="text-cyan-600"
-          bgClass="bg-cyan-50"
-          onClick={() => handleDownload('excel', 'daily')}
-        />
-        <ReportCard
-          icon={Briefcase}
-          title="Leave Report"
-          colorClass="text-purple-600"
-          bgClass="bg-purple-50"
-          onClick={() => handleDownload('excel', 'daily')}
-        />
-        <ReportCard
-          icon={DollarSign}
-          title="Payroll Management"
-          colorClass="text-amber-500"
-          bgClass="bg-amber-50"
-          onClick={() => navigate('/payroll')}
-        />
-        <ReportCard
-          icon={Clock}
-          title="Overtime Report"
-          colorClass="text-red-500"
-          bgClass="bg-red-50"
-          onClick={() => handleDownload('excel', 'daily')}
-        />
-        <ReportCard
-          icon={Users}
-          title="Employee Turnover"
-          colorClass="text-emerald-500"
-          bgClass="bg-emerald-50"
-          onClick={() => handleDownload('excel', 'monthly')}
-        />
-        <ReportCard
-          icon={CheckCircle}
-          title="Compliance Report"
-          colorClass="text-indigo-500"
-          bgClass="bg-indigo-50"
-          onClick={() => handleDownload('excel', 'daily')}
-        />
-      </div>
+      {isSchool && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 px-1">
+            <GraduationCap className="w-6 h-6 text-blue-600" /> School Management Reports
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ReportCard
+              icon={Calendar}
+              title="Student Attendance"
+              description="Daily and monthly student attendance records"
+              colorClass="text-emerald-600"
+              bgClass="bg-emerald-50"
+              onClick={() => handleDownload('excel', 'student_attendance')}
+            />
+            <ReportCard
+              icon={DollarSign}
+              title="Fee Collection"
+              description="Fee receipts, dues, and payment history"
+              colorClass="text-blue-600"
+              bgClass="bg-blue-50"
+              onClick={() => handleDownload('excel', 'fee_report')}
+            />
+            <ReportCard
+              icon={Bus}
+              title="Transport Usage"
+              description="Student counts per route and vehicle info"
+              colorClass="text-orange-600"
+              bgClass="bg-orange-50"
+              onClick={() => handleDownload('excel', 'transport_report')}
+            />
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 px-1">
+          <Briefcase className="w-6 h-6 text-indigo-600" /> HR & Attendance Reports
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ReportCard
+            icon={LayoutGrid}
+            title="Monthly Matrix"
+            description="Complete attendance grid for all employees"
+            colorClass="text-blue-600"
+            bgClass="bg-blue-50"
+            onClick={() => navigate('/monthly-report')}
+          />
+          <ReportCard
+            icon={Calendar}
+            title="Daily Attendance"
+            description="Punch-in/out logs for a specific day"
+            colorClass="text-cyan-600"
+            bgClass="bg-cyan-50"
+            onClick={() => handleDownload('excel', 'daily')}
+          />
+          <ReportCard
+            icon={FileText}
+            title="Leave Report"
+            description="Summary of approved and pending leaves"
+            colorClass="text-purple-600"
+            bgClass="bg-purple-50"
+            onClick={() => handleDownload('excel', 'daily')}
+          />
+          <ReportCard
+            icon={PieChart}
+            title="Payroll Summary"
+            description="Earnings and deductions overview"
+            colorClass="text-amber-500"
+            bgClass="bg-amber-50"
+            onClick={() => navigate('/payroll')}
+          />
+        </div>
+      </section>
     </div>
   );
 };

@@ -44,8 +44,14 @@ export const StudentAttendance = () => {
         const newStatus = record.status === 'PRESENT' ? 'ABSENT' : 'PRESENT';
         try {
             // Optimistic Update
-            setRecords(prev => p.map(r => r.id === record.id ? { ...r, status: newStatus } : r));
-            await studentAttendanceAPI.updateRecord(record.id, { status: newStatus });
+            const updatedRecords = records.map(r => r.studentId === record.studentId ? { ...r, status: newStatus } : r);
+            setRecords(updatedRecords);
+
+            await studentAttendanceAPI.updateRecord(record.studentId, {
+                status: newStatus,
+                date: date
+            });
+
             // Update stats locally
             setStats(prev => ({
                 ...prev,

@@ -113,6 +113,17 @@ export class SchoolFinanceService {
         });
     }
 
+    async getInvoices(tenantId: string) {
+        return prisma.feeRecord.findMany({
+            where: { tenantId },
+            include: {
+                student: { include: { batch: { include: { course: true } } } },
+                structure: { include: { head: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
     // --------------------------------------------------------
     // DASHBOARD STATS
     // --------------------------------------------------------
@@ -122,9 +133,6 @@ export class SchoolFinanceService {
             _sum: { paidAmount: true }
         });
 
-        // Note: For aggregate across relations, we need to filter students by tenantId
-        // Prisma doesn't support deep relation filter in aggregate easily without raw query or loop.
-        // For now, let's just fetch pending counts via findMany for safety or ignore for MVP.
         return { totalCollected: totalCollected._sum.paidAmount || 0 };
     }
 }

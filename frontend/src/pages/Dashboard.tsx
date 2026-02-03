@@ -212,37 +212,50 @@ export const Dashboard = () => {
           <div onClick={() => navigate('/students')} className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
             <div className="relative z-10">
               <h3 className="font-medium text-blue-100 mb-1">Total Students</h3>
-              <span className="text-4xl font-bold">{stats?.schoolStats?.totalStudents || 0}</span>
-              <p className="text-blue-200 text-sm mt-4">Enrolled this session</p>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-bold">{stats?.schoolStats?.totalStudents || 0}</span>
+                <span className="text-sm bg-blue-500/50 px-2 py-0.5 rounded text-blue-100 mb-1">Session</span>
+              </div>
+              <p className="text-blue-200 text-sm mt-4">Active Enrollment</p>
             </div>
             <GraduationCap className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
           </div>
 
-          <div onClick={() => navigate('/classes')} className="bg-emerald-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+          <div onClick={() => navigate('/student-attendance')} className="bg-emerald-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
             <div className="relative z-10">
-              <h3 className="font-medium text-emerald-100 mb-1">Total Classes</h3>
-              <span className="text-4xl font-bold">{stats?.schoolStats?.totalBatches || 0}</span>
-              <p className="text-emerald-200 text-sm mt-4">Active sections</p>
+              <h3 className="font-medium text-emerald-100 mb-1">Students Present</h3>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-bold">{stats?.schoolStats?.attendance?.present || 0}</span>
+                <span className="text-sm bg-emerald-500/50 px-2 py-0.5 rounded text-emerald-100 mb-1">Today</span>
+              </div>
+              <p className="text-emerald-200 text-sm mt-4">Absent: {stats?.schoolStats?.attendance?.absent || 0}</p>
             </div>
-            <Building2 className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+            <ClipboardCheck className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
           </div>
 
-          <div onClick={() => navigate('/subjects')} className="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+          <div onClick={() => navigate('/attendance')} className="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
             <div className="relative z-10">
-              <h3 className="font-medium text-indigo-100 mb-1">Total Subjects</h3>
-              <span className="text-4xl font-bold">{stats?.schoolStats?.totalCourses || 0}</span>
-              <p className="text-indigo-200 text-sm mt-4">Across all grades</p>
+              <h3 className="font-medium text-indigo-100 mb-1">Teachers Present</h3>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-bold">{stats?.today?.present || 0}</span>
+                <span className="text-sm bg-indigo-500/50 px-2 py-0.5 rounded text-indigo-100 mb-1">Total {stats?.counts?.totalEmployees || 0}</span>
+              </div>
+              <p className="text-indigo-200 text-sm mt-4">Staff Attendance</p>
             </div>
-            <BookOpen className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+            <Users className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
           </div>
 
           <div onClick={() => navigate('/student-attendance')} className="bg-[#111827] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
             <div className="relative z-10">
-              <h3 className="font-medium text-gray-400 mb-1">Today's Attendance</h3>
-              <span className="text-4xl font-bold">92%</span>
-              <p className="text-gray-400 text-sm mt-4">Average attendance</p>
+              <h3 className="font-medium text-gray-400 mb-1">Attendance Rate</h3>
+              <span className="text-4xl font-bold">
+                {stats?.schoolStats?.totalStudents > 0
+                  ? Math.round((stats?.schoolStats?.attendance?.present / stats?.schoolStats?.totalStudents) * 100)
+                  : 0}%
+              </span>
+              <p className="text-gray-400 text-sm mt-4">Average today</p>
             </div>
-            <ClipboardCheck className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+            <CheckSquare className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
           </div>
         </div>
 

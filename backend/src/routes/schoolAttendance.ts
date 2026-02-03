@@ -40,12 +40,19 @@ router.get('/daily', async (req: any, res) => {
 });
 
 /**
- * Manual Update
+ * Manual Update (Upsert)
  */
-router.put('/:id', async (req: any, res) => {
+router.put('/:studentId', async (req: any, res) => {
     try {
-        const { status, remarks } = req.body;
-        const result = await attendanceService.updateAttendance(req.params.id, status, remarks);
+        const tenantId = req.user?.tenantId;
+        const { status, remarks, date } = req.body;
+        const result = await attendanceService.updateAttendance(
+            tenantId,
+            req.params.studentId,
+            new Date(date),
+            status,
+            remarks
+        );
         res.json({ success: true, data: result });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

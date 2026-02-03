@@ -351,4 +351,134 @@ function generatePDFReport(logs: any[], title: string, res: express.Response) {
   doc.end();
 }
 
+// Student Attendance Report
+router.get('/student_attendance', async (req, res) => {
+  try {
+    const { startDate, endDate, format = 'excel' } = req.query;
+    const tenantId = (req as any).user?.tenantId;
+
+    const attendance = await prisma.studentAttendance.findMany({
+      where: {
+        tenantId,
+        date: {
+          gte: startOfDay(parseISO(startDate as string)),
+          lte: endOfDay(parseISO(endDate as string)),
+        },
+      },
+      include: {
+        student: {
+          include: { batch: { include: { course: true } } }
+        }
+      },
+      orderBy: { date: 'desc' }
+    });
+
+    if (format === 'excel') {
+      return generateStudentExcelReport(attendance, `Student_Attendance_${startDate}`, res);
+    }
+    res.json(attendance);
+  } catch (error) {
+    console.error('Student attendance report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Fee Collection Report
+router.get('/fee_report', async (req, res) => {
+  try {
+    const { startDate, endDate, format = 'excel' } = req.query;
+    const tenantId = (req as any).user?.tenantId;
+
+    const fees = await prisma.feeRecord.findMany({
+      where: {
+        tenantId,
+        updatedAt: {
+          gte: startOfDay(parseISO(startDate as string)),
+          lte: endOfDay(parseISO(endDate as string)),
+        },
+        paidAmount: { gt: 0 }
+      },
+      include: {
+        student: {
+          include: { batch: { include: { course: true } } }
+        }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    if (format === 'excel') {
+      return generateFeeExcelReport(fees, `Fee_Report_${startDate}`, res);
+    }
+    res.json(fees);
+  } catch (error) {
+    console.error('Fee report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Helper for Student Excel
+async function generateStudentExcelReport(records: any[], filename: string, res: express.Response) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Student Attendance');
+
+  worksheet.columns = [
+    { header: 'Admission #', key: 'admissionNo', width: 15 },
+    { header: 'Student Name', key: 'studentName', width: 25 },
+    { header: 'Class', key: 'class', width: 15 },
+    { header: 'Section', key: 'section', width: 10 },
+    { header: 'Date', key: 'date', width: 15 },
+    { header: 'Status', key: 'status', width: 12 },
+    { header: 'Remarks', key: 'remarks', width: 20 },
+  ];
+
+  for (const rec of records) {
+    worksheet.addRow({
+      admissionNo: rec.student?.admissionNo,
+      studentName: `${rec.student?.firstName} ${rec.student?.lastName}`,
+      class: rec.student?.batch?.course?.name,
+      section: rec.student?.batch?.name,
+      date: new Date(rec.date).toLocaleDateString(),
+      status: rec.status,
+      remarks: rec.remarks || '-',
+    });
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
+}
+
+async function generateFeeExcelReport(records: any[], filename: string, res: express.Response) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Fee Collection');
+
+  worksheet.columns = [
+    { header: 'Date', key: 'date', width: 15 },
+    { header: 'Admission #', key: 'admissionNo', width: 15 },
+    { header: 'Student Name', key: 'studentName', width: 25 },
+    { header: 'Invoice Title', key: 'title', width: 25 },
+    { header: 'Total Amount', key: 'amount', width: 15 },
+    { header: 'Paid Amount', key: 'paid', width: 15 },
+    { header: 'Status', key: 'status', width: 12 },
+  ];
+
+  for (const rec of records) {
+    worksheet.addRow({
+      date: new Date(rec.updatedAt).toLocaleDateString(),
+      admissionNo: rec.student?.admissionNo,
+      studentName: `${rec.student?.firstName} ${rec.student?.lastName}`,
+      title: rec.title,
+      amount: rec.amount,
+      paid: rec.paidAmount,
+      status: rec.status,
+    });
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
+}
+
 export default router;
