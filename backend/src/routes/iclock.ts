@@ -62,7 +62,15 @@ router.post('/cdata*', async (req, res) => {
         console.log('--- INCOMING SN: ' + SN + ' ---');
     }
 
-    if (!SN) return res.send('OK');
+    // DEBUG: Log all query parameters and body to see what device is sending
+    if (!SN) {
+        console.log('=== POST /cdata WITHOUT SN ===');
+        console.log('Query params:', req.query);
+        console.log('URL:', req.url);
+        console.log('Body preview:', typeof req.body === 'string' ? req.body.substring(0, 200) : req.body);
+        console.log('==============================');
+        return res.send('OK');
+    }
 
     const device = await prisma.device.findFirst({
         where: { deviceId: SN as string }
