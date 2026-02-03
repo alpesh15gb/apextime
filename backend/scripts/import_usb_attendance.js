@@ -64,7 +64,8 @@ async function importUSBAttendance(filePath, tenantId) {
         select: {
             id: true,
             deviceUserId: true,
-            name: true
+            firstName: true,
+            lastName: true
         }
     });
 
