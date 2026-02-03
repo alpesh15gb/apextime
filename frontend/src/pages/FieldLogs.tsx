@@ -99,7 +99,7 @@ export const FieldLogs = () => {
                                             <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
                                             <div className="flex items-center gap-1 text-gray-400 font-bold text-xs">
                                                 <Clock className="w-3.5 h-3.5" />
-                                                {new Date(log.timestamp).toISOString().substring(11, 16)}
+                                                {new Date(log.timestamp).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false })}
                                             </div>
                                         </div>
                                     </div>
