@@ -62,24 +62,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     : user?.role === 'manager'
       ? (user?.tenantType === 'SCHOOL'
         ? [
-          {
-            label: 'My Class',
-            icon: GraduationCap,
-            children: [
-              { path: '/student-attendance', icon: ClipboardCheck, label: 'Daily Register' },
-              { path: '/outdoor-entry', icon: MapPin, label: 'Outdoor Entry' },
-              { path: '/outdoor-attendance', icon: ClipboardList, label: 'Pending Logs' },
-            ]
-          },
-          {
-            label: 'My Portal',
-            icon: Users,
-            children: [
-              { path: '/portal', icon: LayoutDashboard, label: 'My Stats' },
-              { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
-              { path: '/leaves', icon: Calendar, label: 'My Leaves' },
-            ]
-          }
+          { path: '/portal', icon: LayoutDashboard, label: 'Teacher Portal' },
+          { path: '/student-attendance', icon: ClipboardCheck, label: 'Daily Register' },
+          { path: '/outdoor-entry', icon: MapPin, label: 'Outdoor Entry' },
+          { path: '/outdoor-attendance', icon: ClipboardList, label: 'Pending Logs' },
+          { path: '/attendance', icon: ClipboardCheck, label: 'My Attendance' },
+          { path: '/leaves', icon: Calendar, label: 'My Leaves' },
         ]
         : [
           {
