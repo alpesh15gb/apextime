@@ -61,6 +61,11 @@ model Tenant {
   auditLogs                AuditLog[]
   payrolls                 Payroll[]
   companyProfile           CompanyProfile?
+  
+  // Asset Management
+  assetCategories          AssetCategory[]
+  assets                   Asset[]
+  assetAssignments         AssetAssignment[]
 }
 
 // --------------------------------------------------------
@@ -270,6 +275,7 @@ model Employee {
   salaryComponents EmployeeSalaryComponent[]
   documents       EmployeeDocument[]
   loans           Loan[]
+  assetAssignments AssetAssignment[]
 
   @@unique([employeeCode, tenantId])
   @@unique([sourceEmployeeId, tenantId])
