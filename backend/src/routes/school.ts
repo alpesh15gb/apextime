@@ -88,4 +88,62 @@ router.post('/batches', async (req: any, res) => {
     }
 });
 
+/**
+ * GET Data Routes
+ */
+router.get('/sessions', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const data = await schoolService.getSessions(tenantId);
+        res.json({ success: true, data });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/courses', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const data = await schoolService.getCourses(tenantId);
+        res.json({ success: true, data });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/batches', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const { courseId } = req.query;
+        const data = await schoolService.getBatches(tenantId, courseId);
+        res.json({ success: true, data });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+/**
+ * Subject Routes
+ */
+router.post('/subjects', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const subject = await schoolService.createSubject(tenantId, req.body);
+        res.json({ success: true, data: subject });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/subjects', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const { courseId } = req.query;
+        const data = await schoolService.getSubjects(tenantId, courseId);
+        res.json({ success: true, data });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 export default router;

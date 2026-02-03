@@ -130,4 +130,70 @@ export class SchoolService {
             }
         });
     }
+
+    // --------------------------------------------------------
+    // ACADEMIC DATA GETTERS
+    // --------------------------------------------------------
+
+    async getSessions(tenantId: string) {
+        return prisma.academicSession.findMany({
+            where: { tenantId },
+            orderBy: { startDate: 'desc' }
+        });
+    }
+
+    async getCourses(tenantId: string) {
+        return prisma.course.findMany({
+            where: { tenantId },
+            include: {
+                _count: {
+                    select: { batches: true, subjects: true }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+    }
+
+    async getBatches(tenantId: string, courseId?: string) {
+        const where: any = { tenantId };
+        if (courseId) where.courseId = courseId;
+
+        return prisma.batch.findMany({
+            where,
+            include: {
+                course: true,
+                incharge: true,
+                _count: {
+                    select: { students: true }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+    }
+
+    // --------------------------------------------------------
+    // SUBJECT MANAGEMENT
+    // --------------------------------------------------------
+
+    async createSubject(tenantId: string, data: any) {
+        return prisma.subject.create({
+            data: {
+                ...data,
+                tenantId
+            }
+        });
+    }
+
+    async getSubjects(tenantId: string, courseId?: string) {
+        const where: any = { tenantId };
+        if (courseId) where.courseId = courseId;
+
+        return prisma.subject.findMany({
+            where,
+            include: {
+                course: true
+            },
+            orderBy: { name: 'asc' }
+        });
+    }
 }

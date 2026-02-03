@@ -233,9 +233,19 @@ export const schoolAPI = {
   admitStudent: (data: any) => api.post('/school/students', data),
   getAllStudents: () => api.get('/school/students'),
   getStudentsByBatch: (batchId: string) => api.get(`/school/students/batch/${batchId}`),
+
+  // Academics
+  getSessions: () => api.get('/school/sessions'),
   createSession: (data: any) => api.post('/school/sessions', data),
+
+  getCourses: () => api.get('/school/courses'),
   createCourse: (data: any) => api.post('/school/courses', data),
+
+  getBatches: (courseId?: string) => api.get('/school/batches', { params: { courseId } }),
   createBatch: (data: any) => api.post('/school/batches', data),
+
+  getSubjects: (courseId?: string) => api.get('/school/subjects', { params: { courseId } }),
+  createSubject: (data: any) => api.post('/school/subjects', data),
 };
 
 export default api;
