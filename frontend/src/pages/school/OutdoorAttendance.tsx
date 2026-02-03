@@ -139,27 +139,27 @@ export const OutdoorAttendance = () => {
                             {/* Card Header: Student Info */}
                             <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${log.isStaff ? 'bg-purple-600' : 'bg-indigo-600'}`}>
-                                    {log.isStaff ? log.employee.firstName[0] : log.student.firstName[0]}
+                                    {log.isStaff ? (log.employee?.firstName?.[0] || 'S') : (log.student?.firstName?.[0] || 'St')}
                                 </div>
                                 <div className="flex-1 overflow-hidden">
                                     <h3 className="font-bold text-gray-900 truncate">
                                         {log.isStaff
-                                            ? `Staff: ${log.employee.firstName} ${log.employee.lastName}`
-                                            : `${log.student.firstName} ${log.student.lastName}`
+                                            ? `Staff: ${log.employee?.firstName || 'Unknown'} ${log.employee?.lastName || ''}`
+                                            : `${log.student?.firstName || 'Unknown'} ${log.student?.lastName || ''}`
                                         }
                                     </h3>
                                     <p className="text-xs text-indigo-600 font-medium truncate">
                                         {log.isStaff
-                                            ? `Employee Code: ${log.employee.employeeCode}`
-                                            : `${log.student.batch?.course?.name} - ${log.student.batch?.name}`
+                                            ? `Employee Code: ${log.employee?.employeeCode || 'N/A'}`
+                                            : `${log.student?.batch?.course?.name || 'No Course'} - ${log.student?.batch?.name || 'No Batch'}`
                                         }
                                     </p>
                                 </div>
                                 <div className="text-right">
                                     <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${log.type.includes('STAFF_IN') ? 'bg-purple-100 text-purple-700' :
-                                            log.type === 'PICKUP' ? 'bg-green-100 text-green-700' :
-                                                log.type === 'DROP' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-pink-100 text-pink-700'
+                                        log.type === 'PICKUP' ? 'bg-green-100 text-green-700' :
+                                            log.type === 'DROP' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-pink-100 text-pink-700'
                                         }`}>
                                         {log.type.replace('_', ' ')}
                                     </div>
@@ -191,7 +191,17 @@ export const OutdoorAttendance = () => {
                                     <div className="flex items-start gap-2 text-sm">
                                         <MapPin className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
                                         <span className="text-gray-600 leading-tight">
-                                            {log.location ? JSON.parse(log.location).address : 'Coordinates Unavailable'}
+                                            {(() => {
+                                                if (!log.location) return 'Coordinates Unavailable';
+                                                try {
+                                                    // Try to parse as JSON first (Web entry)
+                                                    const loc = JSON.parse(log.location);
+                                                    return loc.address || `${loc.lat}, ${loc.lng}`;
+                                                } catch (e) {
+                                                    // Fallback to raw string (APK entry)
+                                                    return log.location;
+                                                }
+                                            })()}
                                         </span>
                                     </div>
                                     {log.route && (
