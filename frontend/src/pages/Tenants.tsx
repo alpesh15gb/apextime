@@ -11,6 +11,7 @@ export default function Tenants() {
         name: '',
         slug: '',
         domain: '',
+        type: 'CORPORATE',
         isActive: true,
         modules: ['employees', 'attendance', 'leaves'], // Defaults
     });
@@ -40,7 +41,7 @@ export default function Tenants() {
             }
             setShowModal(false);
             setEditingTenant(null);
-            setFormData({ name: '', slug: '', domain: '', isActive: true });
+            setFormData({ name: '', slug: '', domain: '', type: 'CORPORATE', isActive: true });
             fetchTenants();
         } catch (error) {
             alert('Operation failed');
@@ -53,6 +54,7 @@ export default function Tenants() {
             name: tenant.name,
             slug: tenant.slug,
             domain: tenant.domain || '',
+            type: tenant.type || 'CORPORATE',
             isActive: tenant.isActive,
             modules: tenant.modules || [],
         });
@@ -146,6 +148,9 @@ export default function Tenants() {
                                                         <Globe className="w-3 h-3 mr-1" /> {tenant.domain}
                                                     </span>
                                                 )}
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold self-start ${tenant.type === 'SCHOOL' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                    {tenant.type === 'SCHOOL' ? 'SCHOOL' : 'CORPORATE'}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -227,6 +232,20 @@ export default function Tenants() {
                                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                     placeholder="e.g. hr.acme.com"
                                 />
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="e.g. hr.acme.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tenant Type</label>
+                                <select
+                                    value={formData.type}
+                                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="CORPORATE">Corporate (Standard)</option>
+                                    <option value="SCHOOL">School / Educational</option>
+                                </select>
                             </div>
                             <div className="flex items-center mt-4">
                                 <input
