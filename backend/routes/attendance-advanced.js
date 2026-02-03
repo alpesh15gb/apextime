@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const AttendanceCalculationService = require('../services/AttendanceCalculationService');
+const AttendanceSummaryService = require('../services/AttendanceSummaryService');
 
 const calculationService = new AttendanceCalculationService();
+const summaryService = new AttendanceSummaryService();
 
 /**
  * POST /api/attendance/recalculate
@@ -502,6 +504,133 @@ router.get('/export/exceptions', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to export report',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/attendance/summary
+ * Get attendance summary for a period
+ * 
+ * Query params:
+ * - startDate: YYYY-MM-DD
+ * - endDate: YYYY-MM-DD
+ * - groupBy: department|designation (optional)
+ */
+router.get('/summary', async (req, res) => {
+    try {
+        const { startDate, endDate, groupBy } = req.query;
+        const tenantId = req.user.tenantId;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Start date and end date are required'
+            });
+        }
+
+        const start = new Date(startDate + 'T00:00:00.000Z');
+        const end = new Date(endDate + 'T23:59:59.999Z');
+
+        const summary = await summaryService.generateSummary(
+            tenantId,
+            start,
+            end,
+            groupBy
+        );
+
+        res.json({
+            success: true,
+            data: summary,
+            count: summary.length
+        });
+    } catch (error) {
+        console.error('Error generating summary:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate summary',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/attendance/summary/monthly
+ * Get monthly attendance summary
+ * 
+ * Query params:
+ * - year: YYYY
+ * - month: 1-12
+ */
+router.get('/summary/monthly', async (req, res) => {
+    try {
+        const { year, month } = req.query;
+        const tenantId = req.user.tenantId;
+
+        if (!year || !month) {
+            return res.status(400).json({
+                success: false,
+                message: 'Year and month are required'
+            });
+        }
+
+        const summary = await summaryService.generateMonthlySummary(
+            tenantId,
+            parseInt(year),
+            parseInt(month)
+        );
+
+        res.json({
+            success: true,
+            data: summary,
+            count: summary.length
+        });
+    } catch (error) {
+        console.error('Error generating monthly summary:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate monthly summary',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/attendance/summary/department
+ * Get department-wise summary
+ */
+router.get('/summary/department', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        const tenantId = req.user.tenantId;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Start date and end date are required'
+            });
+        }
+
+        const start = new Date(startDate + 'T00:00:00.000Z');
+        const end = new Date(endDate + 'T23:59:59.999Z');
+
+        const summary = await summaryService.getDepartmentSummary(
+            tenantId,
+            start,
+            end
+        );
+
+        res.json({
+            success: true,
+            data: summary,
+            count: summary.length
+        });
+    } catch (error) {
+        console.error('Error generating department summary:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate department summary',
             error: error.message
         });
     }
