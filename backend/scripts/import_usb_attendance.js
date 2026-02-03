@@ -114,7 +114,7 @@ async function importUSBAttendance(filePath, tenantId) {
             continue;
         }
 
-        // Parse timestamp
+        // Parse timestamp - treat as UTC (which represents IST time)
         let punchTime;
         try {
             const timestampStr = punch.timestamp.trim();
@@ -127,7 +127,9 @@ async function importUSBAttendance(filePath, tenantId) {
                 timeStr = timestampStr.substring(10);
             }
 
-            const isoString = `${dateStr}T${timeStr}+05:30`;
+            // Parse as UTC directly - the times in the file are already IST
+            // We store them as UTC in the database (standard practice)
+            const isoString = `${dateStr}T${timeStr}.000Z`;
             punchTime = new Date(isoString);
 
             if (isNaN(punchTime.getTime())) {
@@ -141,14 +143,14 @@ async function importUSBAttendance(filePath, tenantId) {
             continue;
         }
 
-        // Get date only (YYYY-MM-DD)
-        const dateOnly = punchTime.toISOString().split('T')[0];
+        // Get date only (YYYY-MM-DD) from the original timestamp
+        const dateOnly = punch.timestamp.split(' ')[0];
         const key = `${employee.id}_${dateOnly}`;
 
         if (!punchMap.has(key)) {
             punchMap.set(key, {
                 employeeId: employee.id,
-                date: new Date(dateOnly + 'T00:00:00+05:30'),
+                date: new Date(dateOnly + 'T00:00:00.000Z'),
                 punches: []
             });
         }
