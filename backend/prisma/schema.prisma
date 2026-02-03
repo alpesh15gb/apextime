@@ -301,7 +301,7 @@ model Employee {
   ctcStructures    CTCStructure[]
   reimbursementEntries ReimbursementEntry[]
   salaryRevisions  SalaryRevision[]
-  salaryRevisions  SalaryRevision[]
+
   tdsDeclarations  TDSDeclaration[]
   
   // School Academic & Devices
