@@ -105,13 +105,18 @@ export class SchoolService {
     /**
      * Get Students by Batch (Class)
      */
-    async getStudentsByBatch(tenantId: string, batchId: string) {
+    async getStudentsByBatch(tenantId: string, batchId?: string) {
+        const where: any = {
+            tenantId,
+            status: 'ACTIVE'
+        };
+
+        if (batchId) {
+            where.batchId = batchId;
+        }
+
         return prisma.student.findMany({
-            where: {
-                tenantId,
-                batchId,
-                status: 'ACTIVE'
-            },
+            where,
             include: {
                 guardian: true,
                 batch: {

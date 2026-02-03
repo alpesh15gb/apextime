@@ -22,6 +22,16 @@ router.post('/students', async (req: any, res) => {
     }
 });
 
+router.get('/students', async (req: any, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        const students = await schoolService.getStudentsByBatch(tenantId);
+        res.json({ success: true, data: students });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 /**
  * GET /api/school/students/batch/:batchId
  * Get students by batch

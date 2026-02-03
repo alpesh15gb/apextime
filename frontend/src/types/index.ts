@@ -10,6 +10,7 @@ export interface User {
   lastName?: string;
   fullName?: string;
   employeeId?: string;
+  tenantType?: 'CORPORATE' | 'SCHOOL';
 }
 
 export interface AuthContextType {

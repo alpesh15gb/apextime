@@ -29,6 +29,8 @@ import Tenants from './pages/Tenants';
 import Devices from './pages/Devices';
 import { useAuth } from './contexts/AuthContext';
 import Assets from './pages/Assets';
+import { Students } from './pages/school/Students';
+import { Admissions } from './pages/school/Admissions';
 
 
 const HomeRedirect = () => {
@@ -63,6 +65,10 @@ function App() {
                     <Route path="/employees" element={<ModuleRoute module="employees"><Employees /></ModuleRoute>} />
                     <Route path="/employees/new" element={<ModuleRoute module="employees"><EmployeeForm /></ModuleRoute>} />
                     <Route path="/employees/edit/:id" element={<ModuleRoute module="employees"><EmployeeForm /></ModuleRoute>} />
+
+                    {/* School Routes */}
+                    <Route path="/students" element={<ModuleRoute module="employees"><Students /></ModuleRoute>} />
+                    <Route path="/admissions" element={<ModuleRoute module="employees"><Admissions /></ModuleRoute>} />
 
                     {/* Masters - Linked to Employees */}
                     <Route path="/departments" element={<ModuleRoute module="employees"><Departments /></ModuleRoute>} />

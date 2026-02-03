@@ -23,7 +23,11 @@ import {
   FolderKanban,
   Cpu,
   CreditCard,
-  Package
+  Package,
+  GraduationCap,
+  BookOpen,
+  Bus,
+  Library
 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -73,46 +77,88 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/tenants', icon: Building2, label: 'Tenants' },
           { path: '/settings', icon: Settings, label: 'System Settings' },
         ]
-        : [
-          { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', module: 'core' },
-          { path: '/employees', icon: Users, label: 'Employees', module: 'employees' },
+        : user?.tenantType === 'SCHOOL'
+          ? [
+            { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', module: 'core' },
+            {
+              label: 'Students',
+              icon: GraduationCap,
+              module: 'employees',
+              children: [
+                { path: '/students', icon: Users, label: 'All Students' },
+                { path: '/admissions', icon: ClipboardList, label: 'New Admission' },
+              ]
+            },
+            {
+              label: 'Academics',
+              icon: BookOpen,
+              module: 'employees',
+              children: [
+                { path: '/sessions', icon: Calendar, label: 'Sessions' },
+                { path: '/classes', icon: Building2, label: 'Classes' },
+                { path: '/subjects', icon: BookOpen, label: 'Subjects' },
+                { path: '/timetable', icon: Calendar, label: 'Timetable' },
+              ]
+            },
+            { path: '/attendance', icon: ClipboardCheck, label: 'Attendance', module: 'attendance' },
+            {
+              label: 'Accounts',
+              icon: DollarSign,
+              module: 'payroll',
+              children: [
+                { path: '/fees', icon: DollarSign, label: 'Fee Collection' },
+                { path: '/invoices', icon: FileSpreadsheet, label: 'Invoices' },
+              ]
+            },
+            { path: '/transport', icon: Bus, label: 'Transport', module: 'core' },
+            { path: '/library', icon: Library, label: 'Library', module: 'core' },
+            { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
+            { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
+          ].filter(item => { /* Copy filter logic or reuse function */
+            if (item.module === 'core') return true;
+            if (!user?.modules) return false;
+            return user.modules.includes(item.module);
+          })
+          : [
+            { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', module: 'core' },
+            { path: '/employees', icon: Users, label: 'Employees', module: 'employees' },
 
-          // Master Data Group (Only show if employees or core modules enabled)
-          {
-            label: 'Masters',
-            icon: Database,
-            module: 'employees',
-            children: [
-              { path: '/branches', icon: Building2, label: 'Branches' },
-              { path: '/locations', icon: MapPin, label: 'Locations' },
-              { path: '/designations', icon: Award, label: 'Designations' },
-              { path: '/departments', icon: Briefcase, label: 'Departments' },
-            ]
-          },
-          { path: '/attendance', icon: ClipboardCheck, label: 'Attendance', module: 'attendance' },
-          { path: '/leaves', icon: Calendar, label: 'Leave', module: 'leaves' },
-          { path: '/field-logs', icon: ClipboardList, label: 'Field Logs', module: 'field_logs' },
-          { path: '/payroll', icon: DollarSign, label: 'Payroll', module: 'payroll' },
-          { path: '/loans', icon: CreditCard, label: 'Loans', module: 'payroll' },
-          { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
-          { path: '/projects', icon: FolderKanban, label: 'Projects', module: 'projects' },
-          { path: '/assets', icon: Package, label: 'Assets', module: 'core' },
+            // Master Data Group (Only show if employees or core modules enabled)
+            {
+              label: 'Masters',
+              icon: Database,
+              module: 'employees',
+              children: [
+                { path: '/branches', icon: Building2, label: 'Branches' },
+                { path: '/locations', icon: MapPin, label: 'Locations' },
+                { path: '/designations', icon: Award, label: 'Designations' },
+                { path: '/departments', icon: Briefcase, label: 'Departments' },
+              ]
+            },
+            { path: '/attendance', icon: ClipboardCheck, label: 'Attendance', module: 'attendance' },
+            { path: '/leaves', icon: Calendar, label: 'Leave', module: 'leaves' },
+            { path: '/field-logs', icon: ClipboardList, label: 'Field Logs', module: 'field_logs' },
+            { path: '/payroll', icon: DollarSign, label: 'Payroll', module: 'payroll' },
+            { path: '/loans', icon: CreditCard, label: 'Loans', module: 'payroll' },
+            { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
+            { path: '/projects', icon: FolderKanban, label: 'Projects', module: 'projects' },
+            { path: '/assets', icon: Package, label: 'Assets', module: 'core' },
 
-          { path: '/devices', icon: Cpu, label: 'Attendance Devices', module: 'devices' },
-          { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
-        ].filter(item => {
-          // If item is core, always show
-          if (item.module === 'core') return true;
+            { path: '/devices', icon: Cpu, label: 'Attendance Devices', module: 'devices' },
+            { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
+          ].filter(item => {
+            // If item is core, always show
+            if (item.module === 'core') return true;
 
-          // If modules is undefined, assume NO extra modules (strict mode)
-          if (!user?.modules) return false;
+            // If modules is undefined, assume NO extra modules (strict mode)
+            if (!user?.modules) return false;
 
-          // If modules is empty array (explicitly no modules), show only core (handled above)
-          // So if we reach here and array is empty, return false.
-          if (user.modules.length === 0) return false;
+            // If modules is empty array (explicitly no modules), show only core (handled above)
+            // So if we reach here and array is empty, return false.
+            if (user.modules.length === 0) return false;
 
-          return user.modules.includes(item.module);
-        });
+            return user.modules.includes(item.module);
+          });
 
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev =>
