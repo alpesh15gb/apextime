@@ -58,6 +58,8 @@ export class StudentFieldLogService {
         // Map frontend uppercase to fieldLog lowercase 'pending'/'approved'/'rejected'
         const employeeStatus = status.toLowerCase();
 
+        console.log(`[DEBUG] Fetching employee logs - TenantId: ${tenantId}, Status: ${employeeStatus}`);
+
         const employeeLogs = await prisma.fieldLog.findMany({
             where: { tenantId, status: employeeStatus },
             include: {
@@ -72,6 +74,8 @@ export class StudentFieldLogService {
             },
             orderBy: { timestamp: 'desc' }
         });
+
+        console.log(`[DEBUG] Found ${studentLogs.length} student logs and ${employeeLogs.length} employee logs`);
 
         // Return a unified but distinguished response
         return {
