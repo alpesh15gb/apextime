@@ -117,7 +117,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               children: [
                 { path: '/students', icon: Users, label: 'All Students' },
                 { path: '/admissions', icon: ClipboardList, label: 'New Admission' },
-                { path: '/outdoor-attendance', icon: MapPin, label: 'Outdoor Logs' },
               ]
             },
             {
@@ -132,6 +131,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               ]
             },
             { path: '/student-attendance', icon: ClipboardCheck, label: 'Student Attendance', module: 'attendance' },
+            { path: '/outdoor-attendance', icon: MapPin, label: 'Outdoor Logs', module: 'attendance' },
+            { path: '/outdoor-entry', icon: ClipboardList, label: 'Outdoor Entry', module: 'attendance' },
             {
               label: 'Accounts',
               icon: DollarSign,
