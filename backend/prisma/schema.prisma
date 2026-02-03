@@ -1440,10 +1440,50 @@ model ExamMark {
   @@index([subjectId])
 }
 
+model FeeHead {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name            String   // e.g. "Tuition Fee", "Transport Fee"
+  type            String   @default("RECURRING") // RECURRING, ONE_TIME
+  frequency       String?  // MONTHLY, QUARTERLY, ANNUALLY (if recurring)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  structures      FeeStructure[]
+  
+  @@unique([tenantId, name])
+}
+
+model FeeStructure {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  courseId        String?
+  course          Course?  @relation(fields: [courseId], references: [id])
+  
+  headId          String
+  head            FeeHead  @relation(fields: [headId], references: [id])
+  
+  amount          Float
+  dueDateOffset   Int?     // Days after session start or specific Day of month
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  feeRecords      FeeRecord[]
+}
+
 model FeeRecord {
   id              String   @id @default(uuid())
   studentId       String
   student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  structureId     String?
+  structure       FeeStructure? @relation(fields: [structureId], references: [id])
   
   title           String   // "Tuition Fee - Q1"
   amount          Float
@@ -1455,6 +1495,7 @@ model FeeRecord {
   paidDate        DateTime?
   paymentMode     String?  // CASH, ONLINE, CHEQUE
   transactionId   String?
+  remarks         String?
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
