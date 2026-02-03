@@ -582,7 +582,7 @@ model Device {
   config          String?        // JSON for extra properties (e.g. SQL Table name)
   
   rawDeviceLogs   RawDeviceLog[]
-  commands        DeviceCommand[]
+  commands        DeviceCommand[] // Relation to DeviceCommand
 
   @@unique([deviceId, tenantId])
 }
@@ -619,6 +619,7 @@ model DeviceCommand {
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
   deviceId     String
   device       Device    @relation(fields: [deviceId], references: [id])
+  
   command      String
   status       String    @default("pending")
   response     String?   // Device response if any
@@ -629,7 +630,6 @@ model DeviceCommand {
   @@index([deviceId, status])
   @@index([tenantId])
 }
-
 model SyncLog {
   id            String   @id @default(uuid())
   tenantId      String
@@ -1088,67 +1088,7 @@ model TDSDeclaration {
 }
 
 // --------------------------------------------------------
-// DEVICE MANAGEMENT
-// --------------------------------------------------------
 
-model Device {
-  id              String   @id @default(uuid())
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  deviceId        String   @unique // Device serial number
-  deviceName      String
-  deviceType      String   @default("BIOMETRIC") // BIOMETRIC, RFID, FACE
-  manufacturer    String?  // ZKTeco, Hikvision, etc.
-  model           String?
-  ipAddress       String?
-  port            Int?     @default(4370)
-  
-  location        String?
-  
-  isActive        Boolean  @default(true)
-  isOnline        Boolean  @default(false)
-  lastSeen        DateTime?
-  
-  firmware        String?
-  capacity        Int?     // Max users
-  currentUsers    Int?     @default(0)
-  
-  settings        Json?    // Device-specific settings
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  deviceLogs      DeviceLog[]
-  commands        DeviceCommand[]
-  
-  @@index([tenantId])
-  @@index([deviceId])
-  @@index([isActive])
-}
-
-model DeviceCommand {
-  id              String   @id @default(uuid())
-  deviceId        String
-  device          Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  
-  commandType     String   // UPLOAD_USER, DELETE_USER, SYNC_TIME, RESTART, etc.
-  payload         String?  @db.Text // JSON payload
-  
-  status          String   @default("PENDING") // PENDING, COMPLETED, FAILED
-  priority        Int      @default(1) // Higher number = higher priority
-  
-  result          String?  @db.Text // Result from device
-  error           String?  @db.Text
-  
-  createdAt       DateTime @default(now())
-  completedAt     DateTime?
-  
-  @@index([deviceId, status])
-  @@index([status, priority])
-  @@index([createdAt])
-}
 
 model DeviceLog {
   id              String   @id @default(uuid())
