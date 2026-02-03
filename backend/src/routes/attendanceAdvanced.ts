@@ -369,8 +369,8 @@ router.get('/export/detailed', async (req: any, res) => {
                         employeeCode: true,
                         firstName: true,
                         lastName: true,
-                        department: { select: { name: true } },
-                        designation: { select: { name: true } }
+                        department: { select: { id: true, name: true } },
+                        designation: { select: { id: true, name: true } }
                     }
                 }
             },
@@ -471,8 +471,8 @@ router.get('/export/exceptions', async (req: any, res) => {
                         firstName: true,
                         lastName: true,
                         phone: true,
-                        department: { select: { name: true } },
-                        designation: { select: { name: true } }
+                        department: { select: { id: true, name: true } },
+                        designation: { select: { id: true, name: true } }
                     }
                 }
             },

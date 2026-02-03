@@ -15,8 +15,17 @@ export class DeviceCommandService {
     async queueCommand(deviceId: string, commandType: string, payload: any = {}) {
         console.log(`📤 Queuing command ${commandType} for device ${deviceId}`);
 
+        // Get device to get tenantId
+        const device = await prisma.device.findUnique({
+            where: { id: deviceId },
+            select: { tenantId: true }
+        });
+
+        if (!device) throw new Error('Device not found');
+
         const command = await prisma.deviceCommand.create({
             data: {
+                tenantId: device.tenantId,
                 deviceId,
                 commandType,
                 payload: JSON.stringify(payload),

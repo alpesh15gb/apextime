@@ -27,7 +27,7 @@ export class AttendanceCalculationService {
         const employees = await prisma.employee.findMany({
             where,
             include: {
-                shifts: {
+                employeeShifts: {
                     include: {
                         shift: true
                     }
@@ -123,8 +123,8 @@ export class AttendanceCalculationService {
     getShiftForDate(employee: any, date: Date) {
         // Simple logic: return first active shift
         // In reality, this would check roster/schedule
-        if (employee.shifts && employee.shifts.length > 0) {
-            return employee.shifts[0].shift;
+        if (employee.employeeShifts && employee.employeeShifts.length > 0) {
+            return employee.employeeShifts[0].shift;
         }
         return null;
     }

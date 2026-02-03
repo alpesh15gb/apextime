@@ -80,6 +80,7 @@ export class StudentAttendanceService {
                     updatedAt: new Date()
                 },
                 create: {
+                    tenantId,
                     studentId: student.id,
                     date: start,
                     status,

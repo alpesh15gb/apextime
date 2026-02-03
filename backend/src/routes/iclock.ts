@@ -210,7 +210,7 @@ router.get('/getrequest*', async (req, res) => {
     const command = await prisma.deviceCommand.findFirst({
         where: {
             deviceId: device.id,
-            status: 'pending'
+            status: 'PENDING'
         },
         orderBy: { createdAt: 'asc' }
     });
@@ -219,11 +219,11 @@ router.get('/getrequest*', async (req, res) => {
         // Mark as sent
         await prisma.deviceCommand.update({
             where: { id: command.id },
-            data: { status: 'sent', sentAt: new Date() }
+            data: { status: 'SENT', sentAt: new Date() }
         });
 
-        logger.info(`Sending command to ${SN}: ${command.command}`);
-        return res.send(command.command);
+        logger.info(`Sending command to ${SN}: ${command.commandType}`);
+        return res.send(command.commandType);
     }
 
     res.send('OK');

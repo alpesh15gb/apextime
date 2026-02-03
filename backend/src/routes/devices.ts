@@ -170,8 +170,8 @@ router.post('/:id/log-recovery', async (req, res) => {
       data: {
         tenantId,
         deviceId: id,
-        command: recoveryCommand,
-        status: 'pending'
+        commandType: recoveryCommand,
+        status: 'PENDING'
       }
     });
 

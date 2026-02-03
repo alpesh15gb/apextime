@@ -60,6 +60,7 @@ export class SchoolFinanceService {
 
         return prisma.feeRecord.create({
             data: {
+                tenantId,
                 studentId: data.studentId,
                 structureId: data.structureId,
                 title: `${structure.head.name} - ${structure.head.frequency || 'One Time'}`,
@@ -117,7 +118,7 @@ export class SchoolFinanceService {
     // --------------------------------------------------------
     async getStats(tenantId: string) {
         const totalCollected = await prisma.feeRecord.aggregate({
-            where: { tenantId: undefined /* Multi-tenant safety needed in real app, but records are linked to students who are linked to tenants */ },
+            where: { tenantId },
             _sum: { paidAmount: true }
         });
 
