@@ -260,4 +260,11 @@ export const financeAPI = {
   collectFee: (data: any) => api.post('/school/finance/collect', data),
 };
 
+export const studentAttendanceAPI = {
+  processDaily: (date: string) => api.post('/school/attendance/process', { date }),
+  getDailyStats: (date: string) => api.get('/school/attendance/daily', { params: { date } }),
+  updateRecord: (id: string, data: any) => api.put(`/school/attendance/${id}`, data),
+  linkBiometric: (studentId: string, biometricId: string) => api.put(`/school/attendance/student/${studentId}/biometric`, { biometricId }),
+};
+
 export default api;

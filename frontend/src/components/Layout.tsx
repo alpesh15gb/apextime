@@ -100,7 +100,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 { path: '/timetable', icon: Calendar, label: 'Timetable' },
               ]
             },
-            { path: '/attendance', icon: ClipboardCheck, label: 'Attendance', module: 'attendance' },
+            { path: '/student-attendance', icon: ClipboardCheck, label: 'Student Attendance', module: 'attendance' },
             {
               label: 'Accounts',
               icon: DollarSign,
