@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 /**
  * Import attendance data from USB .dat file
- * Format: [EmployeeID] [Timestamp] [1] [255] [PunchType] [0]
+ * Format: [EmployeeID] [Date] [Time] [1] [255] [PunchType] [0]
  * PunchType: 1 = IN, 15 = OUT
  */
 
@@ -87,24 +87,23 @@ async function importUSBAttendance(filePath, tenantId) {
         }
     });
 
-    // Process punches
+    // Process punches - group by employee and date
     let imported = 0;
     let skipped = 0;
     let unmapped = new Set();
+    const punchMap = new Map();
 
-    console.log('🔄 Importing punches...\n');
+    console.log('🔄 Processing punches...\n');
 
     for (const punch of punches) {
         // Try to find employee
         let employee = employeeMap.get(punch.deviceUserId);
 
         if (!employee) {
-            // Try uppercase
             employee = employeeMap.get(punch.deviceUserId.toUpperCase());
         }
 
         if (!employee) {
-            // Try without leading zeros
             const withoutZeros = punch.deviceUserId.replace(/^0+/, '');
             employee = employeeMap.get(withoutZeros);
         }
@@ -115,28 +114,22 @@ async function importUSBAttendance(filePath, tenantId) {
             continue;
         }
 
-        // Parse timestamp (format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DDHH:MM:SS)
+        // Parse timestamp
         let punchTime;
         try {
-            // Split timestamp into date and time parts
             const timestampStr = punch.timestamp.trim();
-
-            // Handle format: 2025-12-30 14:13:42 or 2025-12-3014:13:42
             let dateStr, timeStr;
 
             if (timestampStr.includes(' ')) {
                 [dateStr, timeStr] = timestampStr.split(' ');
             } else {
-                // No space, split at position 10
                 dateStr = timestampStr.substring(0, 10);
                 timeStr = timestampStr.substring(10);
             }
 
-            // Create ISO string: YYYY-MM-DDTHH:MM:SS+05:30
             const isoString = `${dateStr}T${timeStr}+05:30`;
             punchTime = new Date(isoString);
 
-            // Validate the date
             if (isNaN(punchTime.getTime())) {
                 console.error(`⚠️  Invalid timestamp for ${punch.deviceUserId}: ${punch.timestamp}`);
                 skipped++;
@@ -148,12 +141,45 @@ async function importUSBAttendance(filePath, tenantId) {
             continue;
         }
 
+        // Get date only (YYYY-MM-DD)
+        const dateOnly = punchTime.toISOString().split('T')[0];
+        const key = `${employee.id}_${dateOnly}`;
+
+        if (!punchMap.has(key)) {
+            punchMap.set(key, {
+                employeeId: employee.id,
+                date: new Date(dateOnly + 'T00:00:00+05:30'),
+                punches: []
+            });
+        }
+
+        punchMap.get(key).punches.push({
+            time: punchTime,
+            type: punch.punchType
+        });
+    }
+
+    console.log(`📅 Grouped into ${punchMap.size} employee-days\n`);
+    console.log('🔄 Creating attendance logs...\n');
+
+    // Process each employee-day
+    for (const [key, data] of punchMap) {
         try {
-            // Check if this punch already exists
+            // Sort punches by time
+            data.punches.sort((a, b) => a.time - b.time);
+
+            const firstIn = data.punches.find(p => p.type === 'IN')?.time || data.punches[0].time;
+            const lastOut = data.punches.slice().reverse().find(p => p.type === 'OUT')?.time || data.punches[data.punches.length - 1].time;
+
+            // Calculate total hours
+            const totalHours = lastOut && firstIn ? (lastOut - firstIn) / (1000 * 60 * 60) : 0;
+
+            // Check if log already exists
             const existing = await prisma.attendanceLog.findFirst({
                 where: {
-                    employeeId: employee.id,
-                    punchTime: punchTime
+                    employeeId: data.employeeId,
+                    date: data.date,
+                    tenantId: tenantId
                 }
             });
 
@@ -162,27 +188,35 @@ async function importUSBAttendance(filePath, tenantId) {
                 continue;
             }
 
-            // Create attendance record
+            // Create attendance log
             await prisma.attendanceLog.create({
                 data: {
-                    employeeId: employee.id,
+                    employeeId: data.employeeId,
                     tenantId: tenantId,
-                    punchTime: punchTime,
-                    punchType: punch.punchType,
-                    source: 'USB_IMPORT',
-                    deviceId: null, // No device for USB imports
-                    latitude: null,
-                    longitude: null
+                    date: data.date,
+                    firstIn: firstIn,
+                    lastOut: lastOut,
+                    totalHours: totalHours,
+                    workingHours: totalHours,
+                    lateArrival: 0,
+                    earlyDeparture: 0,
+                    status: 'Present',
+                    logs: JSON.stringify(data.punches.map(p => ({
+                        time: p.time.toISOString(),
+                        type: p.type
+                    }))),
+                    totalPunches: data.punches.length,
+                    rawData: `USB Import - ${data.punches.length} punches`
                 }
             });
 
             imported++;
 
-            if (imported % 100 === 0) {
-                console.log(`   Imported ${imported} punches...`);
+            if (imported % 10 === 0) {
+                console.log(`   Created ${imported} attendance logs...`);
             }
         } catch (error) {
-            console.error(`❌ Error importing punch for ${punch.deviceUserId}:`, error.message);
+            console.error(`❌ Error creating log for ${key}:`, error.message);
             skipped++;
         }
     }
@@ -190,7 +224,7 @@ async function importUSBAttendance(filePath, tenantId) {
     console.log('\n✅ Import Complete!\n');
     console.log('📊 Summary:');
     console.log(`   Total Punches: ${punches.length}`);
-    console.log(`   ✅ Imported: ${imported}`);
+    console.log(`   📅 Employee-Days Created: ${imported}`);
     console.log(`   ⏭️  Skipped (duplicates): ${skipped - unmapped.size}`);
     console.log(`   ❌ Unmapped IDs: ${unmapped.size}`);
 
