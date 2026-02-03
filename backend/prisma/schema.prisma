@@ -81,6 +81,10 @@ model Tenant {
   reimbursementEntries     ReimbursementEntry[]
   salaryRevisions          SalaryRevision[]
   tdsDeclarations          TDSDeclaration[]
+  
+  // School Finance
+  feeHeads                 FeeHead[]
+  feeStructures            FeeStructure[]
 }
 
 // --------------------------------------------------------
@@ -297,7 +301,13 @@ model Employee {
   ctcStructures    CTCStructure[]
   reimbursementEntries ReimbursementEntry[]
   salaryRevisions  SalaryRevision[]
+  salaryRevisions  SalaryRevision[]
   tdsDeclarations  TDSDeclaration[]
+  
+  // School Academic & Devices
+  batchesManaged   Batch[]
+  timetableEntries TimetableEntry[]
+  deviceLogs       DeviceLog[]
 
   @@unique([employeeCode, tenantId])
   @@unique([sourceEmployeeId, tenantId])
@@ -583,6 +593,7 @@ model Device {
   
   rawDeviceLogs   RawDeviceLog[]
   commands        DeviceCommand[] // Relation to DeviceCommand
+  deviceLogs      DeviceLog[]
 
   @@unique([deviceId, tenantId])
 }
@@ -1163,6 +1174,7 @@ model Course {
   // Relations
   batches         Batch[]
   subjects        Subject[]
+  feeStructures   FeeStructure[]
   
   @@unique([tenantId, name])
   @@index([tenantId])
