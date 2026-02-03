@@ -12,6 +12,72 @@ import {
 } from 'lucide-react';
 import { studentFieldLogAPI } from '../../services/api';
 
+const LocationResolver = ({ location }: { location: string }) => {
+    const [resolvedAddress, setResolvedAddress] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(null);
+
+    useEffect(() => {
+        if (!location) return;
+
+        let lat = '', lng = '', display = location;
+        try {
+            const loc = JSON.parse(location);
+            lat = loc.lat;
+            lng = loc.lng;
+            if (loc.address) {
+                setResolvedAddress(loc.address);
+                setCoords({ lat, lng });
+                return;
+            }
+        } catch (e) {
+            const parts = location.split(',');
+            if (parts.length >= 2) {
+                lat = parts[0].trim();
+                lng = parts[1].trim();
+                display = `${lat}, ${lng}`;
+            }
+        }
+
+        if (lat && lng && !resolvedAddress) {
+            setCoords({ lat, lng });
+            const fetchAddress = async () => {
+                setIsLoading(true);
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
+                    const data = await res.json();
+                    setResolvedAddress(data.display_name || display);
+                } catch (err) {
+                    setResolvedAddress(display);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchAddress();
+        } else {
+            setResolvedAddress(display);
+        }
+    }, [location]);
+
+    if (isLoading) return <span className="text-gray-400 animate-pulse text-xs italic">Resolving place name...</span>;
+
+    const displayLink = coords ? (
+        <a
+            href={`https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 hover:text-indigo-800 hover:underline leading-tight transition-colors flex items-center gap-1"
+        >
+            {resolvedAddress}
+            <Navigation className="w-3 h-3" />
+        </a>
+    ) : (
+        <span className="text-gray-600 leading-tight">{resolvedAddress}</span>
+    );
+
+    return displayLink;
+};
+
 export const OutdoorAttendance = () => {
     const [pendingLogs, setPendingLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -193,21 +259,7 @@ export const OutdoorAttendance = () => {
                                 <div className="space-y-2">
                                     <div className="flex items-start gap-2 text-sm group/loc">
                                         <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
-                                        {(() => {
-                                            if (!log.location) return <span className="text-gray-600">No Location</span>;
-                                            let lat = '', lng = '', display = log.location;
-                                            try {
-                                                const loc = JSON.parse(log.location);
-                                                lat = loc.lat; lng = loc.lng;
-                                                display = loc.address || `${lat}, ${lng}`;
-                                            } catch (e) {
-                                                const parts = log.location.split(',');
-                                                if (parts.length >= 2) { lat = parts[0]; lng = parts[1]; }
-                                            }
-                                            return lat && lng ? (
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{display}</a>
-                                            ) : <span className="text-gray-600">{display}</span>;
-                                        })()}
+                                        <LocationResolver location={log.location} />
                                     </div>
                                     {log.remarks && (
                                         <div className="bg-amber-50 p-2 rounded-lg text-xs text-amber-800 italic border border-amber-100">
