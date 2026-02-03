@@ -40,9 +40,6 @@ async function fixTimezones() {
             const newFirstIn = log.firstIn ? new Date(log.firstIn.getTime() + offset) : null;
             const newLastOut = log.lastOut ? new Date(log.lastOut.getTime() + offset) : null;
 
-            // Fix the date (it might have shifted to previous day)
-            const correctDate = newFirstIn ? new Date(newFirstIn.toISOString().split('T')[0] + 'T00:00:00.000Z') : log.date;
-
             // Parse and fix the logs JSON
             let newLogs = log.logs;
             if (log.logs) {
@@ -63,11 +60,10 @@ async function fixTimezones() {
                 ? (newLastOut - newFirstIn) / (1000 * 60 * 60)
                 : 0;
 
-            // Update the log
+            // Update the log (keep the same date to avoid unique constraint issues)
             await prisma.attendanceLog.update({
                 where: { id: log.id },
                 data: {
-                    date: correctDate,
                     firstIn: newFirstIn,
                     lastOut: newLastOut,
                     totalHours: totalHours,
