@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 // Create tenant
 router.post('/', async (req, res) => {
     try {
-        const { name, slug, domain, settings, modules } = req.body;
+        const { name, slug, domain, settings, modules, type } = req.body;
 
         // Use basePrisma to bypass RLS
         const tenant = await basePrisma.tenant.create({
@@ -41,6 +41,7 @@ router.post('/', async (req, res) => {
                 domain,
                 settings,
                 modules,
+                type: type || 'CORPORATE',
                 isActive: true
             }
         });
@@ -84,11 +85,11 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, slug, domain, settings, isActive, modules } = req.body;
+        const { name, slug, domain, settings, isActive, modules, type } = req.body;
 
         const tenant = await prisma.tenant.update({
             where: { id },
-            data: { name, slug, domain, settings, isActive, modules }
+            data: { name, slug, domain, settings, isActive, modules, type }
         });
 
         res.json(tenant);
