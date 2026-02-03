@@ -37,6 +37,8 @@ import { Subjects } from './pages/school/Subjects';
 import { FeeSetup } from './pages/school/finance/FeeSetup';
 import { FeeCollection } from './pages/school/finance/FeeCollection';
 import { StudentAttendance } from './pages/school/StudentAttendance';
+import { Transport } from './pages/school/Transport';
+import { Library } from './pages/school/Library';
 
 
 const HomeRedirect = () => {
@@ -85,6 +87,10 @@ function App() {
                     {/* Finance */}
                     <Route path="/fees" element={<ModuleRoute module="payroll"><FeeCollection /></ModuleRoute>} />
                     <Route path="/fees/setup" element={<ModuleRoute module="payroll"><FeeSetup /></ModuleRoute>} />
+
+                    {/* School Services */}
+                    <Route path="/transport" element={<ModuleRoute module="core"><Transport /></ModuleRoute>} />
+                    <Route path="/library" element={<ModuleRoute module="core"><Library /></ModuleRoute>} />
 
                     {/* Masters - Linked to Employees */}
                     <Route path="/departments" element={<ModuleRoute module="employees"><Departments /></ModuleRoute>} />

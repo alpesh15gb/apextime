@@ -43,6 +43,8 @@ import deviceCommandsRoutes from './routes/deviceCommands';
 import schoolRoutes from './routes/school';
 import schoolFinanceRoutes from './routes/schoolFinance';
 import schoolAttendanceRoutes from './routes/schoolAttendance';
+import transportRoutes from './routes/transport';
+import libraryRoutes from './routes/library';
 
 dotenv.config();
 
@@ -98,6 +100,8 @@ app.use('/api/devices', deviceCommandsRoutes);
 app.use('/api/school', schoolRoutes);
 app.use('/api/school/finance', schoolFinanceRoutes);
 app.use('/api/school/attendance', schoolAttendanceRoutes);
+app.use('/api/transport', transportRoutes);
+app.use('/api/library', libraryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

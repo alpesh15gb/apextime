@@ -111,8 +111,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 { path: '/invoices', icon: FileSpreadsheet, label: 'Invoices' },
               ]
             },
+            {
+              label: 'Staff & Teachers',
+              icon: Users,
+              module: 'employees',
+              children: [
+                { path: '/employees', icon: Users, label: 'All Staff' },
+                { path: '/attendance', icon: ClipboardCheck, label: 'Staff Attendance' },
+                { path: '/leaves', icon: Calendar, label: 'Staff Leaves' },
+              ]
+            },
             { path: '/transport', icon: Bus, label: 'Transport', module: 'core' },
             { path: '/library', icon: Library, label: 'Library', module: 'core' },
+            { path: '/devices', icon: Cpu, label: 'Attendance Devices', module: 'devices' },
             { path: '/reports', icon: FileSpreadsheet, label: 'Reports', module: 'reports' },
             { path: '/settings', icon: Settings, label: 'Settings', module: 'core' },
           ].filter(item => { /* Copy filter logic or reuse function */

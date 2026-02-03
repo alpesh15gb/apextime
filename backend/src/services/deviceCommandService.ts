@@ -107,6 +107,80 @@ export class DeviceCommandService {
     }
 
     /**
+     * Upload student to device
+     */
+    async uploadStudentToDevice(deviceId: string, studentId: string) {
+        // Get student details
+        const student = await prisma.student.findUnique({
+            where: { id: studentId },
+            include: {
+                batch: {
+                    include: { course: true }
+                }
+            }
+        });
+
+        if (!student) {
+            throw new Error('Student not found');
+        }
+
+        if (!student.biometricId) {
+            throw new Error('Student does not have a biometric ID assigned');
+        }
+
+        // Prepare user data for device
+        const userData = {
+            userId: student.biometricId,
+            name: `${student.firstName} ${student.lastName}`,
+            cardNo: '', // Can add card field to student if needed
+            department: student.batch.course.name,
+            role: `STUDENT-${student.batch.name}`,
+            password: '',
+            privilege: 0,
+            enabled: student.status === 'ACTIVE' ? 1 : 0
+        };
+
+        return this.queueCommand(deviceId, 'UPLOAD_USER', userData);
+    }
+
+    /**
+     * Upload multiple students to device
+     */
+    async uploadMultipleStudents(deviceId: string, studentIds: string[]) {
+        const commands = [];
+
+        for (const studentId of studentIds) {
+            try {
+                const command = await this.uploadStudentToDevice(deviceId, studentId);
+                commands.push(command);
+            } catch (error: any) {
+                console.error(`Error uploading student ${studentId}:`, error.message);
+            }
+        }
+
+        return commands;
+    }
+
+    /**
+     * Upload all students to device
+     */
+    async uploadAllStudentsToDevice(deviceId: string, tenantId: string) {
+        const students = await prisma.student.findMany({
+            where: {
+                tenantId,
+                status: 'ACTIVE',
+                biometricId: { not: null }
+            },
+            select: {
+                id: true
+            }
+        });
+
+        const studentIds = students.map(s => s.id);
+        return this.uploadMultipleStudents(deviceId, studentIds);
+    }
+
+    /**
      * Delete employee from device
      */
     async deleteEmployeeFromDevice(deviceId: string, employeeId: string) {

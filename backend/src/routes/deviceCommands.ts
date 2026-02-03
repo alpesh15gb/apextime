@@ -96,6 +96,95 @@ router.post('/:deviceId/upload-all-employees', authenticate, async (req: any, re
 });
 
 /**
+ * POST /api/devices/:deviceId/upload-student
+ * Upload single student to device
+ */
+router.post('/:deviceId/upload-student', authenticate, async (req: any, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { studentId } = req.body;
+
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Student ID is required'
+            });
+        }
+
+        const command = await commandService.uploadStudentToDevice(deviceId, studentId);
+
+        res.json({
+            success: true,
+            message: 'Student upload command queued successfully',
+            data: command
+        });
+    } catch (error: any) {
+        console.error('Error uploading student:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/devices/:deviceId/upload-students
+ * Upload multiple students to device
+ */
+router.post('/:deviceId/upload-students', authenticate, async (req: any, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { studentIds } = req.body;
+
+        if (!studentIds || !Array.isArray(studentIds)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Student IDs array is required'
+            });
+        }
+
+        const commands = await commandService.uploadMultipleStudents(deviceId, studentIds);
+
+        res.json({
+            success: true,
+            message: `${commands.length} student upload commands queued`,
+            data: commands
+        });
+    } catch (error: any) {
+        console.error('Error uploading students:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/devices/:deviceId/upload-all-students
+ * Upload all active students to device
+ */
+router.post('/:deviceId/upload-all-students', authenticate, async (req: any, res) => {
+    try {
+        const { deviceId } = req.params;
+        const tenantId = req.user?.tenantId || req.headers['x-tenant-id'];
+
+        const commands = await commandService.uploadAllStudentsToDevice(deviceId, tenantId);
+
+        res.json({
+            success: true,
+            message: `${commands.length} students queued for upload`,
+            data: commands
+        });
+    } catch (error: any) {
+        console.error('Error uploading all students:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+/**
  * POST /api/devices/:deviceId/delete-employee
  * Delete employee from device
  */

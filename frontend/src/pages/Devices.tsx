@@ -15,8 +15,11 @@ import {
     ShieldCheck,
     RefreshCw,
     Hash,
-    RotateCcw
+    RotateCcw,
+    Users,
+    GraduationCap
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Devices() {
     const [devices, setDevices] = useState<any[]>([]);
@@ -173,14 +176,46 @@ export default function Devices() {
                                     <button onClick={() => handleEdit(device)} className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
                                     <button onClick={() => handleDelete(device.id)} className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
                                     {['ESSL_ADMS', 'MATRIX_DIRECT', 'REALTIME_DIRECT'].includes(device.protocol) && (
-                                        <button
-                                            onClick={() => handleRecovery(device)}
-                                            disabled={recoveryLoading === device.id}
-                                            className={`p-2 rounded-xl transition-all ${recoveryLoading === device.id ? 'text-blue-200 animate-spin' : 'text-gray-300 hover:text-blue-600 hover:bg-blue-50'}`}
-                                            title="Force Historical Log Recovery"
-                                        >
-                                            <RotateCcw className="w-4 h-4" />
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={() => handleRecovery(device)}
+                                                disabled={recoveryLoading === device.id}
+                                                className={`p-2 rounded-xl transition-all ${recoveryLoading === device.id ? 'text-blue-200 animate-spin' : 'text-gray-300 hover:text-blue-600 hover:bg-blue-50'}`}
+                                                title="Force Historical Log Recovery"
+                                            >
+                                                <RotateCcw className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (confirm('Push all Staff members to this device?')) {
+                                                        try {
+                                                            await devicesAPI.uploadAllEmployees(device.id);
+                                                            alert('Staff upload commands queued!');
+                                                        } catch (e) { alert('Failed to queue staff upload'); }
+                                                    }
+                                                }}
+                                                className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                title="Push all Staff to Node"
+                                            >
+                                                <Users className="w-4 h-4" />
+                                            </button>
+                                            {user?.tenantType === 'SCHOOL' && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm('Push all Students to this device?')) {
+                                                            try {
+                                                                await devicesAPI.uploadAllStudents(device.id);
+                                                                alert('Student upload commands queued!');
+                                                            } catch (e) { alert('Failed to queue student upload'); }
+                                                        }
+                                                    }}
+                                                    className="p-2 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                    title="Push all Students to Node"
+                                                >
+                                                    <GraduationCap className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>

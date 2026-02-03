@@ -131,6 +131,10 @@ export const devicesAPI = {
     api.post('/devices/sync-users'),
   recoveryLogs: (id: string, startDate: string) =>
     api.post(`/devices/${id}/log-recovery`, { startDate }),
+  uploadAllEmployees: (id: string) =>
+    api.post(`/devices/${id}/upload-all-employees`),
+  uploadAllStudents: (id: string) =>
+    api.post(`/devices/${id}/upload-all-students`),
 };
 
 // Sync API
@@ -246,6 +250,14 @@ export const schoolAPI = {
 
   getSubjects: (courseId?: string) => api.get('/school/subjects', { params: { courseId } }),
   createSubject: (data: any) => api.post('/school/subjects', data),
+
+  // Transport
+  getTransportRoutes: () => api.get('/transport'),
+  createTransportRoute: (data: any) => api.post('/transport', data),
+
+  // Library
+  getLibraryBooks: () => api.get('/library/books'),
+  createLibraryBook: (data: any) => api.post('/library/books', data),
 };
 
 export const financeAPI = {
