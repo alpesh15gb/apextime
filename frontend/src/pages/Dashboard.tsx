@@ -9,7 +9,10 @@ import {
   FileText,
   ClipboardCheck,
   Building2,
-  Database
+  Database,
+  GraduationCap,
+  BookOpen,
+  Book
 } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
 import { DashboardStats } from '../types';
@@ -192,7 +195,114 @@ export const Dashboard = () => {
   }
 
   // --------------------------------------------------------
-  // REGULAR ADMIN/MANAGER VIEW (Existing Dashboard)
+  // SCHOOL DASHBOARD VIEW
+  // --------------------------------------------------------
+  if (user?.tenantType === 'SCHOOL' || stats?.tenantType === 'SCHOOL') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-2xl font-bold text-gray-800">School Dashboard</h2>
+          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-bold">
+            <GraduationCap className="w-4 h-4" /> Academic Session 2024-25
+          </div>
+        </div>
+
+        {/* School Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div onClick={() => navigate('/students')} className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+            <div className="relative z-10">
+              <h3 className="font-medium text-blue-100 mb-1">Total Students</h3>
+              <span className="text-4xl font-bold">{stats?.schoolStats?.totalStudents || 0}</span>
+              <p className="text-blue-200 text-sm mt-4">Enrolled this session</p>
+            </div>
+            <GraduationCap className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+          </div>
+
+          <div onClick={() => navigate('/classes')} className="bg-emerald-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+            <div className="relative z-10">
+              <h3 className="font-medium text-emerald-100 mb-1">Total Classes</h3>
+              <span className="text-4xl font-bold">{stats?.schoolStats?.totalBatches || 0}</span>
+              <p className="text-emerald-200 text-sm mt-4">Active sections</p>
+            </div>
+            <Building2 className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+          </div>
+
+          <div onClick={() => navigate('/subjects')} className="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+            <div className="relative z-10">
+              <h3 className="font-medium text-indigo-100 mb-1">Total Subjects</h3>
+              <span className="text-4xl font-bold">{stats?.schoolStats?.totalCourses || 0}</span>
+              <p className="text-indigo-200 text-sm mt-4">Across all grades</p>
+            </div>
+            <BookOpen className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+          </div>
+
+          <div onClick={() => navigate('/student-attendance')} className="bg-[#111827] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+            <div className="relative z-10">
+              <h3 className="font-medium text-gray-400 mb-1">Today's Attendance</h3>
+              <span className="text-4xl font-bold">92%</span>
+              <p className="text-gray-400 text-sm mt-4">Average attendance</p>
+            </div>
+            <ClipboardCheck className="absolute right-0 bottom-0 opacity-10 w-32 h-32 transform translate-y-1/4 translate-x-1/4" />
+          </div>
+        </div>
+
+        {/* Quick Actions Table */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-800 mb-4">Quick Academic Actions</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => navigate('/admissions')} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <span className="font-medium text-gray-700">New Admission</span>
+              </button>
+              <button onClick={() => navigate('/timetable')} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="font-medium text-gray-700">Timetable</span>
+              </button>
+              <button onClick={() => navigate('/student-attendance')} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <ClipboardCheck className="w-5 h-5" />
+                </div>
+                <span className="font-medium text-gray-700">Daily Attendance</span>
+              </button>
+              <button onClick={() => navigate('/fees')} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                <div className="p-2 bg-amber-100 text-amber-600 rounded-lg group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <span className="font-medium text-gray-700">Fee Collection</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-800 mb-4">Upcoming Schedule</h3>
+            <div className="space-y-4">
+              {[
+                { time: '09:00 AM', event: 'Morning Assembly', type: 'General' },
+                { time: '10:30 AM', event: 'Staff Meeting', type: 'Administrative' },
+                { time: '12:00 PM', event: 'Lunch Break', type: 'General' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-3 border-l-4 border-blue-500 bg-blue-50/30 rounded-r-lg">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{item.event}</p>
+                    <p className="text-xs text-gray-500">{item.type}</p>
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">{item.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------
+  // CORPORATE ADMIN/MANAGER VIEW
   // --------------------------------------------------------
   return (
     <div className="space-y-6">

@@ -134,8 +134,28 @@ router.get('/stats', async (req, res) => {
       lastSync = await prisma.syncLog.findFirst({ orderBy: { createdAt: 'desc' } });
     } catch (e) { console.error('Sync status error', e); }
 
+    // ------------------------------------------------------------------
+    // SCHOOL STATS (If applicable)
+    // ------------------------------------------------------------------
+    let schoolStats = null;
+    const tenant = await basePrisma.tenant.findUnique({ where: { id: user.tenantId } });
+
+    if (tenant?.type === 'SCHOOL') {
+      try {
+        const studentCount = await prisma.student.count();
+        const courseCount = await prisma.course.count();
+        const batchCount = await prisma.batch.count();
+        schoolStats = {
+          totalStudents: studentCount,
+          totalCourses: courseCount,
+          totalBatches: batchCount
+        };
+      } catch (e) { console.error('School stats error', e); }
+    }
+
     res.json({
       type: 'admin',
+      tenantType: tenant?.type,
       counts: {
         totalEmployees,
         activeEmployees,
@@ -143,6 +163,7 @@ router.get('/stats', async (req, res) => {
         totalBranches,
         devicesCount,
       },
+      schoolStats,
       today: {
         present: todayStatus.present,
         absent: todayStatus.absent,

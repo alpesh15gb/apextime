@@ -92,6 +92,7 @@ router.post(
           employeeId: user.employeeId,
           tenantId: tenant.id,
           tenantName: tenant.name,
+          tenantType: tenant.type,
           modules: tenant.modules
         },
       });
