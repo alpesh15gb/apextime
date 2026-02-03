@@ -48,10 +48,14 @@ export default function Devices() {
 
     const fetchDevices = async () => {
         try {
+            setLoading(true);
             const response = await devicesAPI.getAll();
-            setDevices(response.data);
+            console.log('Devices API response:', response);
+            setDevices(response.data || []);
         } catch (error) {
             console.error('Failed to fetch devices:', error);
+            setDevices([]);
+            alert('Failed to load devices. Please refresh the page.');
         } finally {
             setLoading(false);
         }
