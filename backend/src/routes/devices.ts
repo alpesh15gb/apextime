@@ -188,9 +188,7 @@ router.post('/sync-batch', async (req, res) => {
             timestamp: new Date(log.timestamp),
             punchTime: new Date(log.timestamp),
             punchType: log.punchType || '0',
-            isProcessed: false,
-            // Store original raw data if needed
-            data: JSON.stringify(log)
+            isProcessed: false
           },
           update: {} // Do nothing if exists
         });
