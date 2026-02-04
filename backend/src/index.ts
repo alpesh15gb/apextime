@@ -56,9 +56,25 @@ const PORT = process.env.PORT || 5001;
 // Middleware
 app.use(cors());
 
-// CRITICAL: Force raw body parsing for ADMS/iClock protocol BEFORE other parsers
-// This ensures we get binary data (application/octet-stream) correctly from biometric devices
-app.use('/api/iclock', express.raw({ type: '*/*', limit: '50mb' }));
+// AGGRESSIVE RAW BUFFERING for RealTime devices
+// We manually buffer the stream because express middleware order can be tricky with content-types
+app.use('/api/iclock', (req, res, next) => {
+  if (req.method === 'POST') {
+    const data: any[] = [];
+    req.on('data', (chunk) => {
+      data.push(chunk);
+    });
+    req.on('end', () => {
+      if (data.length > 0) {
+        req.body = Buffer.concat(data);
+        console.log('--- CUSTOM BUFFERING: Captured ' + req.body.length + ' bytes for iclock ---');
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
