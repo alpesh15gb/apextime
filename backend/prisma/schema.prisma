@@ -967,6 +967,7 @@ model AssetCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   assets      Asset[]
+  assetRequests    AssetRequest[]
 
   @@unique([name, tenantId])
   @@index([tenantId])
@@ -1054,7 +1055,6 @@ model Vendor {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   assets          Asset[]
-  assetRequests    AssetRequest[]
 
   @@unique([name, tenantId])
   @@index([tenantId])
