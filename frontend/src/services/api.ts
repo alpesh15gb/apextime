@@ -130,7 +130,7 @@ export const devicesAPI = {
   syncUsers: () =>
     api.post('/devices/sync-users'),
   recoveryLogs: (id: string, startDate: string) =>
-    api.post(`/devices/${id}/log-recovery`, { startDate }),
+    api.post(`/devices/${id}/fetch-logs`, { startTime: startDate + ' 00:00:00' }),
   uploadAllEmployees: (id: string) =>
     api.post(`/devices/${id}/upload-all-employees`),
   uploadAllStudents: (id: string) =>
