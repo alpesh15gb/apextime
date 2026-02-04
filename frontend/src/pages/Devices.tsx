@@ -227,9 +227,19 @@ export default function Devices() {
 
                             <div className="relative z-10">
                                 <h3 className="text-xl font-bold text-gray-900 tracking-tighter">{device.name}</h3>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-2">
-                                    {device.location || 'Unassigned Sector'} • <span className={device.status === 'online' ? 'text-emerald-500' : 'text-gray-300'}>{device.status.toUpperCase()}</span>
-                                </p>
+                                <div className="mt-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        {device.location || 'Unassigned Sector'} • <span className={device.status === 'online' ? 'text-emerald-500' : 'text-gray-300'}>{device.status.toUpperCase()}</span>
+                                    </p>
+                                    {device.lastSeen && (
+                                        <p className="text-[9px] font-semibold text-gray-400 mt-0.5">
+                                            {new Date(device.lastSeen).toLocaleString('en-IN', {
+                                                day: 'numeric', month: 'short', year: 'numeric',
+                                                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-50 relative z-10">
