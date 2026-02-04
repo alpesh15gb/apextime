@@ -237,8 +237,10 @@ export class DeviceCommandService {
         // Insert into SQL Server for legacy devices
         try {
             const device = await prisma.device.findUnique({ where: { id: deviceId } });
-            if (device && (device.serialNumber || (['ESSL_ADMS'].includes(device.protocol)))) {
-                const sns = device.serialNumber || device.deviceId;
+
+            // Check protocol or just existance. Device ID usually holds the Serial Number for ADMS
+            if (device && (['ESSL_ADMS'].includes(device.protocol) || device.deviceId)) {
+                const sns = device.deviceId; // In ADMS, deviceId field usually holds the SN (e.g. NYU...)
 
                 const pool = await getSqlPool();
                 let cmdStr = 'DATA QUERY ATTLOG';
