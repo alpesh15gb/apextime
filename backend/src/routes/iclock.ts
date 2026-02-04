@@ -59,98 +59,74 @@ router.get(['/cdata*', '/:sn/cdata'], async (req, res) => {
 
 // 2. Data Receiving (Logs, User Info, OpLogs)
 router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
-    let SN = (req.params.sn as string) || (req.query.SN as string);
+    let SN = (req.params.sn as string) || (req.query.SN as string) || (req.query.sn as string);
     let { table } = req.query;
 
+    if (SN) {
+        SN = SN.toString().trim();
+    }
+
     // RealTime devices may send SN in POST body instead of query params
-    // Try to extract SN from body if not in query
-    // RealTime devices may send SN in POST body instead of query params
-    // Try to extract SN from body if not in query
     if (!SN && req.body) {
         let bodyStr = '';
 
         // Handle different body types
         if (Buffer.isBuffer(req.body)) {
             // Check for RealTime Binary-JSON format (4 byte header + JSON)
-            // Header often starts with 0x66 (f)
-            if (req.body.length > 4 && req.body[0] === 0x66) { // 0x66 is 'f'
+            if (req.body.length > 4 && req.body[0] === 0x66) {
                 const jsonPart = req.body.slice(4).toString('utf-8');
                 try {
                     const data = JSON.parse(jsonPart);
                     console.log('--- REALTIME JSON DETECTED ---', data);
 
-                    // REALTIME HACK: The packet often lacks SN, but we know the device IP maps to this one.
-                    // Use the hardcoded SN provided by user if missing.
-                    // TODO: In future, map IP to SN dynamically.
-                    if (!SN) {
-                        SN = 'RSS20230760881';
-                        console.log('--- FORCING SN FOR REALTIME DEVICE: ' + SN + ' ---');
-                    }
+                    // Note: If SN is missing in JSON, we'll try to get it from headers or bodyStr below
+                    if (data.SN) SN = data.SN;
+                    if (data.deviceId) SN = data.deviceId;
 
                     // PARSE DATA FOR SAVING
-                    // Format: {"user_id":"00000010","io_time":"20260204040113", ...}
                     if (data.user_id && data.io_time) {
                         const uId = data.user_id;
-                        const rawTime = data.io_time; // YYYYMMDDHHmmss
-                        // Convert to YYYY-MM-DD HH:mm:ss for standard ADMS parser
+                        const rawTime = data.io_time;
                         const fmtTime = `${rawTime.substring(0, 4)}-${rawTime.substring(4, 6)}-${rawTime.substring(6, 8)} ${rawTime.substring(8, 10)}:${rawTime.substring(10, 12)}:${rawTime.substring(12, 14)}`;
-
-                        // Construct ADMS-like tab-separated line: UserID  Time  State  PunchType
-                        // State/Type: 1/1? Standard ADMS CheckIn=0. Let's send 1 for now.
                         const state = data.verify_mode || 1;
                         const type = data.io_mode || 0;
 
-                        // Overwrite req.body with standard text format so downstream logic saves it
                         req.body = `${uId}\t${fmtTime}\t${state}\t${type}`;
-                        console.log('--- CONVERTED REALTIME JSON TO ADMS FORMAT:', req.body, '---');
                     }
                 } catch (e) {
-                    console.log('--- REALTIME JSON PARSE ERROR ---', e);
-                    // Fallback to normal string conversion
                     bodyStr = req.body.toString('utf-8');
                 }
             } else {
                 bodyStr = req.body.toString('utf-8');
             }
-            console.log('--- BUFFER BODY DETECTED, length:', req.body.length, '---');
         } else if (typeof req.body === 'string') {
             bodyStr = req.body;
         } else if (typeof req.body === 'object') {
             bodyStr = JSON.stringify(req.body);
+            if (req.body.SN) SN = req.body.SN;
+            if (req.body.deviceId) SN = req.body.deviceId;
         }
 
-        // Try to extract SN from body string (if we haven't found it yet)
+        // Try to extract SN from body string via Regex
         if (!SN) {
-            const snMatch = bodyStr.match(/SN=([^&\s\n\r]+)/);
+            const snMatch = bodyStr.match(/SN=([^&\s\n\r]+)/i);
             if (snMatch) {
-                SN = snMatch[1];
+                SN = snMatch[1].trim();
                 console.log('--- EXTRACTED SN FROM BODY: ' + SN + ' ---');
             }
         }
     }
 
-    // DEBUG: Print incoming SN so user can match it in dashboard
-    if (SN) {
-        console.log('--- INCOMING SN: ' + SN + ' ---');
+    // If still no SN, check headers (some proxies/devices add it)
+    if (!SN) {
+        SN = (req.headers['x-device-sn'] as string) || (req.headers['sn'] as string);
     }
 
-    // DEBUG: Log all query parameters and body to see what device is sending
-    if (!SN) {
+    if (SN) {
+        console.log('--- INCOMING PUSH FROM SN: ' + SN + ' ---');
+    } else {
         console.log('=== POST /cdata WITHOUT SN ===');
         console.log('Query params:', req.query);
-        console.log('URL:', req.url);
-        console.log('Body type:', typeof req.body, Buffer.isBuffer(req.body) ? '(Buffer)' : '');
-
-        if (Buffer.isBuffer(req.body)) {
-            console.log('Body length:', req.body.length);
-            console.log('Body preview (hex):', req.body.slice(0, 100).toString('hex'));
-            console.log('Body preview (utf8):', req.body.slice(0, 300).toString('utf-8'));
-        } else {
-            console.log('Body preview:', typeof req.body === 'string' ? req.body.substring(0, 300) : JSON.stringify(req.body).substring(0, 300));
-        }
-
-        console.log('Headers:', JSON.stringify(req.headers, null, 2));
-        console.log('==============================');
         return res.send('OK');
     }
 
