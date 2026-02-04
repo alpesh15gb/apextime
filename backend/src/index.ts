@@ -116,17 +116,27 @@ app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
 app.use('/api/settings', settingsRoutes);
-// Specialized Raw Body Parser for iClock (Supports both paths)
-app.use(['/api/iclock', '/iclock'], express.raw({ type: '*/*', limit: '20mb' }), (req, res, next) => {
+// Specialized Raw Body Parser for iClock (Only for POST/PUT data)
+app.use(['/api/iclock', '/iclock'], (req, res, next) => {
+  if (req.method === 'POST' || req.method === 'PUT') {
+    return express.raw({ type: '*/*', limit: '20mb' })(req, res, next);
+  }
+  next();
+});
+
+// Middleware to ensure raw body is a string for processing
+app.use(['/api/iclock', '/iclock'], (req, res, next) => {
   if (Buffer.isBuffer(req.body)) {
     req.body = req.body.toString('utf8');
   }
   next();
 });
 
-// Biometric Routes - Mounted on both /api and root for compatibility
-app.use(['/api/iclock', '/iclock'], iclockRoutes);
-app.use(['/api/hikvision', '/hikvision'], hikvisionRoutes);
+// Biometric Routes
+app.use('/api/iclock', iclockRoutes);
+app.use('/iclock', iclockRoutes);
+app.use('/api/hikvision', hikvisionRoutes);
+app.use('/hikvision', hikvisionRoutes);
 app.use('/api/realtime', realtimeRoutes);
 
 // Other Routes
