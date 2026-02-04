@@ -58,27 +58,28 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 
 // AGGRESSIVE RAW BUFFERING (GLOBAL CHECK)
-app.use((req, res, next) => {
-  // Check if this is an iclock request
-  if (req.path.startsWith('/api/iclock') && req.method === 'POST') {
-    console.log('--- INTERCEPTED /api/iclock POST ---');
-    const data: any[] = [];
-    req.on('data', (chunk) => {
-      data.push(chunk);
-    });
-    req.on('end', () => {
-      if (data.length > 0) {
-        req.body = Buffer.concat(data);
-        console.log('--- CUSTOM BUFFERING: Captured ' + req.body.length + ' bytes for iclock ---');
-      } else {
-        console.log('--- CUSTOM BUFFERING: No data received in stream ---');
-      }
-      next();
-    });
-  } else {
-    next();
-  }
-});
+// AGGRESSIVE RAW BUFFERING (DISABLED TO FIX STREAM ERROR)
+// app.use((req, res, next) => {
+//   // Check if this is an iclock request
+//   if (req.path.startsWith('/api/iclock') && req.method === 'POST') {
+//     console.log('--- INTERCEPTED /api/iclock POST ---');
+//     const data: any[] = [];
+//     req.on('data', (chunk) => {
+//       data.push(chunk);
+//     });
+//     req.on('end', () => {
+//       if (data.length > 0) {
+//         req.body = Buffer.concat(data);
+//         console.log('--- CUSTOM BUFFERING: Captured ' + req.body.length + ' bytes for iclock ---');
+//       } else {
+//         console.log('--- CUSTOM BUFFERING: No data received in stream ---');
+//       }
+//       next();
+//     });
+//   } else {
+//     next();
+//   }
+// });
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
