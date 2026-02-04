@@ -34,8 +34,8 @@ services:
       HIK_SERVER_USER: ${HIK_SERVER_USER:-essl}
       HIK_SERVER_PASSWORD: ${HIK_SERVER_PASSWORD:-Keystone@456}
       HIK_SERVER_DATABASE: ${HIK_SERVER_DATABASE:-hikcentral}
-    expose:
-      - "5001"
+    ports:
+      - "5001:5001"
     depends_on:
       - postgres
     networks:
@@ -49,8 +49,8 @@ services:
       args:
         REACT_APP_API_URL: /api
     container_name: apextime-frontend
-    expose:
-      - "80"
+    ports:
+      - "3000:80"
     networks:
       - apextime-network
     restart: unless-stopped
@@ -59,8 +59,8 @@ services:
     image: nginx:alpine
     container_name: apextime-nginx
     ports:
-      - "8080:80"
-      - "8443:443"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./certbot-data:/etc/letsencrypt
