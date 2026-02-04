@@ -1247,18 +1247,32 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
       where: {
         OR: [
           { deviceUserId: { not: null } },
-          { sourceEmployeeId: { not: null } }
+          { sourceEmployeeId: { not: null } },
+          { employeeCode: { not: null } }
         ]
       },
-      select: { id: true, deviceUserId: true, sourceEmployeeId: true }
+      select: { id: true, deviceUserId: true, sourceEmployeeId: true, employeeCode: true }
     });
 
     employeeCache.clear();
     for (const emp of existingEmployees) {
-      if (emp.sourceEmployeeId) employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
-      if (emp.deviceUserId) employeeCache.set(emp.deviceUserId, emp.id);
+      if (emp.sourceEmployeeId) {
+        employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
+        const coreSid = getCoreId(emp.sourceEmployeeId);
+        if (coreSid) employeeCache.set(`CORE:${coreSid}`, emp.id);
+      }
+      if (emp.deviceUserId) {
+        employeeCache.set(emp.deviceUserId, emp.id);
+        const coreDid = getCoreId(emp.deviceUserId);
+        if (coreDid) employeeCache.set(`CORE:${coreDid}`, emp.id);
+      }
+      if (emp.employeeCode) {
+        employeeCache.set(`CODE:${emp.employeeCode}`, emp.id);
+        const coreCode = getCoreId(emp.employeeCode);
+        if (coreCode) employeeCache.set(`CORE:${coreCode}`, emp.id);
+      }
     }
-    console.log(`Loaded ${employeeCache.size} employees into memory for repair.`);
+    console.log(`Loaded ${employeeCache.size} employee mapping keys into memory for repair.`);
 
     const where: any = {};
     if (startDate || endDate) {
@@ -1312,7 +1326,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
         const formattedLogs: RawLog[] = dayLogs.map(rl => ({
           DeviceLogId: 0,
-          DeviceId: parseInt(rl.deviceId) || 0,
+          DeviceId: rl.deviceId, // Preserve string UUID
           UserId: rl.userId,
           LogDate: rl.punchTime
         }));
@@ -1320,8 +1334,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
         const results = await processAttendanceLogs(formattedLogs);
 
         // Get tenantId for this specific employee
-        const employeeId = employeeCache.get(uId);
-        const empForTenant = employeeId ? await prisma.employee.findUnique({ where: { id: employeeId }, select: { tenantId: true } }) : null;
+        const empId = employeeCache.get(uId) || employeeCache.get(`CORE:${getCoreId(uId)}`);
+        const empForTenant = empId ? await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } }) : null;
         const rlTenantId = empForTenant?.tenantId || '';
         if (!rlTenantId) continue;
 
