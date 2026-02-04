@@ -78,8 +78,11 @@ router.post('/', async (req, res) => {
     });
 
     res.status(201).json(device);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create device error:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'A device with this Serial Number or Configuration already exists in this tenant.' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -109,8 +112,11 @@ router.put('/:id', async (req, res) => {
     });
 
     res.json(device);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update device error:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'A device with this Serial Number or Configuration already exists.' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -143,6 +149,63 @@ router.post('/sync-users', async (req, res) => {
     });
   } catch (error) {
     console.error('Sync device users error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// BATCH SYNC: Handling logs from Local Sync Agent (Offline Mode Recovery)
+router.post('/sync-batch', async (req, res) => {
+  try {
+    const { logs } = req.body; // Expecting array of { deviceId, userId, timestamp, ... }
+    const tenantId = (req as any).user.tenantId;
+
+    if (!Array.isArray(logs) || logs.length === 0) {
+      return res.status(400).json({ error: 'No logs provided' });
+    }
+
+    let count = 0;
+
+    // Process logs in transaction or batch
+    // This is a simplified implementation
+    for (const log of logs) {
+      const device = await prisma.device.findFirst({
+        where: { deviceId: log.deviceId, tenantId }
+      });
+
+      if (device) {
+        // Use upsert to avoid duplicates
+        const uniqueId = `LOCAL_${log.deviceId}_${log.userId}_${new Date(log.timestamp).getTime()}`;
+
+        await prisma.rawDeviceLog.upsert({
+          where: { id: uniqueId },
+          create: {
+            id: uniqueId,
+            tenantId,
+            deviceId: device.id,
+            userId: log.userId,
+            deviceUserId: log.userId,
+            userName: log.userName || 'Unknown',
+            timestamp: new Date(log.timestamp),
+            punchTime: new Date(log.timestamp),
+            punchType: log.punchType || '0',
+            isProcessed: false,
+            // Store original raw data if needed
+            data: JSON.stringify(log)
+          },
+          update: {} // Do nothing if exists
+        });
+        count++;
+      }
+    }
+
+    res.json({
+      message: 'Batch sync completed',
+      processed: count,
+      total: logs.length
+    });
+
+  } catch (error) {
+    console.error('Batch sync error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
