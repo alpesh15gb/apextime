@@ -11,8 +11,9 @@ const router = express.Router();
  */
 
 // 1. Initial Handshake / Config Check
-router.get('/cdata*', async (req, res) => {
-    const { SN, options } = req.query;
+router.get(['/cdata*', '/:sn/cdata'], async (req, res) => {
+    let SN = (req.params.sn as string) || (req.query.SN as string);
+    const { options } = req.query;
 
     if (!SN) {
         return res.status(400).send('Missing SN');
@@ -54,8 +55,9 @@ router.get('/cdata*', async (req, res) => {
 });
 
 // 2. Data Receiving (Logs, User Info, OpLogs)
-router.post('/cdata*', async (req, res) => {
-    let { SN, table } = req.query;
+router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
+    let SN = (req.params.sn as string) || (req.query.SN as string);
+    let { table } = req.query;
 
     // RealTime devices may send SN in POST body instead of query params
     // Try to extract SN from body if not in query
