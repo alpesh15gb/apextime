@@ -135,7 +135,7 @@ app.use('/api/realtime', realtimeRoutes);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: '1.0.2-realtime-websocket',
+    version: '1.0.3-buffer-fix',
     timestamp: new Date().toISOString()
   });
 });
