@@ -272,6 +272,64 @@ router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
                 // Format: OPERID  USERID  OPTYPE ...
                 // This can be used to capture user registrations
             }
+
+            // Handling USERINFO (User Data / Employee Names)
+            if (table === 'USERINFO') {
+                // Format: PIN=101\tName=John\t...
+                const userData: any = {};
+                parts.forEach(p => {
+                    const [key, val] = p.split('=');
+                    if (key && val) userData[key] = val;
+                });
+
+                if (userData.PIN) {
+                    const userId = userData.PIN;
+                    const name = userData.Name;
+                    const card = userData.Card;
+
+                    try {
+                        const existingEmployee = await prisma.employee.findFirst({
+                            where: { tenantId: device.tenantId, deviceUserId: userId }
+                        });
+
+                        if (existingEmployee) {
+                            if (name && existingEmployee.firstName !== name) {
+                                await prisma.employee.update({
+                                    where: { id: existingEmployee.id },
+                                    data: {
+                                        firstName: name,
+                                        lastName: '', // Clear placeholder
+                                        cardNumber: card || existingEmployee.cardNumber
+                                    }
+                                });
+                                logger.info(`ADMS User Sync: Updated Name for ${userId} to ${name}`);
+                            }
+                        } else {
+                            const defaultShift = await prisma.shift.findFirst({
+                                where: { tenantId: device.tenantId, code: 'GS' }
+                            });
+
+                            await prisma.employee.create({
+                                data: {
+                                    tenantId: device.tenantId,
+                                    firstName: name || `Auto-User ${userId}`,
+                                    lastName: name ? '' : '(Device)',
+                                    employeeCode: userId,
+                                    deviceUserId: userId,
+                                    cardNumber: card,
+                                    shiftId: defaultShift?.id,
+                                    gender: 'Male',
+                                    dateOfJoining: new Date()
+                                }
+                            });
+                            logger.info(`ADMS User Sync: Created New User ${userId} (${name})`);
+                        }
+                        count++;
+                    } catch (e) {
+                        logger.error(`ADMS User Sync Error ${userId}: ${e}`);
+                    }
+                }
+            }
         }
 
         if (count > 0) {
