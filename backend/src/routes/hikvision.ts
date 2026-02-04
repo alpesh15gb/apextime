@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '../config/database';
 import multer from 'multer';
 import logger from '../config/logger';
+import { processAttendanceLogs } from '../services/logSyncService';
 
 const router = express.Router();
 const upload = multer();
@@ -158,6 +159,21 @@ router.post('/event', upload.any(), async (req, res) => {
                     isProcessed: false
                 }
             });
+
+            // Demo/Real-time Fix: Trigger attendance calculation immediately IF the log is fresh (< 24h old)
+            const isFresh = (new Date().getTime() - punchTime.getTime()) < (24 * 60 * 60 * 1000);
+            if (isFresh) {
+                try {
+                    await processAttendanceLogs([{
+                        DeviceLogId: 0,
+                        DeviceId: SN.toString(),
+                        UserId: userIdStr,
+                        LogDate: punchTime
+                    }]);
+                } catch (procErr) {
+                    logger.error(`Real-time processing failed for ${userIdStr}:`, procErr);
+                }
+            }
 
             // Auto-create/update employee if name is available and employee doesn't have a real name yet
             if (userName && !/^\d+$/.test(userName)) {
