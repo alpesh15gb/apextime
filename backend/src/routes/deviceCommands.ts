@@ -289,6 +289,31 @@ router.post('/:deviceId/restart', authenticate, async (req: any, res) => {
 });
 
 /**
+ * POST /api/devices/:deviceId/fetch-logs
+ * Fetch logs from device (Recover past logs)
+ */
+router.post('/:deviceId/fetch-logs', authenticate, async (req: any, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { startTime, endTime } = req.body;
+
+        const command = await commandService.fetchLogs(deviceId, startTime, endTime);
+
+        res.json({
+            success: true,
+            message: 'Fetch logs command queued successfully',
+            data: command
+        });
+    } catch (error: any) {
+        console.error('Error fetching logs:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+/**
  * GET /api/devices/:deviceId/commands
  * Get pending commands for device (called by device)
  */

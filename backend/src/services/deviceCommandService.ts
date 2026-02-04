@@ -225,6 +225,17 @@ export class DeviceCommandService {
     }
 
     /**
+     * Fetch logs from device
+     */
+    async fetchLogs(deviceId: string, startTime?: string, endTime?: string) {
+        const payload: any = {};
+        if (startTime) payload.startTime = startTime;
+        if (endTime) payload.endTime = endTime;
+
+        return this.queueCommand(deviceId, 'GET_LOGS', payload);
+    }
+
+    /**
      * Get pending commands for device
      */
     async getPendingCommands(deviceId: string) {
@@ -340,7 +351,14 @@ export class DeviceCommandService {
                 return `C:${command.id}:DATA RESTART`;
 
             case 'GET_LOGS':
-                return `C:${command.id}:DATA QUERY ATTLOG`;
+                let cmd = `C:${command.id}:DATA QUERY ATTLOG`;
+                if (data.startTime) {
+                    cmd += ` StartTime=${data.startTime}`;
+                }
+                if (data.endTime) {
+                    cmd += ` EndTime=${data.endTime}`;
+                }
+                return cmd;
 
             case 'GET_USERS':
                 return `C:${command.id}:DATA QUERY USERINFO`;
