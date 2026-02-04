@@ -49,6 +49,7 @@ router.get('/event', async (req, res) => {
 router.post('/event', async (req, res) => {
     try {
         console.log(`[HIK_DIRECT] Incoming event from ${req.ip}`);
+        console.log('HIK_HEADERS:', JSON.stringify(req.headers));
 
         let eventData = req.body;
 
@@ -81,7 +82,12 @@ router.post('/event', async (req, res) => {
             console.log('HIK_JSON_BODY:', JSON.stringify(eventData).substring(0, 500));
         }
 
-        const SN = req.headers['x-device-serial'] || req.headers['x-device-id'] || eventData?.serialNo || eventData?.EventNotification?.serialNo || eventData?.AccessControllerEvent?.serialNo;
+        const SN = req.headers['x-device-serial'] ||
+            req.headers['x-device-id'] ||
+            req.headers['mac'] ||
+            eventData?.serialNo ||
+            eventData?.EventNotification?.serialNo ||
+            eventData?.AccessControllerEvent?.serialNo;
 
         if (!SN) {
             logger.warn('Hikvision event received without Serial Number');
