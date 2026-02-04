@@ -60,8 +60,20 @@ router.post('/cdata*', async (req, res) => {
     // RealTime devices may send SN in POST body instead of query params
     // Try to extract SN from body if not in query
     if (!SN && req.body) {
-        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-        const snMatch = bodyStr.match(/SN=([^&\s]+)/);
+        let bodyStr = '';
+
+        // Handle different body types
+        if (Buffer.isBuffer(req.body)) {
+            bodyStr = req.body.toString('utf-8');
+            console.log('--- BUFFER BODY DETECTED, length:', req.body.length, '---');
+        } else if (typeof req.body === 'string') {
+            bodyStr = req.body;
+        } else if (typeof req.body === 'object') {
+            bodyStr = JSON.stringify(req.body);
+        }
+
+        // Try to extract SN from body string
+        const snMatch = bodyStr.match(/SN=([^&\s\n\r]+)/);
         if (snMatch) {
             SN = snMatch[1];
             console.log('--- EXTRACTED SN FROM BODY: ' + SN + ' ---');
@@ -78,8 +90,16 @@ router.post('/cdata*', async (req, res) => {
         console.log('=== POST /cdata WITHOUT SN ===');
         console.log('Query params:', req.query);
         console.log('URL:', req.url);
-        console.log('Body type:', typeof req.body);
-        console.log('Body preview:', typeof req.body === 'string' ? req.body.substring(0, 300) : JSON.stringify(req.body).substring(0, 300));
+        console.log('Body type:', typeof req.body, Buffer.isBuffer(req.body) ? '(Buffer)' : '');
+
+        if (Buffer.isBuffer(req.body)) {
+            console.log('Body length:', req.body.length);
+            console.log('Body preview (hex):', req.body.slice(0, 100).toString('hex'));
+            console.log('Body preview (utf8):', req.body.slice(0, 300).toString('utf-8'));
+        } else {
+            console.log('Body preview:', typeof req.body === 'string' ? req.body.substring(0, 300) : JSON.stringify(req.body).substring(0, 300));
+        }
+
         console.log('Headers:', JSON.stringify(req.headers, null, 2));
         console.log('==============================');
         return res.send('OK');
