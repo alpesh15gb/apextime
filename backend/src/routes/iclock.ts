@@ -55,7 +55,18 @@ router.get('/cdata*', async (req, res) => {
 
 // 2. Data Receiving (Logs, User Info, OpLogs)
 router.post('/cdata*', async (req, res) => {
-    const { SN, table } = req.query;
+    let { SN, table } = req.query;
+
+    // RealTime devices may send SN in POST body instead of query params
+    // Try to extract SN from body if not in query
+    if (!SN && req.body) {
+        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        const snMatch = bodyStr.match(/SN=([^&\s]+)/);
+        if (snMatch) {
+            SN = snMatch[1];
+            console.log('--- EXTRACTED SN FROM BODY: ' + SN + ' ---');
+        }
+    }
 
     // DEBUG: Print incoming SN so user can match it in dashboard
     if (SN) {
@@ -67,7 +78,9 @@ router.post('/cdata*', async (req, res) => {
         console.log('=== POST /cdata WITHOUT SN ===');
         console.log('Query params:', req.query);
         console.log('URL:', req.url);
-        console.log('Body preview:', typeof req.body === 'string' ? req.body.substring(0, 200) : req.body);
+        console.log('Body type:', typeof req.body);
+        console.log('Body preview:', typeof req.body === 'string' ? req.body.substring(0, 300) : JSON.stringify(req.body).substring(0, 300));
+        console.log('Headers:', JSON.stringify(req.headers, null, 2));
         console.log('==============================');
         return res.send('OK');
     }
