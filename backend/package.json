@@ -10,6 +10,7 @@
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
     "seed": "ts-node src/utils/seed.ts",
+    "sync": "ts-node src/services/logSyncService.ts",
     "sync-logs": "ts-node src/services/logSyncService.ts",
     "sync:full": "ts-node src/services/logSyncService.ts full-sync",
     "sync:reprocess": "ts-node src/services/logSyncService.ts reprocess"
