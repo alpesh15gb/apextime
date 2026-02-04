@@ -166,10 +166,7 @@ router.post('/event', upload.any(), async (req, res) => {
 
             // 2. SKIP EVERYTHING ELSE (Employee logic, attendance calc)
             // This is what makes it 20x faster for the history dump.
-
-            if (recordsSynced % 100 === 0) {
-                logger.debug(`Hikvision Fast-Sync: Ingested log for ${userIdStr}`);
-            }
+            logger.debug(`Hikvision Fast-Sync: Ingested log for ${userIdStr} from ${SN}`);
         }
 
         // Hikvision expects a 200 OK or a specific XML response
