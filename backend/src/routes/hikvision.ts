@@ -95,20 +95,23 @@ router.post('/event', upload.any(), async (req, res) => {
             console.log('HIK_JSON_BODY:', JSON.stringify(eventData).substring(0, 500));
         }
 
-        const SN = req.headers['x-device-serial'] ||
+        let SN = req.headers['x-device-serial'] ||
             req.headers['x-device-id'] ||
             req.headers['mac'] ||
             eventData?.serialNo ||
             eventData?.EventNotification?.serialNo ||
-            eventData?.AccessControllerEvent?.serialNo;
+            eventData?.AccessControllerEvent?.serialNo ||
+            eventData?.deviceID;
 
         if (!SN) {
             logger.warn('Hikvision event received without Serial Number');
             return res.status(200).send('OK');
         }
 
+        const snStr = SN.toString();
+
         const device = await prisma.device.findFirst({
-            where: { deviceId: SN as string }
+            where: { deviceId: snStr }
         });
 
         if (!device) {
