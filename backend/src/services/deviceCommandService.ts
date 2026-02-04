@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { getSqlPool } from '../config/database';
 
 const prisma = new PrismaClient();
 
@@ -7,7 +8,6 @@ const prisma = new PrismaClient();
  * Manages commands to be sent to biometric devices
  * Supports: Upload Users, Delete Users, Sync Time, Restart, etc.
  */
-
 export class DeviceCommandService {
     /**
      * Queue a command for a device
@@ -232,7 +232,34 @@ export class DeviceCommandService {
         if (startTime) payload.startTime = startTime;
         if (endTime) payload.endTime = endTime;
 
-        return this.queueCommand(deviceId, 'GET_LOGS', payload);
+        const internalCmd = await this.queueCommand(deviceId, 'GET_LOGS', payload);
+
+        // Insert into SQL Server for legacy devices
+        try {
+            const device = await prisma.device.findUnique({ where: { id: deviceId } });
+            if (device && (device.serialNumber || (['ESSL_ADMS'].includes(device.protocol)))) {
+                const sns = device.serialNumber || device.deviceId;
+
+                const pool = await getSqlPool();
+                let cmdStr = 'DATA QUERY ATTLOG';
+                if (startTime) cmdStr += ` StartTime=${startTime}`;
+                if (endTime) cmdStr += ` EndTime=${endTime}`;
+
+                await pool.request()
+                    .input('DeviceSName', sns)
+                    .input('Title', 'Download Past Logs (Manual)')
+                    .input('Command', cmdStr)
+                    .query(`
+                        INSERT INTO DeviceCommands (DeviceSName, Title, Command, Status, CreationDate)
+                        VALUES (@DeviceSName, @Title, @Command, 0, GETDATE())
+                    `);
+                console.log(`✅ SQL Server Command Inserted for ${sns}`);
+            }
+        } catch (error) {
+            console.error('Failed to insert command into SQL Server:', error);
+        }
+
+        return internalCmd;
     }
 
     /**
