@@ -98,10 +98,11 @@ router.post('/event', upload.any(), async (req, res) => {
         let SN = req.headers['x-device-serial'] ||
             req.headers['x-device-id'] ||
             req.headers['mac'] ||
+            eventData?.deviceID ||
+            eventData?.macAddress ||
             eventData?.serialNo ||
             eventData?.EventNotification?.serialNo ||
-            eventData?.AccessControllerEvent?.serialNo ||
-            eventData?.deviceID;
+            eventData?.AccessControllerEvent?.serialNo;
 
         if (!SN) {
             logger.warn('Hikvision event received without Serial Number');
