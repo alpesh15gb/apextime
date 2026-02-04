@@ -35,7 +35,7 @@ services:
       HIK_SERVER_PASSWORD: ${HIK_SERVER_PASSWORD:-Keystone@456}
       HIK_SERVER_DATABASE: ${HIK_SERVER_DATABASE:-hikcentral}
     ports:
-      - "5001:5001"
+      - "8080:5001"
     depends_on:
       - postgres
     networks:
@@ -55,28 +55,7 @@ services:
       - apextime-network
     restart: unless-stopped
 
-  nginx:
-    image: nginx:alpine
-    container_name: apextime-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./certbot-data:/etc/letsencrypt
-      - ./certbot-www:/var/www/certbot
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - apextime-network
-    restart: unless-stopped
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./certbot-www:/var/www/certbot
-      - ./certbot-data:/etc/letsencrypt
+# Nginx handled by host
 
 volumes:
   postgres_data:
