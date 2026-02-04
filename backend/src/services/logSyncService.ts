@@ -1009,10 +1009,10 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       }
 
       let logicalDate = new Date(log.LogDate);
-      const hours = log.LogDate.getUTCHours();
-      if (hours < 8) logicalDate.setUTCDate(logicalDate.getUTCDate() - 1);
+      const hours = log.LogDate.getHours(); // Use Local Hours (IST)
+      if (hours < 8) logicalDate.setDate(logicalDate.getDate() - 1);
 
-      const dateKey = logicalDate.toISOString().split('T')[0];
+      const dateKey = logicalDate.toLocaleDateString('en-CA'); // Get YYYY-MM-DD in local time
       if (!logicalDayGroups.has(dateKey)) logicalDayGroups.set(dateKey, []);
       logicalDayGroups.get(dateKey)!.push(log);
     }

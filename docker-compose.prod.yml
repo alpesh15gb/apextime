@@ -6,6 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-apextime}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apextime123}
       POSTGRES_DB: ${POSTGRES_DB:-apextime}
+      TZ: Asia/Kolkata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -22,6 +23,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5001
+      TZ: Asia/Kolkata
       JWT_SECRET: ${JWT_SECRET:-apextime-secret-key-2026}
       DATABASE_URL: postgresql://${POSTGRES_USER:-apextime}:${POSTGRES_PASSWORD:-apextime123}@postgres:5432/${POSTGRES_DB:-apextime}
       SQL_SERVER_HOST: ${SQL_SERVER_HOST:-115.98.2.20}
@@ -49,6 +51,8 @@ services:
       args:
         REACT_APP_API_URL: /api
     container_name: apextime-frontend
+    environment:
+      TZ: Asia/Kolkata
     ports:
       - "3000:80"
     networks:

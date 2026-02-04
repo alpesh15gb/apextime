@@ -171,10 +171,8 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
             if (table === 'ATTLOG' || !table) {
                 if (parts.length >= 2) {
                     const userId = parts[0];
-                    console.log('[ADMS DEBUG] Received:', parts[1], 'Parsed +05:30:', new Date(parts[1].replace(' ', 'T') + '+05:30'));
-                    // Force IST Interpretation: Machine sends "YYYY-MM-DD HH:mm:ss"
-                    // We treat this as explicit IST by appending the offset.
-                    const punchTime = new Date(parts[1].replace(' ', 'T') + '+05:30');
+                    // Strict IST: Since server TZ is Asia/Kolkata, we use the timestamp as is.
+                    const punchTime = new Date(parts[1].replace(' ', 'T'));
 
                     if (!isNaN(punchTime.getTime())) {
                         // AUTO-CREATE EMPLOYEE LOGIC
