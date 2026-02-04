@@ -34,6 +34,7 @@ export function initializeRealtimeWebSocket(server: Server) {
 
         let deviceSerial: string | null = null;
         let deviceId: string | null = null;
+        let tenantId: string | null = null;
 
         ws.on('message', async (data: Buffer) => {
             try {
@@ -64,6 +65,7 @@ export function initializeRealtimeWebSocket(server: Server) {
 
                         if (device) {
                             deviceId = device.id;
+                            tenantId = device.tenantId;
                             activeConnections.set(deviceSerial, ws);
 
                             // Update device status to online
@@ -124,18 +126,24 @@ export function initializeRealtimeWebSocket(server: Server) {
 
                         const { userId, timestamp, verifyMode, ioMode } = parsed.data;
 
+                        if (!tenantId) {
+                            logger.warn('Attendance log received but tenantId is unknown');
+                            return;
+                        }
+
                         // Store in DeviceLog
                         await prisma.deviceLog.create({
                             data: {
-                                deviceId: deviceSerial,
-                                userId: userId,
-                                timestamp: new Date(timestamp),
-                                rawData: message
+                                tenantId: tenantId,
+                                deviceId: deviceId,
+                                deviceUserId: userId.toString(),
+                                punchTime: new Date(timestamp),
+                                punchType: ioMode || 'IN',
+                                rawData: message,
+                                source: 'DEVICE'
                             }
                         });
 
-                        // Also sync to rawDeviceLog for consistency with ADMS flow if needed
-                        // (implied logic based on system design)
 
                         logger.info(`Attendance log stored: ${userId} at ${timestamp}`);
 
