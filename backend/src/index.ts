@@ -45,9 +45,8 @@ import schoolFinanceRoutes from './routes/schoolFinance';
 import schoolAttendanceRoutes from './routes/schoolAttendance';
 import transportRoutes from './routes/transport';
 import libraryRoutes from './routes/library';
-// Routes
 import studentFieldLogRoutes from './routes/studentFieldLogs';
-// import realtimeRoutes, { initializeRealtimeWebSocket } from './routes/realtime';
+import realtimeRoutes, { initializeRealtimeWebSocket } from './routes/realtime';
 
 dotenv.config();
 
@@ -118,8 +117,19 @@ app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/tenants', tenantRoutes);
+
+// Specialized Raw Body Parser for iClock (Some machines send binary/text without headers)
+app.use('/api/iclock', express.raw({ type: '*/*', limit: '20mb' }), (req, res, next) => {
+  if (Buffer.isBuffer(req.body)) {
+    req.body = req.body.toString('utf8');
+  }
+  next();
+});
 app.use('/api/iclock', iclockRoutes);
 app.use('/api/hikvision', hikvisionRoutes);
+app.use('/api/realtime', realtimeRoutes);
+
+// Other Routes
 app.use('/api/documents', documentRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/assets', assetRoutes);
@@ -131,7 +141,10 @@ app.use('/api/school/attendance', schoolAttendanceRoutes);
 app.use('/api/transport', transportRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/school/field-logs', studentFieldLogRoutes);
-// app.use('/api/realtime', realtimeRoutes);
+
+// Initialize WebSocket for RealTime Devices
+// This handles the REALTIME_DIRECT protocol
+initializeRealtimeWebSocket(server);
 
 // Health check
 app.get('/api/health', (req, res) => {

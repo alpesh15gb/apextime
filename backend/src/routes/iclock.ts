@@ -131,7 +131,12 @@ router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
     }
 
     const device = await prisma.device.findFirst({
-        where: { deviceId: SN as string }
+        where: {
+            deviceId: {
+                equals: SN as string,
+                mode: 'insensitive'
+            }
+        }
     });
 
     if (!device) {
@@ -319,13 +324,17 @@ router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
 });
 
 // 3. Command Queue / Heartbeat
-// Machine pings this to see if there are any commands (LOG RECOVERY, REBOOT, etc.)
 router.get('/getrequest*', async (req, res) => {
-    const { SN } = req.query;
+    let SN = (req.query.SN as string) || (req.query.sn as string);
     if (!SN) return res.send('OK');
 
     const device = await prisma.device.findFirst({
-        where: { deviceId: SN as string }
+        where: {
+            deviceId: {
+                equals: SN as string,
+                mode: 'insensitive'
+            }
+        }
     });
 
     if (!device) return res.send('OK');
