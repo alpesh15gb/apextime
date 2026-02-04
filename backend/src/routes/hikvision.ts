@@ -112,7 +112,12 @@ router.post('/event', upload.any(), async (req, res) => {
         const snStr = SN.toString();
 
         const device = await prisma.device.findFirst({
-            where: { deviceId: snStr }
+            where: {
+                deviceId: {
+                    equals: snStr,
+                    mode: 'insensitive'
+                }
+            }
         });
 
         if (!device) {
