@@ -137,7 +137,8 @@ router.post('/event', upload.any(), async (req, res) => {
         const userName = eventData?.name || eventData?.EventNotification?.name || eventData?.AccessControllerEvent?.name;
 
         if (userId && eventTime) {
-            const punchTime = new Date(eventTime);
+            // Strict IST Parsing: Hikvision sends "YYYY-MM-DDTHH:mm:ss" or similar
+            const punchTime = new Date(eventTime.toString().replace('Z', ''));
             const userIdStr = userId.toString();
             const uniqueId = `HIK_DIRECT_${SN}_${userIdStr}_${punchTime.getTime()}`;
 
@@ -177,6 +178,11 @@ router.post('/event', upload.any(), async (req, res) => {
                         logger.info(`Hikvision Direct: Updated name for ${userIdStr} to ${userName}`);
                     }
                 } else {
+                    // Default Shift (General Shift by Code 'GS')
+                    const defaultShift = await prisma.shift.findFirst({
+                        where: { tenantId: device.tenantId, code: 'GS' }
+                    });
+
                     await prisma.employee.create({
                         data: {
                             tenantId: device.tenantId,
@@ -184,10 +190,11 @@ router.post('/event', upload.any(), async (req, res) => {
                             firstName,
                             lastName,
                             deviceUserId: userIdStr,
-                            isActive: true
+                            isActive: true,
+                            shiftId: defaultShift?.id
                         }
                     });
-                    logger.info(`Hikvision Direct: Created new employee ${userName} (ID: ${userIdStr})`);
+                    logger.info(`Hikvision Direct: Created new employee ${userName} (ID: ${userIdStr}) with GS Shift`);
                 }
             }
 
