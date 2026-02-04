@@ -55,11 +55,14 @@ const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
+
+// CRITICAL: Force raw body parsing for ADMS/iClock protocol BEFORE other parsers
+// This ensures we get binary data (application/octet-stream) correctly from biometric devices
+app.use('/api/iclock', express.raw({ type: '*/*', limit: '50mb' }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.text({ type: 'text/plain', limit: '10mb' }));
-// Add raw body parser for RealTime devices that send application/octet-stream
-app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Request logging
