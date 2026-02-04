@@ -8,12 +8,12 @@ const router = Router();
 router.get('/courses', authenticate, async (req, res) => {
     try {
         const tenantId = (req as any).user.tenantId;
-        const courses = await prisma.course.findMany({
+        const trainingCourses = await prisma.trainingCourse.findMany({
             where: { tenantId },
             include: { sessions: true },
             orderBy: { title: 'asc' }
         });
-        res.json(courses);
+        res.json(trainingCourses);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
@@ -22,10 +22,10 @@ router.get('/courses', authenticate, async (req, res) => {
 router.post('/courses', authenticate, async (req, res) => {
     try {
         const tenantId = (req as any).user.tenantId;
-        const course = await prisma.course.create({
+        const trainingCourse = await prisma.trainingCourse.create({
             data: { ...req.body, tenantId }
         });
-        res.json(course);
+        res.json(trainingCourse);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

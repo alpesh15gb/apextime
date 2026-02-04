@@ -116,7 +116,7 @@ model Tenant {
   notifications            Notification[]
   
   // Training (LMS)
-  courses                  Course[]
+  trainingCourses          TrainingCourse[]
   trainingSessions         TrainingSession[]
   
   // Helpdesk
@@ -985,7 +985,7 @@ model Asset {
   purchaseDate  DateTime?
   purchaseCost  Float?
   currency      String   @default("INR")
-  vendor        String?
+  vendorName    String?
   warrantyExpiry DateTime?
   
   status        String   @default("AVAILABLE") // AVAILABLE, ASSIGNED, REPAIR, RETIRED, LOST
@@ -1844,7 +1844,7 @@ model Notification {
 // TRAINING & LMS
 // --------------------------------------------------------
 
-model Course {
+model TrainingCourse {
   id              String   @id @default(uuid())
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
@@ -1866,7 +1866,7 @@ model TrainingSession {
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
   courseId        String
-  course          Course   @relation(fields: [courseId], references: [id])
+  course          TrainingCourse @relation(fields: [courseId], references: [id])
   
   trainerName     String?
   scheduledAt     DateTime
