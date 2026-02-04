@@ -136,7 +136,7 @@ app.use('/api/school/field-logs', studentFieldLogRoutes);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: '1.0.3-buffer-fix',
+    version: '1.0.4-realtime-hack',
     timestamp: new Date().toISOString()
   });
 });

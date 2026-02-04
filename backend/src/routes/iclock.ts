@@ -59,12 +59,36 @@ router.post('/cdata*', async (req, res) => {
 
     // RealTime devices may send SN in POST body instead of query params
     // Try to extract SN from body if not in query
+    // RealTime devices may send SN in POST body instead of query params
+    // Try to extract SN from body if not in query
     if (!SN && req.body) {
         let bodyStr = '';
 
         // Handle different body types
         if (Buffer.isBuffer(req.body)) {
-            bodyStr = req.body.toString('utf-8');
+            // Check for RealTime Binary-JSON format (4 byte header + JSON)
+            // Header often starts with 0x66 (f)
+            if (req.body.length > 4 && req.body[0] === 0x66) { // 0x66 is 'f'
+                const jsonPart = req.body.slice(4).toString('utf-8');
+                try {
+                    const data = JSON.parse(jsonPart);
+                    console.log('--- REALTIME JSON DETECTED ---', data);
+
+                    // REALTIME HACK: The packet often lacks SN, but we know the device IP maps to this one.
+                    // Use the hardcoded SN provided by user if missing.
+                    // TODO: In future, map IP to SN dynamically.
+                    if (!SN) {
+                        SN = 'RSS20230760881';
+                        console.log('--- FORCING SN FOR REALTIME DEVICE: ' + SN + ' ---');
+                    }
+                } catch (e) {
+                    console.log('--- REALTIME JSON PARSE ERROR ---', e);
+                    // Fallback to normal string conversion
+                    bodyStr = req.body.toString('utf-8');
+                }
+            } else {
+                bodyStr = req.body.toString('utf-8');
+            }
             console.log('--- BUFFER BODY DETECTED, length:', req.body.length, '---');
         } else if (typeof req.body === 'string') {
             bodyStr = req.body;
@@ -72,11 +96,13 @@ router.post('/cdata*', async (req, res) => {
             bodyStr = JSON.stringify(req.body);
         }
 
-        // Try to extract SN from body string
-        const snMatch = bodyStr.match(/SN=([^&\s\n\r]+)/);
-        if (snMatch) {
-            SN = snMatch[1];
-            console.log('--- EXTRACTED SN FROM BODY: ' + SN + ' ---');
+        // Try to extract SN from body string (if we haven't found it yet)
+        if (!SN) {
+            const snMatch = bodyStr.match(/SN=([^&\s\n\r]+)/);
+            if (snMatch) {
+                SN = snMatch[1];
+                console.log('--- EXTRACTED SN FROM BODY: ' + SN + ' ---');
+            }
         }
     }
 
