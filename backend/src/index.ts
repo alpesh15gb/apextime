@@ -50,6 +50,9 @@ import realtimeRoutes, { initializeRealtimeWebSocket } from './routes/realtime';
 import recruitmentRoutes from './routes/recruitment';
 import performanceRoutes from './routes/performance';
 import communicationRoutes from './routes/communication';
+import expenseRoutes from './routes/expenses';
+import trainingRoutes from './routes/training';
+import helpdeskRoutes from './routes/helpdesk';
 
 dotenv.config();
 
@@ -156,6 +159,9 @@ app.use('/api/school/field-logs', studentFieldLogRoutes);
 app.use('/api/recruitment', recruitmentRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/communication', communicationRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/training', trainingRoutes);
+app.use('/api/helpdesk', helpdeskRoutes);
 
 // Initialize WebSocket for RealTime Devices
 // This handles the REALTIME_DIRECT protocol

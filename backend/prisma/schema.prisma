@@ -114,6 +114,13 @@ model Tenant {
   // Communication
   announcements            Announcement[]
   notifications            Notification[]
+  
+  // Training (LMS)
+  courses                  Course[]
+  trainingSessions         TrainingSession[]
+  
+  // Helpdesk
+  tickets                  Ticket[]
 }
 
 // --------------------------------------------------------
@@ -1819,4 +1826,72 @@ model Notification {
 
   @@index([tenantId])
   @@index([userId])
+}
+
+// --------------------------------------------------------
+// TRAINING & LMS
+// --------------------------------------------------------
+
+model Course {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  
+  title           String
+  description     String?  @db.Text
+  category        String?  // Technical, Soft Skills, Compliance
+  duration        String?  // e.g. "4 Hours", "2 Days"
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  sessions        TrainingSession[]
+
+  @@index([tenantId])
+}
+
+model TrainingSession {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id])
+  
+  trainerName     String?
+  scheduledAt     DateTime
+  location        String?  // Meeting link or Room name
+  status          String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  
+  // We can track attendees if we link to Employees, but for now simple sessions
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([courseId])
+}
+
+// --------------------------------------------------------
+// HELPDESK & TICKETING
+// --------------------------------------------------------
+
+model Ticket {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  
+  subject         String
+  description     String   @db.Text
+  category        String   @default("HR") // HR, IT, FINANCE, ADMIN
+  priority        String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status          String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  
+  assignedTo      String?  // Name or User ID of resolver
+  resolution      String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
 }
