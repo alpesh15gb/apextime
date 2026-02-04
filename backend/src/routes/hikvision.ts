@@ -1,8 +1,10 @@
 import express from 'express';
 import { prisma } from '../config/database';
+import multer from 'multer';
 import logger from '../config/logger';
 
 const router = express.Router();
+const upload = multer();
 
 /**
  * Hikvision Direct Event Listener
@@ -46,14 +48,25 @@ router.get('/event', async (req, res) => {
     res.status(200).send('Hikvision Event Listener is Active. To test your connection, visit: /api/hikvision/event?test=1');
 });
 
-router.post('/event', async (req, res) => {
+router.post('/event', upload.any(), async (req, res) => {
     try {
         console.log(`[HIK_DIRECT] Incoming event from ${req.ip}`);
         console.log('HIK_HEADERS:', JSON.stringify(req.headers));
 
         let eventData = req.body;
 
-        // If it's a string (likely XML or unparsed JSON)
+        // If it's multipart, Hikvision often puts the JSON in 'event_log' or 'EventNotificationAlert'
+        if (req.body && req.body.event_log) {
+            try {
+                eventData = JSON.parse(req.body.event_log);
+                console.log('HIK_MULTIPART_JSON:', JSON.stringify(eventData).substring(0, 500));
+            } catch (e) {
+                // If not JSON, might be XML
+                eventData = req.body.event_log;
+            }
+        }
+
+        // If it's a string (likely XML or unparsed JSON from body or event_log)
         if (typeof eventData === 'string') {
             console.log('HIK_RAW_BODY:', eventData.substring(0, 500));
             // Basic XML extraction via Regex (Avoids adding new deps)
