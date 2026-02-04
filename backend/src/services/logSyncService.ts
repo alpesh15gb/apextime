@@ -1242,15 +1242,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     logger.info(`Starting historical re-processing... ${employeeId ? `Employee: ${employeeId}` : 'All employees'}`);
     console.log(`[${new Date().toISOString()}] Starting historical repair...`);
 
-    // CRITICAL: Populate employee cache so the processor knows who is who
+    // Simplified fetch to avoid Prisma validation errors on non-nullable fields
     const existingEmployees = await prisma.employee.findMany({
-      where: {
-        OR: [
-          { deviceUserId: { not: null } },
-          { sourceEmployeeId: { not: null } },
-          { employeeCode: { not: null } }
-        ]
-      },
       select: { id: true, deviceUserId: true, sourceEmployeeId: true, employeeCode: true }
     });
 
