@@ -1,8 +1,11 @@
 import express from 'express';
 import { prisma } from '../config/database';
 import logger from '../config/logger';
+import { DeviceCommandService } from '../services/deviceCommandService';
 
 const router = express.Router();
+const commandService = new DeviceCommandService();
+
 
 /**
  * ADMS / iClock Protocol Handler
@@ -309,8 +312,10 @@ router.get('/getrequest*', async (req, res) => {
             data: { status: 'SENT', sentAt: new Date() }
         });
 
-        logger.info(`Sending command to ${SN}: ${command.commandType}`);
-        return res.send(command.commandType);
+        // Format the command properly for the device (e.g., C:ID:DATA QUERY ATTLOG...)
+        const cmdStr = commandService.formatCommandForDevice(command);
+        logger.info(`Sending command to ${SN}: ${cmdStr}`);
+        return res.send(cmdStr);
     }
 
     res.send('OK');
