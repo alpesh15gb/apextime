@@ -43,6 +43,7 @@ import { Timetable } from './pages/school/Timetable';
 import { Invoices } from './pages/school/finance/Invoices';
 import { OutdoorAttendance } from './pages/school/OutdoorAttendance';
 import { MarkOutdoorAttendance } from './pages/school/MarkOutdoorAttendance';
+import { Recruitment, Performance, Expenses, Training, Helpdesk, Visitors, Onboarding } from './pages/hcm/HCMModules';
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -123,6 +124,15 @@ function App() {
                     <Route path="/projects" element={<ModuleRoute module="projects"><Projects /></ModuleRoute>} />
                     <Route path="/devices" element={<ModuleRoute module="devices"><Devices /></ModuleRoute>} />
                     <Route path="/assets" element={<ModuleRoute module="core"><Assets /></ModuleRoute>} />
+
+                    {/* HCM Modules */}
+                    <Route path="/recruitment" element={<ModuleRoute module="recruitment"><Recruitment /></ModuleRoute>} />
+                    <Route path="/performance" element={<ModuleRoute module="performance"><Performance /></ModuleRoute>} />
+                    <Route path="/expenses" element={<ModuleRoute module="expenses"><Expenses /></ModuleRoute>} />
+                    <Route path="/training" element={<ModuleRoute module="training"><Training /></ModuleRoute>} />
+                    <Route path="/helpdesk" element={<ModuleRoute module="helpdesk"><Helpdesk /></ModuleRoute>} />
+                    <Route path="/visitors" element={<ModuleRoute module="visitors"><Visitors /></ModuleRoute>} />
+                    <Route path="/onboarding" element={<ModuleRoute module="onboarding"><Onboarding /></ModuleRoute>} />
                     <Route path="/tenants" element={<Tenants />} />
 
                   </Routes>
