@@ -101,6 +101,19 @@ model Tenant {
   // School Services
   transportRoutes          TransportRoute[]
   libraryBooks             LibraryBook[]
+  
+  // Recruitment
+  jobOpenings              JobOpening[]
+  candidates               Candidate[]
+  
+  // Performance
+  goals                    Goal[]
+  feedbacks                Feedback[]
+  appraisals               Appraisal[]
+  
+  // Communication
+  announcements            Announcement[]
+  notifications            Notification[]
 }
 
 // --------------------------------------------------------
@@ -323,6 +336,12 @@ model Employee {
   salaryRevisions  SalaryRevision[]
 
   tdsDeclarations  TDSDeclaration[]
+  
+  // Performance
+  goals            Goal[]
+  feedbacksGiven   Feedback[] @relation("FeedbackFrom")
+  feedbacksReceived Feedback[] @relation("FeedbackTo")
+  appraisals       Appraisal[]
   
   // School Academic & Devices
   batchesManaged   Batch[]
@@ -1645,4 +1664,159 @@ model StudentFieldLog {
   @@index([tenantId])
   @@index([studentId])
   @@index([routeId])
+}
+
+// --------------------------------------------------------
+// RECRUITMENT (ATS)
+// --------------------------------------------------------
+
+model JobOpening {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  
+  title           String
+  department      String?
+  location        String?
+  type            String   // FULL_TIME, PART_TIME, CONTRACT
+  experience      String?
+  salaryRange     String?
+  description     String?  @db.Text
+  status          String   @default("OPEN") // OPEN, CLOSED, ON_HOLD
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  candidates      Candidate[]
+
+  @@index([tenantId])
+}
+
+model Candidate {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  jobId           String
+  job             JobOpening @relation(fields: [jobId], references: [id])
+  
+  firstName       String
+  lastName        String
+  email           String
+  phone           String
+  resumeUrl       String?
+  status          String   @default("NEW") // NEW, SHORTLISTED, INTERVIEW, OFFER, HIRED, REJECTED
+  
+  source          String?  // LinkedIn, Referral, etc.
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([jobId])
+}
+
+// --------------------------------------------------------
+// PERFORMANCE MANAGEMENT
+// --------------------------------------------------------
+
+model Goal {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  
+  title           String
+  description     String?
+  category        String   @default("INDIVIDUAL") // INDIVIDUAL, DEPARTMENT, CORPORATE
+  startDate       DateTime
+  dueDate         DateTime
+  progress        Int      @default(0) // 0-100
+  status          String   @default("ON_TRACK") // ON_TRACK, AT_RISK, DELAYED, COMPLETED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+model Feedback {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  fromEmployeeId  String
+  fromEmployee    Employee @relation("FeedbackFrom", fields: [fromEmployeeId], references: [id])
+  toEmployeeId    String
+  toEmployee      Employee @relation("FeedbackTo", fields: [toEmployeeId], references: [id])
+  
+  content         String   @db.Text
+  type            String   @default("GENERAL") // POSITIVE, IMPROVEMENT, GENERAL
+  
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([toEmployeeId])
+}
+
+model Appraisal {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  
+  periodStart     DateTime
+  periodEnd       DateTime
+  rating          Float?
+  managerComment  String?  @db.Text
+  employeeComment String?  @db.Text
+  status          String   @default("DRAFT") // DRAFT, SELF_APPRAISAL, MANAGER_REVIEW, COMPLETED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+// --------------------------------------------------------
+// COMMUNICATION & ANNOUNCEMENTS
+// --------------------------------------------------------
+
+model Announcement {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  
+  title           String
+  content         String   @db.Text
+  category        String   @default("GENERAL") // HOLIDAY, POLICY, EVENT, GENERAL
+  priority        String   @default("NORMAL") // LOW, NORMAL, HIGH
+  
+  expiresAt       DateTime?
+  publishedAt     DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model Notification {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  userId          String?
+  // We can target specific users or everyone in the tenant
+  
+  title           String
+  message         String
+  type            String   // INFO, WARNING, ATTENDANCE, LEAVE, PAYROLL
+  isRead          Boolean  @default(false)
+  link            String?  // Optional URL to redirect to
+  
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
 }
