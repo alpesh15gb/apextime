@@ -49,12 +49,41 @@ router.get('/event', async (req, res) => {
 router.post('/event', async (req, res) => {
     try {
         console.log(`[HIK_DIRECT] Incoming event from ${req.ip}`);
-        // Log the incoming request for debugging (Hikvision can send multipart or raw JSON/XML)
-        const eventData = req.body;
-        const SN = req.headers['x-device-serial'] || req.headers['x-device-id'] || eventData?.serialNo || eventData?.EventNotification?.serialNo;
+
+        let eventData = req.body;
+
+        // If it's a string (likely XML or unparsed JSON)
+        if (typeof eventData === 'string') {
+            console.log('HIK_RAW_BODY:', eventData.substring(0, 500));
+            // Basic XML extraction via Regex (Avoids adding new deps)
+            const snMatch = eventData.match(/<serialNo>(.*?)<\/serialNo>/i);
+            const employeeNoMatch = eventData.match(/<employeeNo>(.*?)<\/employeeNo>/i);
+            const timeMatch = eventData.match(/<dateTime>(.*?)<\/dateTime>/i) || eventData.match(/<time>(.*?)<\/time>/i);
+            const nameMatch = eventData.match(/<name>(.*?)<\/name>/i);
+
+            if (snMatch) {
+                // Synthesize an object that the rest of the code expects
+                eventData = {
+                    serialNo: snMatch[1],
+                    employeeNo: employeeNoMatch ? employeeNoMatch[1] : undefined,
+                    time: timeMatch ? timeMatch[1] : undefined,
+                    name: nameMatch ? nameMatch[1] : undefined
+                };
+            } else {
+                // Try JSON parsing if it looks like JSON but came as string
+                try {
+                    if (eventData.trim().startsWith('{')) {
+                        eventData = JSON.parse(eventData);
+                    }
+                } catch (e) { }
+            }
+        } else {
+            console.log('HIK_JSON_BODY:', JSON.stringify(eventData).substring(0, 500));
+        }
+
+        const SN = req.headers['x-device-serial'] || req.headers['x-device-id'] || eventData?.serialNo || eventData?.EventNotification?.serialNo || eventData?.AccessControllerEvent?.serialNo;
 
         if (!SN) {
-            // Some versions send it in the body, others in headers
             logger.warn('Hikvision event received without Serial Number');
             return res.status(200).send('OK');
         }
@@ -74,9 +103,9 @@ router.post('/event', async (req, res) => {
             data: { status: 'online', lastSeen: new Date() }
         });
 
-        // Hikvision Event Mapping
-        const userId = eventData?.employeeNo || eventData?.EventNotification?.employeeNo || eventData?.AccessControllerEvent?.employeeNoString;
-        const eventTime = eventData?.time || eventData?.EventNotification?.time || eventData?.AccessControllerEvent?.dateTime;
+        // Hikvision Event Mapping (support all formats)
+        const userId = eventData?.employeeNo || eventData?.EventNotification?.employeeNo || eventData?.AccessControllerEvent?.employeeNoString || eventData?.AccessControllerEvent?.employeeNo;
+        const eventTime = eventData?.time || eventData?.EventNotification?.time || eventData?.AccessControllerEvent?.dateTime || eventData?.dateTime;
         const userName = eventData?.name || eventData?.EventNotification?.name || eventData?.AccessControllerEvent?.name;
 
         if (userId && eventTime) {
