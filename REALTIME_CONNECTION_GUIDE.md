@@ -22,6 +22,14 @@
 RealTime Machine → http://YOUR_VPS_IP:5001/api/iclock/cdata?SN=SERIAL_NUMBER
 ```
 
+### Automatic Offline Recovery (New!)
+Apextime now includes **Smart Auto-Recovery** for internet outages.
+
+1. **Detection**: If a device disconnects and comes back after more than **15 minutes**.
+2. **Action**: The server automatically calculates the "gap" in data.
+3. **Recovery**: It commands the device to upload all logs from that specific downtime period.
+4. **Result**: Your reports are updated automatically without manual intervention.
+
 ### Troubleshooting Steps:
 
 #### Step 1: Verify Backend is Listening

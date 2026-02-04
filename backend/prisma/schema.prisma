@@ -282,11 +282,13 @@ model Employee {
   shift           Shift?           @relation(fields: [shiftId], references: [id])
   
   // Legacy Salary Fields
-  basicSalary     Float            @default(0)
-  hra             Float            @default(0)
-  otherAllowances Float            @default(0)
-  standardDeductions Float         @default(0) // New field
-  isOTEnabled     Boolean          @default(true)
+  basicSalary       Float            @default(0)
+  hra               Float            @default(0)
+  otherAllowances   Float            @default(0)
+  monthlyCtc        Float            @default(0) // New: Master CTC field
+  retentionAmount   Float            @default(0) // New: Monthly retention
+  standardDeductions Float           @default(0) 
+  isOTEnabled       Boolean          @default(true)
   otRateMultiplier Float           @default(1.0)
   isPFEnabled     Boolean          @default(true)
   isESIEnabled    Boolean          @default(true)
@@ -733,6 +735,8 @@ model Payroll {
   
   // Final
   netSalary         Float     @default(0)
+  retentionDeduction Float     @default(0) // New: Actual retention deducted
+  finalTakeHome     Float     @default(0) // New: Take home after retention
   
   // Status & Control
   status            String    @default("generated") // generated, review, approved, paid, hold

@@ -639,12 +639,24 @@ export const Payroll = () => {
                                     <div className="p-4 border-b-2 border-black">
                                         <div className="flex justify-between items-center">
                                             <div className="text-sm">
-                                                <span className="font-bold">NET PAY: </span>
-                                                <span className="font-bold text-lg">₹ {selectedPayroll.netSalary?.toFixed(2)}</span>
+                                                <span className="font-bold">NET SALARY: </span>
+                                                <span className="font-bold">₹ {selectedPayroll.netSalary?.toFixed(2)}</span>
+                                            </div>
+                                            {(selectedPayroll.retentionDeduction > 0) && (
+                                                <div className="text-sm text-red-600">
+                                                    <span className="font-bold">RETENTION: </span>
+                                                    <span className="font-bold">₹ {selectedPayroll.retentionDeduction?.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                                            <div className="text-base">
+                                                <span className="font-extrabold uppercase">FINAL TAKE HOME: </span>
+                                                <span className="font-black text-xl">₹ {(selectedPayroll.finalTakeHome || selectedPayroll.netSalary)?.toFixed(2)}</span>
                                             </div>
                                         </div>
                                         <div className="text-xs mt-2 italic text-gray-600">
-                                            (In Words: Rupees {convertNumberToWords(Math.round(selectedPayroll.netSalary))} Only)
+                                            (In Words: Rupees {convertNumberToWords(Math.round(selectedPayroll.finalTakeHome || selectedPayroll.netSalary))} Only)
                                         </div>
                                     </div>
 
@@ -695,21 +707,36 @@ export const Payroll = () => {
                             {editingEmployee ? (
                                 <form onSubmit={handleUpdateSalary} className="app-card p-12 space-y-10">
                                     <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Structured Salary</h3>
-                                    <div className="grid grid-cols-2 gap-10">
                                         <div className="space-y-6">
-                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Fixed Monthly Earnings</p>
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Master Salary Config</p>
                                             <div className="space-y-4">
-                                                <div className="space-y-1">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Basic Salary</label>
-                                                    <input type="number" className="input-app w-full font-bold" value={editingEmployee.basicSalary} onChange={(e) => setEditingEmployee({ ...editingEmployee, basicSalary: parseFloat(e.target.value) })} placeholder="Basic" />
+                                                <div className="p-6 bg-blue-50/50 rounded-[32px] border border-blue-100/50 space-y-2">
+                                                    <label className="text-[10px] font-black text-blue-900 uppercase tracking-widest ml-1">Monthly CTC (Package)</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-blue-400 font-bold">₹</span>
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full pl-10 pr-5 py-4 bg-white border-2 border-transparent rounded-2xl text-lg font-black text-blue-900 focus:border-blue-500 outline-none shadow-sm transition-all" 
+                                                            value={editingEmployee.monthlyCtc || ''} 
+                                                            onChange={(e) => setEditingEmployee({ ...editingEmployee, monthlyCtc: parseFloat(e.target.value) })} 
+                                                            placeholder="e.g. 21000" 
+                                                        />
+                                                    </div>
+                                                    <p className="text-[9px] text-blue-400 font-bold uppercase tracking-tighter">* All components (Basic, HRA, ESI, PF) will be auto-calculated from this amount.</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">HRA</label>
-                                                    <input type="number" className="input-app w-full font-bold" value={editingEmployee.hra} onChange={(e) => setEditingEmployee({ ...editingEmployee, hra: parseFloat(e.target.value) })} placeholder="HRA" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2">Other Fixed Allowances</label>
-                                                    <input type="number" className="input-app w-full font-bold" value={editingEmployee.otherAllowances} onChange={(e) => setEditingEmployee({ ...editingEmployee, otherAllowances: parseFloat(e.target.value) })} placeholder="Conveyance/Spcl" />
+
+                                                <div className="p-6 bg-red-50/30 rounded-[32px] border border-red-100/50 space-y-2">
+                                                    <label className="text-[10px] font-black text-red-900 uppercase tracking-widest ml-1">Retention Amount</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-red-300 font-bold">₹</span>
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full pl-10 pr-5 py-4 bg-white border-2 border-transparent rounded-2xl text-lg font-black text-red-900 focus:border-red-400 outline-none shadow-sm transition-all" 
+                                                            value={editingEmployee.retentionAmount || ''} 
+                                                            onChange={(e) => setEditingEmployee({ ...editingEmployee, retentionAmount: parseFloat(e.target.value) })} 
+                                                            placeholder="0" 
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -761,45 +788,45 @@ export const Payroll = () => {
                                         </button>
                                     </div>
                                 </form>
-                            ) : (
-                                <div className="app-card h-full flex flex-col items-center justify-center text-center p-20 border-dashed border-2 border-gray-100">
-                                    <FileText className="w-16 h-16 text-gray-100 mb-6" />
-                                    <h3 className="text-xl font-black text-gray-300 tracking-tight">Financial Ledger Neutral</h3>
-                                </div>
+                        ) : (
+                        <div className="app-card h-full flex flex-col items-center justify-center text-center p-20 border-dashed border-2 border-gray-100">
+                            <FileText className="w-16 h-16 text-gray-100 mb-6" />
+                            <h3 className="text-xl font-black text-gray-300 tracking-tight">Financial Ledger Neutral</h3>
+                        </div>
                             )}
-                        </div>
                     </div>
-                )
-            }
+                    </div>
+    )
+}
 
-            {/* New Run Modal */}
-            {
-                showNewRunModal && (
-                    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden">
-                            <div className="p-10 border-b border-gray-50 flex justify-between items-center">
-                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Initialize Batch</h3>
-                                <button onClick={() => setShowNewRunModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl"><X className="w-6 h-6" /></button>
-                            </div>
-                            <form onSubmit={handleCreateRun} className="p-10 space-y-6">
-                                <input type="text" className="input-app w-full font-bold" value={newRunData.batchName} onChange={(e) => setNewRunData({ ...newRunData, batchName: e.target.value })} placeholder="Batch Name" required />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <select className="input-app w-full font-bold" value={newRunData.month} onChange={(e) => setNewRunData({ ...newRunData, month: parseInt(e.target.value) })}>
-                                        {Array.from({ length: 12 }).map((_, i) => (
-                                            <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
-                                        ))}
-                                    </select>
-                                    <input type="number" className="input-app w-full font-bold" value={newRunData.year} onChange={(e) => setNewRunData({ ...newRunData, year: parseInt(e.target.value) })} />
-                                </div>
-                                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    <span>Create Ledger Batch</span>
-                                </button>
-                            </form>
-                        </div>
+{/* New Run Modal */ }
+{
+    showNewRunModal && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="p-10 border-b border-gray-50 flex justify-between items-center">
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Initialize Batch</h3>
+                    <button onClick={() => setShowNewRunModal(false)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-2xl"><X className="w-6 h-6" /></button>
+                </div>
+                <form onSubmit={handleCreateRun} className="p-10 space-y-6">
+                    <input type="text" className="input-app w-full font-bold" value={newRunData.batchName} onChange={(e) => setNewRunData({ ...newRunData, batchName: e.target.value })} placeholder="Batch Name" required />
+                    <div className="grid grid-cols-2 gap-4">
+                        <select className="input-app w-full font-bold" value={newRunData.month} onChange={(e) => setNewRunData({ ...newRunData, month: parseInt(e.target.value) })}>
+                            {Array.from({ length: 12 }).map((_, i) => (
+                                <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>
+                            ))}
+                        </select>
+                        <input type="number" className="input-app w-full font-bold" value={newRunData.year} onChange={(e) => setNewRunData({ ...newRunData, year: parseInt(e.target.value) })} />
                     </div>
-                )
-            }
+                    <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        <span>Create Ledger Batch</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    )
+}
         </div >
     );
 };

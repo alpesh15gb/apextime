@@ -67,6 +67,10 @@ export function initializeRealtimeWebSocket(server: Server) {
                             activeConnections.set(deviceSerial, ws);
 
                             // Update device status to online
+                            const lastSeen = device.lastSeen || new Date(0);
+                            const now = new Date();
+                            const offlineDurationMinutes = (now.getTime() - lastSeen.getTime()) / (1000 * 60);
+
                             await prisma.device.update({
                                 where: { id: device.id },
                                 data: {
@@ -75,7 +79,27 @@ export function initializeRealtimeWebSocket(server: Server) {
                                 }
                             });
 
-                            logger.info(`RealTime device ${deviceSerial} connected and marked online`);
+                            logger.info(`RealTime device ${deviceSerial} connected. Offline for ${offlineDurationMinutes.toFixed(1)} mins`);
+
+                            // AUTO-RECOVERY: If device was offline for > 15 minutes, trigger log sync
+                            if (offlineDurationMinutes > 15) {
+                                logger.info(`Triggering auto-recovery for ${deviceSerial}`);
+                                // ADMS Style Command: DATA QUERY tablename=ATTLOG, filter=Time>=YYYYMMDDHHmmss
+                                // Format time as YYYYMMDDHHmmss
+                                const startStr = lastSeen.toISOString().replace(/[-:T.]/g, '').substring(0, 14);
+                                const cmd = `C:${Date.now()}:DATA QUERY tablename=ATTLOG,fielddesc=*,filter=Time>=${startStr}`;
+
+                                await prisma.deviceCommand.create({
+                                    data: {
+                                        tenantId: device.tenantId,
+                                        deviceId: device.id,
+                                        commandType: cmd,
+                                        status: 'PENDING'
+                                    }
+                                });
+                            }
+
+                            activeConnections.set(deviceSerial, ws);
 
                             // Send acknowledgment
                             ws.send(JSON.stringify({
@@ -110,21 +134,59 @@ export function initializeRealtimeWebSocket(server: Server) {
                             }
                         });
 
+                        // Also sync to rawDeviceLog for consistency with ADMS flow if needed
+                        // (implied logic based on system design)
+
                         logger.info(`Attendance log stored: ${userId} at ${timestamp}`);
 
                         // Send acknowledgment
                         ws.send(JSON.stringify({
                             type: 'ACK',
-                            transId: parsed.transId
+                            transId: parsed.transId || '0'
                         }));
                         break;
 
                     case 'COMMAND_REQUEST':
                         // Device is polling for commands
-                        // TODO: Implement command queue system
-                        ws.send(JSON.stringify({
-                            type: 'NO_COMMAND'
-                        }));
+                        if (!deviceId) {
+                            ws.send(JSON.stringify({ type: 'NO_COMMAND' }));
+                            return;
+                        }
+
+                        // Check DB for pending commands
+                        const command = await prisma.deviceCommand.findFirst({
+                            where: {
+                                deviceId: deviceId,
+                                status: 'PENDING'
+                            },
+                            orderBy: { createdAt: 'asc' }
+                        });
+
+                        if (command) {
+                            logger.info(`Sending command to ${deviceSerial}: ${command.commandType}`);
+
+                            // Send the command
+                            // RealTime likely expects it in a JSON wrapper or raw string depending on specific firmware
+                            // We will send structured JSON as per their WS pattern, containing the command string
+                            ws.send(JSON.stringify({
+                                type: 'COMMAND',
+                                commandId: command.id,
+                                command: command.commandType
+                            }));
+
+                            // Mark as SENT
+                            await prisma.deviceCommand.update({
+                                where: { id: command.id },
+                                data: {
+                                    status: 'SENT',
+                                    sentAt: new Date()
+                                }
+                            });
+                        } else {
+                            ws.send(JSON.stringify({
+                                type: 'NO_COMMAND'
+                            }));
+                        }
                         break;
 
                     default:
