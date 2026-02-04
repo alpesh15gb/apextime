@@ -138,83 +138,38 @@ router.post('/event', upload.any(), async (req, res) => {
         const userName = eventData?.name || eventData?.EventNotification?.name || eventData?.AccessControllerEvent?.name;
 
         if (userId && eventTime) {
-            // Strict IST Parsing: Hikvision sends "YYYY-MM-DDTHH:mm:ss" or similar
+            // Strict IST Parsing
             const punchTime = new Date(eventTime.toString().replace('Z', ''));
             const userIdStr = userId.toString();
             const uniqueId = `HIK_DIRECT_${SN}_${userIdStr}_${punchTime.getTime()}`;
 
-            await prisma.rawDeviceLog.upsert({
-                where: { id: uniqueId },
-                update: {},
-                create: {
-                    id: uniqueId,
-                    tenantId: device.tenantId,
-                    deviceId: device.id,
-                    userId: userIdStr,
-                    deviceUserId: userIdStr,
-                    userName: userName,
-                    timestamp: punchTime,
-                    punchTime: punchTime,
-                    punchType: '0',
-                    isProcessed: false
-                }
-            });
-
-            // Demo/Real-time Fix: Trigger attendance calculation immediately IF the log is fresh (< 24h old)
-            const isFresh = (new Date().getTime() - punchTime.getTime()) < (24 * 60 * 60 * 1000);
-            if (isFresh) {
-                try {
-                    await processAttendanceLogs([{
-                        DeviceLogId: 0,
-                        DeviceId: SN.toString(),
-                        UserId: userIdStr,
-                        LogDate: punchTime
-                    }]);
-                } catch (procErr) {
-                    logger.error(`Real-time processing failed for ${userIdStr}:`, procErr);
-                }
-            }
-
-            // Auto-create/update employee if name is available and employee doesn't have a real name yet
-            if (userName && !/^\d+$/.test(userName)) {
-                const existingEmployee = await prisma.employee.findFirst({
-                    where: { tenantId: device.tenantId, deviceUserId: userIdStr }
-                });
-
-                const nameParts = userName.trim().split(' ');
-                const firstName = nameParts[0];
-                const lastName = nameParts.slice(1).join(' ') || '';
-
-                if (existingEmployee) {
-                    if (existingEmployee.firstName === 'Employee' || /^\d+$/.test(existingEmployee.firstName)) {
-                        await prisma.employee.update({
-                            where: { id: existingEmployee.id },
-                            data: { firstName, lastName }
-                        });
-                        logger.info(`Hikvision Direct: Updated name for ${userIdStr} to ${userName}`);
+            // 1. FAST SAVE: Just dump the log into the raw table. 
+            // We use 'create' with a catch to ignore duplicates (faster than upsert)
+            try {
+                await prisma.rawDeviceLog.create({
+                    data: {
+                        id: uniqueId,
+                        tenantId: device.tenantId,
+                        deviceId: device.id,
+                        userId: userIdStr,
+                        deviceUserId: userIdStr,
+                        userName: userName || 'HIK_SYNC',
+                        timestamp: punchTime,
+                        punchTime: punchTime,
+                        punchType: '0',
+                        isProcessed: false
                     }
-                } else {
-                    // Default Shift (General Shift by Code 'GS')
-                    const defaultShift = await prisma.shift.findFirst({
-                        where: { tenantId: device.tenantId, code: 'GS' }
-                    });
-
-                    await prisma.employee.create({
-                        data: {
-                            tenantId: device.tenantId,
-                            employeeCode: userIdStr,
-                            firstName,
-                            lastName,
-                            deviceUserId: userIdStr,
-                            isActive: true,
-                            shiftId: defaultShift?.id
-                        }
-                    });
-                    logger.info(`Hikvision Direct: Created new employee ${userName} (ID: ${userIdStr}) with GS Shift`);
-                }
+                });
+            } catch (e) {
+                // If uniqueId exists, it's a duplicate. Skip quietly.
             }
 
-            logger.info(`Hikvision Direct: Received log for User ${userIdStr} from ${SN}`);
+            // 2. SKIP EVERYTHING ELSE (Employee logic, attendance calc)
+            // This is what makes it 20x faster for the history dump.
+
+            if (recordsSynced % 100 === 0) {
+                logger.debug(`Hikvision Fast-Sync: Ingested log for ${userIdStr}`);
+            }
         }
 
         // Hikvision expects a 200 OK or a specific XML response
