@@ -144,7 +144,7 @@ app.use('/api/school/field-logs', studentFieldLogRoutes);
 
 // Initialize WebSocket for RealTime Devices
 // This handles the REALTIME_DIRECT protocol
-initializeRealtimeWebSocket(server);
+// Moved below server start
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -174,6 +174,9 @@ const server = app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   console.log(`ApexTime API Server running on port ${PORT}`);
 });
+
+// Initialize WebSocket for RealTime Devices
+initializeRealtimeWebSocket(server);
 
 // Schedule log sync every 15 minutes
 cron.schedule('*/15 * * * *', async () => {
