@@ -121,6 +121,12 @@ model Tenant {
   
   // Helpdesk
   tickets                  Ticket[]
+  
+  // Visitor Management
+  visitors                 VisitorLog[]
+  
+  // Onboarding
+  onboardingTasks          OnboardingTask[]
 }
 
 // --------------------------------------------------------
@@ -349,6 +355,12 @@ model Employee {
   feedbacksGiven   Feedback[] @relation("FeedbackFrom")
   feedbacksReceived Feedback[] @relation("FeedbackTo")
   appraisals       Appraisal[]
+  
+  // Visitor Management
+  hostedVisitors   VisitorLog[] @relation("HostVisitor")
+  
+  // Onboarding
+  onboardingTasks  OnboardingTask[]
   
   // School Academic & Devices
   batchesManaged   Batch[]
@@ -1894,4 +1906,64 @@ model Ticket {
   @@index([tenantId])
   @@index([employeeId])
   @@index([status])
+}
+
+// --------------------------------------------------------
+// VISITOR MANAGEMENT
+// --------------------------------------------------------
+
+model VisitorLog {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  
+  fullName        String
+  phone           String?
+  email           String?
+  company         String?
+  purpose         String   // Interview, Meeting, Delivery, personal, etc.
+  
+  hostId          String?  // Employee they are visiting
+  host            Employee? @relation("HostVisitor", fields: [hostId], references: [id])
+  
+  checkIn         DateTime @default(now())
+  checkOut        DateTime?
+  
+  idProofType     String?
+  idProofNumber   String?
+  
+  status          String   @default("IN") // IN, OUT
+  remarks         String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([hostId])
+}
+
+// --------------------------------------------------------
+// ONBOARDING & OFFBOARDING
+// --------------------------------------------------------
+
+model OnboardingTask {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  
+  title           String
+  description     String?
+  category        String   @default("GENERAL") // IT, HR, FINANCE, ADMIN
+  dueDate         DateTime?
+  
+  status          String   @default("PENDING") // PENDING, COMPLETED, NOT_APPLICABLE
+  completedAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
 }

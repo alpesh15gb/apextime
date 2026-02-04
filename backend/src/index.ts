@@ -53,6 +53,8 @@ import communicationRoutes from './routes/communication';
 import expenseRoutes from './routes/expenses';
 import trainingRoutes from './routes/training';
 import helpdeskRoutes from './routes/helpdesk';
+import visitorRoutes from './routes/visitors';
+import onboardingRoutes from './routes/onboarding';
 
 dotenv.config();
 
@@ -162,6 +164,8 @@ app.use('/api/communication', communicationRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/helpdesk', helpdeskRoutes);
+app.use('/api/visitors', visitorRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 // Initialize WebSocket for RealTime Devices
 // This handles the REALTIME_DIRECT protocol
