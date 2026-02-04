@@ -500,12 +500,14 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       // 1. Identify all (UserId, Date) pairs affected by these new logs
       const affectedPairs = new Set<string>();
       for (const log of uniqueLogs.values()) {
-        const hours = log.LogDate.getUTCHours();
+        const hours = log.LogDate.getHours();
         let logicalDate = new Date(log.LogDate);
         if (hours < 8) {
-          logicalDate.setUTCDate(logicalDate.getUTCDate() - 1);
+          logicalDate.setDate(logicalDate.getDate() - 1);
         }
-        const dateStr = logicalDate.toISOString().split('T')[0];
+        // Strict IST: Normalize to 00:00:00 local time
+        logicalDate.setHours(0, 0, 0, 0);
+        const dateStr = logicalDate.toLocaleDateString('en-CA');
         affectedPairs.add(`${log.UserId}|${dateStr}`);
       }
 
@@ -1009,10 +1011,11 @@ async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendanc
       }
 
       let logicalDate = new Date(log.LogDate);
-      const hours = log.LogDate.getHours(); // Use Local Hours (IST)
+      const hours = log.LogDate.getHours();
       if (hours < 8) logicalDate.setDate(logicalDate.getDate() - 1);
 
-      const dateKey = logicalDate.toLocaleDateString('en-CA'); // Get YYYY-MM-DD in local time
+      // Normalize date key to local YYYY-MM-DD
+      const dateKey = logicalDate.toLocaleDateString('en-CA');
       if (!logicalDayGroups.has(dateKey)) logicalDayGroups.set(dateKey, []);
       logicalDayGroups.get(dateKey)!.push(log);
     }
