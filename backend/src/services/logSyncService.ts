@@ -1294,14 +1294,16 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     for (const pair of affectedPairs) {
       try {
         const [uId, dStr] = pair.split('|');
-        const targetDate = new Date(dStr);
-        const nextDay = new Date(targetDate);
-        nextDay.setDate(nextDay.getDate() + 1);
+        // Create a 40-hour window around the target date to catch any potentially relevant logs (night shifts)
+        const windowStart = new Date(dStr + 'T00:00:00');
+        windowStart.setHours(windowStart.getHours() - 8); // Go back 8 hours (into previous day)
+        const windowEnd = new Date(dStr + 'T23:59:59');
+        windowEnd.setHours(windowEnd.getHours() + 12); // Go forward 12 hours (into next day)
 
         const dayLogs = await prisma.rawDeviceLog.findMany({
           where: {
             userId: uId,
-            punchTime: { gte: targetDate, lt: nextDay }
+            punchTime: { gte: windowStart, lt: windowEnd }
           },
           orderBy: { punchTime: 'asc' }
         });

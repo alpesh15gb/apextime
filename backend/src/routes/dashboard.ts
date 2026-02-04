@@ -101,14 +101,14 @@ router.get('/stats', async (req, res) => {
     try {
       // Today's Status
       const presentCount = await prisma.attendanceLog.count({
-        where: { date: { gte: today }, status: 'Present' }
+        where: { date: { gte: today }, status: { in: ['Present', 'present'] } }
       });
 
       // Accurate Absent Count (Active employees only)
       const absentCount = await prisma.attendanceLog.count({
         where: {
           date: { gte: today },
-          status: 'Absent',
+          status: { in: ['Absent', 'absent'] },
           employee: { status: 'active' } // Prisma extension handles tenantId on employee relation implicitly
         }
       });
@@ -118,7 +118,7 @@ router.get('/stats', async (req, res) => {
 
     try {
       absentEmployees = await prisma.attendanceLog.findMany({
-        where: { date: { gte: today }, status: 'Absent', employee: { status: 'active' } },
+        where: { date: { gte: today }, status: { in: ['Absent', 'absent'] }, employee: { status: 'active' } },
         include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
         take: 20
       }).then(logs => logs.map(l => l.employee));
