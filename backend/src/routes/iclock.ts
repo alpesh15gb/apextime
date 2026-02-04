@@ -81,6 +81,24 @@ router.post('/cdata*', async (req, res) => {
                         SN = 'RSS20230760881';
                         console.log('--- FORCING SN FOR REALTIME DEVICE: ' + SN + ' ---');
                     }
+
+                    // PARSE DATA FOR SAVING
+                    // Format: {"user_id":"00000010","io_time":"20260204040113", ...}
+                    if (data.user_id && data.io_time) {
+                        const uId = data.user_id;
+                        const rawTime = data.io_time; // YYYYMMDDHHmmss
+                        // Convert to YYYY-MM-DD HH:mm:ss for standard ADMS parser
+                        const fmtTime = `${rawTime.substring(0, 4)}-${rawTime.substring(4, 6)}-${rawTime.substring(6, 8)} ${rawTime.substring(8, 10)}:${rawTime.substring(10, 12)}:${rawTime.substring(12, 14)}`;
+
+                        // Construct ADMS-like tab-separated line: UserID  Time  State  PunchType
+                        // State/Type: 1/1? Standard ADMS CheckIn=0. Let's send 1 for now.
+                        const state = data.verify_mode || 1;
+                        const type = data.io_mode || 0;
+
+                        // Overwrite req.body with standard text format so downstream logic saves it
+                        req.body = `${uId}\t${fmtTime}\t${state}\t${type}`;
+                        console.log('--- CONVERTED REALTIME JSON TO ADMS FORMAT:', req.body, '---');
+                    }
                 } catch (e) {
                     console.log('--- REALTIME JSON PARSE ERROR ---', e);
                     // Fallback to normal string conversion
