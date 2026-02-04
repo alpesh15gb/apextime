@@ -116,17 +116,17 @@ app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/tenants', tenantRoutes);
-
-// Specialized Raw Body Parser for iClock (Some machines send binary/text without headers)
-app.use('/api/iclock', express.raw({ type: '*/*', limit: '20mb' }), (req, res, next) => {
+// Specialized Raw Body Parser for iClock (Supports both paths)
+app.use(['/api/iclock', '/iclock'], express.raw({ type: '*/*', limit: '20mb' }), (req, res, next) => {
   if (Buffer.isBuffer(req.body)) {
     req.body = req.body.toString('utf8');
   }
   next();
 });
-app.use('/api/iclock', iclockRoutes);
-app.use('/api/hikvision', hikvisionRoutes);
+
+// Biometric Routes - Mounted on both /api and root for compatibility
+app.use(['/api/iclock', '/iclock'], iclockRoutes);
+app.use(['/api/hikvision', '/hikvision'], hikvisionRoutes);
 app.use('/api/realtime', realtimeRoutes);
 
 // Other Routes

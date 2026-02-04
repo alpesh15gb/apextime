@@ -14,7 +14,7 @@ const commandService = new DeviceCommandService();
  */
 
 // 1. Initial Handshake / Config Check
-router.get(['/cdata*', '/:sn/cdata'], async (req, res) => {
+router.get(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
     let SN = (req.params.sn as string) || (req.query.SN as string);
     const { options } = req.query;
 
@@ -58,7 +58,7 @@ router.get(['/cdata*', '/:sn/cdata'], async (req, res) => {
 });
 
 // 2. Data Receiving (Logs, User Info, OpLogs)
-router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
+router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
     let SN = (req.params.sn as string) || (req.query.SN as string) || (req.query.sn as string);
     let { table } = req.query;
 
@@ -324,50 +324,53 @@ router.post(['/cdata*', '/:sn/cdata'], async (req, res) => {
 });
 
 // 3. Command Queue / Heartbeat
-router.get('/getrequest*', async (req, res) => {
+router.get(['/getrequest*', '/getrequest.aspx*'], async (req, res) => {
     let SN = (req.query.SN as string) || (req.query.sn as string);
-    if (!SN) return res.send('OK');
+    if (!SN) return res.set('Content-Type', 'text/plain').send('OK');
 
-    const device = await prisma.device.findFirst({
-        where: {
-            deviceId: {
-                equals: SN as string,
-                mode: 'insensitive'
+    try {
+        const device = await prisma.device.findFirst({
+            where: {
+                deviceId: {
+                    equals: SN as string,
+                    mode: 'insensitive'
+                }
             }
-        }
-    });
-
-    if (!device) return res.send('OK');
-
-    // Update status to online and last connected on every heartbeat
-    await prisma.device.update({
-        where: { id: device.id },
-        data: { status: 'online', lastSeen: new Date() }
-    });
-
-    // Check for pending commands
-    const command = await prisma.deviceCommand.findFirst({
-        where: {
-            deviceId: device.id,
-            status: 'PENDING'
-        },
-        orderBy: { createdAt: 'asc' }
-    });
-
-    if (command) {
-        // Mark as sent
-        await prisma.deviceCommand.update({
-            where: { id: command.id },
-            data: { status: 'SENT', sentAt: new Date() }
         });
 
-        // Format the command properly for the device (e.g., C:ID:DATA QUERY ATTLOG...)
-        const cmdStr = commandService.formatCommandForDevice(command);
-        logger.info(`Sending command to ${SN}: ${cmdStr}`);
-        return res.send(cmdStr);
+        if (device) {
+            // Update status to online and last connected on every heartbeat
+            await prisma.device.update({
+                where: { id: device.id },
+                data: { status: 'online', lastSeen: new Date() }
+            });
+
+            // Check for pending commands
+            const command = await prisma.deviceCommand.findFirst({
+                where: {
+                    deviceId: device.id,
+                    status: 'PENDING'
+                },
+                orderBy: { createdAt: 'asc' }
+            });
+
+            if (command) {
+                // Mark as sent
+                await prisma.deviceCommand.update({
+                    where: { id: command.id },
+                    data: { status: 'SENT', sentAt: new Date() }
+                });
+
+                const cmdStr = commandService.formatCommandForDevice(command);
+                logger.info(`Sending command to ${SN}: ${cmdStr}`);
+                return res.set('Content-Type', 'text/plain').send(cmdStr);
+            }
+        }
+    } catch (e) {
+        logger.error(`Heartbeat Error for ${SN}: ${e}`);
     }
 
-    res.send('OK');
+    res.set('Content-Type', 'text/plain').send('OK');
 });
 
 // 4. Command Result
