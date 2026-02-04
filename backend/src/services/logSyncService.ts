@@ -928,7 +928,7 @@ async function createEmployeeFromDeviceLog(deviceUserId: string, tenantId: strin
 }
 
 
-async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendance[]> {
+export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendance[]> {
   // Group logs by employee device user ID
   const employeeLogs = new Map<string, RawLog[]>();
 
