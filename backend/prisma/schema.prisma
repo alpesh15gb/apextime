@@ -75,6 +75,9 @@ model Tenant {
   assetCategories          AssetCategory[]
   assets                   Asset[]
   assetAssignments         AssetAssignment[]
+  assetRequests            AssetRequest[]
+  maintenanceLogs          MaintenanceLog[]
+  vendors                  Vendor[]
   
   // Payroll Enhancements
   ctcStructures            CTCStructure[]
@@ -314,6 +317,7 @@ model Employee {
   documents       EmployeeDocument[]
   loans           Loan[]
   assetAssignments AssetAssignment[]
+  assetRequests    AssetRequest[]
   ctcStructures    CTCStructure[]
   reimbursementEntries ReimbursementEntry[]
   salaryRevisions  SalaryRevision[]
@@ -949,7 +953,15 @@ model Asset {
   status        String   @default("AVAILABLE") // AVAILABLE, ASSIGNED, REPAIR, RETIRED, LOST
   condition     String   @default("GOOD") // NEW, GOOD, FAIR, POOR, DAMAGED
   
+  parentAssetId String?
+  parentAsset   Asset?    @relation("SubAssets", fields: [parentAssetId], references: [id])
+  subAssets     Asset[]   @relation("SubAssets")
+  
+  vendorId      String?
+  vendor        Vendor?   @relation(fields: [vendorId], references: [id])
+  
   assignments   AssetAssignment[]
+  maintenanceLogs MaintenanceLog[]
   
   qrCode        String?  // URL or Base64 of QR/Barcode
   
@@ -985,6 +997,73 @@ model AssetAssignment {
   @@index([tenantId])
   @@index([assetId])
   @@index([employeeId])
+}
+
+model Vendor {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         String?
+  taxId           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  assets          Asset[]
+
+  @@unique([name, tenantId])
+  @@index([tenantId])
+}
+
+model AssetRequest {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  assetCategoryId String
+  category        AssetCategory @relation(fields: [assetCategoryId], references: [id])
+  
+  description     String?
+  priority        String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, ALLOCATED, CANCELLED
+  
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model MaintenanceLog {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id])
+  
+  type            String   // REPAIR, SERVICE, UPGRADE, INSPECTION
+  description     String
+  cost            Float    @default(0)
+  startDate       DateTime
+  endDate         DateTime?
+  
+  performedBy     String?  // Vendor name or Internal technician
+  status          String   @default("COMPLETED") // IN_PROGRESS, COMPLETED, CANCELLED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([assetId])
 }
 
 // --------------------------------------------------------
