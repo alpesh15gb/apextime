@@ -9,6 +9,40 @@ const router = express.Router();
 
 router.use(authenticate);
 
+// DEBUG ENDPOINT - Inspect raw records for an employee code
+router.get('/debug/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const employee = await prisma.employee.findFirst({
+      where: { employeeCode: code }
+    });
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    const logs = await prisma.attendanceLog.findMany({
+      where: { employeeId: employee.id },
+      orderBy: { date: 'desc' },
+      take: 20
+    });
+
+    const rawLogs = await prisma.rawDeviceLog.findMany({
+      where: { userId: employee.deviceUserId || employee.employeeCode },
+      orderBy: { timestamp: 'desc' },
+      take: 20
+    });
+
+    res.json({
+      employee,
+      attendanceLogs: logs,
+      rawDeviceLogs: rawLogs
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Helper function to get attendance data
 async function getAttendanceData(filters: any) {
   const { startDate, endDate, departmentId, branchId, employeeId } = filters;
@@ -45,6 +79,11 @@ async function getAttendanceData(filters: any) {
       { employee: { firstName: 'asc' } },
     ],
   });
+
+  console.log(`[REPORT DEBUG] Found ${logs.length} logs for range ${startDate} to ${endDate}`);
+  if (logs.length > 0) {
+    console.log(`[REPORT DEBUG] Sample Log Date: ${logs[0].date.toISOString()} Status: ${logs[0].status}`);
+  }
 
   return logs;
 }
