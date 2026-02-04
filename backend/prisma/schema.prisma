@@ -735,7 +735,8 @@ model Payroll {
   
   // Final
   netSalary         Float     @default(0)
-  retentionDeduction Float     @default(0) // New: Actual retention deducted
+  details           String?   @db.Text    // New: Stores JSON breakdown
+  retentionDeduction Float     @default(0)
   finalTakeHome     Float     @default(0) // New: Take home after retention
   
   // Status & Control
