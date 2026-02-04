@@ -11,7 +11,7 @@ router.use(authenticate, authorize('superadmin'));
 // Get all tenants
 router.get('/', async (req, res) => {
     try {
-        const tenants = await prisma.tenant.findMany({
+        const tenants = await basePrisma.tenant.findMany({
             include: {
                 _count: {
                     select: {
