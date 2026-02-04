@@ -339,6 +339,12 @@ router.get('/getrequest*', async (req, res) => {
 
     if (!device) return res.send('OK');
 
+    // Update status to online and last connected on every heartbeat
+    await prisma.device.update({
+        where: { id: device.id },
+        data: { status: 'online', lastSeen: new Date() }
+    });
+
     // Check for pending commands
     const command = await prisma.deviceCommand.findFirst({
         where: {
