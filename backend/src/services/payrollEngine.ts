@@ -219,6 +219,8 @@ export class PayrollEngine {
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
                     gratuityAccrual: components['GRATUITY'] || 0,
+                    payrollRunId: payrollRunId,
+                    details: JSON.stringify(components),
                     processedAt: new Date()
                 },
                 create: {
@@ -244,6 +246,8 @@ export class PayrollEngine {
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
                     gratuityAccrual: components['GRATUITY'] || 0,
+                    payrollRunId: payrollRunId,
+                    details: JSON.stringify(components),
                     processedAt: new Date()
                 }
             });
