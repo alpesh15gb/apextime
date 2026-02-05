@@ -94,18 +94,27 @@ export class PayrollEngine {
                 }
             });
 
-            console.log(`[PAYROLL_MATRIX] Search Identifiers: ID=${employee.id}, Code=${employee.employeeCode}, Device=${employee.deviceUserId}`);
-            console.log(`[PAYROLL_MATRIX] Final Log Count for this employee: ${logs.length}`);
-
             if (logs.length === 0) {
-                // If 0 found, let's see who DOES have logs in this month just to see what the data looks like
-                const sampleLogs = await prisma.attendanceLog.findMany({
-                    where: { date: { gte: startOfMonth, lte: endOfMonth } },
-                    take: 5,
-                    include: { employee: true }
+                console.log(`[PAYROLL_SEARCH] !!! NO LOGS FOUND FOR YLR480. SCANNING ENTIRE DATABASE FOR JAN...`);
+                const globalLogs = await prisma.attendanceLog.findMany({
+                    where: {
+                        date: { gte: startOfMonth, lte: endOfMonth },
+                        status: { in: ['Present', 'present', 'Late', 'late', 'Half Day', 'half_day'] }
+                    },
+                    include: { employee: true },
+                    take: 200 // Limit to avoid spam, but enough to find the employee
                 });
-                console.log(`[PAYROLL_DIAG] Sample logs in DB for Jan (Count: ${sampleLogs.length}):`);
-                sampleLogs.forEach(s => console.log(`   - Found Log for: ${s.employee?.firstName} (Code: ${s.employee?.employeeCode}, ID: ${s.employeeId})`));
+
+                const logStats: Record<string, number> = {};
+                globalLogs.forEach(gl => {
+                    const key = `${gl.employee?.employeeCode} (${gl.employee?.firstName})`;
+                    logStats[key] = (logStats[key] || 0) + 1;
+                });
+
+                console.log(`[PAYROLL_SEARCH] Employees found with logs in Jan:`);
+                Object.entries(logStats).forEach(([emp, count]) => {
+                    if (count > 0) console.log(`   - ${emp}: ${count} days`);
+                });
             }
 
             // Get Holidays for calculations
