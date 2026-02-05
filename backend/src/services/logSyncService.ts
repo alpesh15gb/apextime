@@ -406,7 +406,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       console.log(`[STORAGE] Committed ${storedCount} raw logs (${duplicateCount} duplicates skipped).`);
       logger.info(`Stored ${storedCount} raw logs`);
 
-      // Load device user info from SQL Server if available
+      /* Load device user info from SQL Server if available - DISABLED FOR NOW
       for (const config of sqlConfigs) {
         try {
           const poolKey = `${tenant.id}_${config.server}_${config.database}`;
@@ -417,6 +417,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
           logger.warn(`Could not load device user info from ${config.server} for tenant ${tenant.id}:`, err);
         }
       }
+      */
 
       // Auto-create employees if they don't exist
       const uniqueUserIds = new Set<string>();
