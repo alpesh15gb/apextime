@@ -85,9 +85,10 @@ async function reprocessStandalone() {
 
             await prisma.attendanceLog.upsert({
                 where: {
-                    employeeId_date: {
+                    employeeId_date_tenantId: {
                         employeeId: employee.id,
-                        date: dbDate
+                        date: dbDate,
+                        tenantId: employee.tenantId // We must assume employee has tenantId loaded
                     }
                 },
                 update: {
