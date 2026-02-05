@@ -73,6 +73,7 @@ export const Payroll = () => {
     const [editingEmployee, setEditingEmployee] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [companySettings, setCompanySettings] = useState<any>(null);
+    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
 
     const [newRunData, setNewRunData] = useState({
         month: new Date().getMonth() + 1,
@@ -151,15 +152,16 @@ export const Payroll = () => {
         }
     };
 
-    const handleProcessRun = async (id: string) => {
+    const handleProcessRun = async (id: string, employeeIds?: string[]) => {
         try {
             setProcessing(true);
-            await payrollAPI.processRun(id);
+            await payrollAPI.processRun(id, employeeIds);
             if (selectedRun?.id === id) {
                 const details = await payrollAPI.getRunDetails(id);
                 setSelectedRun(details.data);
             }
             fetchRuns();
+            setSelectedEmployeeIds([]);
         } catch (error) {
             alert('Processing failed. Please check logs.');
         } finally {
@@ -375,13 +377,25 @@ export const Payroll = () => {
 
                             <div className="flex items-center gap-4">
                                 {selectedRun.status !== 'locked' && selectedRun.status !== 'finalized' && (
-                                    <button
-                                        onClick={() => handleFinalize(selectedRun.id)}
-                                        className="px-8 py-4 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 flex items-center space-x-3"
-                                    >
-                                        <Lock className="w-4 h-4" />
-                                        <span>Finalize & Lock Ledger</span>
-                                    </button>
+                                    <div className="flex gap-2">
+                                        {selectedEmployeeIds.length > 0 && (
+                                            <button
+                                                onClick={() => handleProcessRun(selectedRun.id, selectedEmployeeIds)}
+                                                disabled={processing}
+                                                className="px-6 py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-blue-700 shadow-xl shadow-blue-100 flex items-center space-x-3 mr-4"
+                                            >
+                                                {processing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                                <span>Process Selected ({selectedEmployeeIds.length})</span>
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleFinalize(selectedRun.id)}
+                                            className="px-8 py-4 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 flex items-center space-x-3"
+                                        >
+                                            <Lock className="w-4 h-4" />
+                                            <span>Finalize & Lock Ledger</span>
+                                        </button>
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => handleExportBank(selectedRun.id)}
@@ -405,6 +419,20 @@ export const Payroll = () => {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="bg-gray-50/30">
+                                            <th className="px-6 py-4 text-left">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    checked={selectedEmployeeIds.length === selectedRun.payrolls.length && selectedRun.payrolls.length > 0}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedEmployeeIds(selectedRun.payrolls.map((p: any) => p.employeeId));
+                                                        } else {
+                                                            setSelectedEmployeeIds([]);
+                                                        }
+                                                    }}
+                                                />
+                                            </th>
                                             <th className="table-header">Emp Record</th>
                                             <th className="table-header">Attendance Link</th>
                                             <th className="table-header text-right">Gross</th>
@@ -416,6 +444,20 @@ export const Payroll = () => {
                                     <tbody className="divide-y divide-gray-50">
                                         {selectedRun.payrolls.map((p: any) => (
                                             <tr key={p.id} className="table-row group">
+                                                <td className="px-6 py-5">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                        checked={selectedEmployeeIds.includes(p.employeeId)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedEmployeeIds([...selectedEmployeeIds, p.employeeId]);
+                                                            } else {
+                                                                setSelectedEmployeeIds(selectedEmployeeIds.filter(id => id !== p.employeeId));
+                                                            }
+                                                        }}
+                                                    />
+                                                </td>
                                                 <td className="px-6 py-5">
                                                     <p className="text-sm font-extrabold text-gray-900 leading-none capitalize">{p.employee.firstName} {p.employee.lastName}</p>
                                                     <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tighter">{p.employee.employeeCode}</p>

@@ -44,30 +44,38 @@ router.post('/runs', authenticate, async (req, res) => {
     }
 });
 
-// Process all employees in a run
+// Process all or selected employees in a run
 router.post('/runs/:id/process', authenticate, async (req, res) => {
     const { id } = req.params;
+    const { employeeIds } = req.body; // Optional: array of employee IDs to process
     try {
         const run = await prisma.payrollRun.findUnique({ where: { id } });
         if (!run) return res.status(404).json({ error: 'Run not found' });
 
         // Find all employees who either are active OR have logs in this period (to handle resignations)
-        const relevantEmployees = await prisma.employee.findMany({
-            where: {
-                OR: [
-                    { isActive: true },
-                    {
-                        attendanceLogs: {
-                            some: {
-                                date: {
-                                    gte: new Date(run.year, run.month - 1, 1),
-                                    lte: new Date(run.year, run.month, 0)
-                                }
+        const whereClause: any = {
+            OR: [
+                { isActive: true },
+                {
+                    attendanceLogs: {
+                        some: {
+                            date: {
+                                gte: new Date(run.year, run.month - 1, 1),
+                                lte: new Date(run.year, run.month, 0)
                             }
                         }
                     }
-                ]
-            },
+                }
+            ]
+        };
+
+        // If specific employees are requested, filter by them
+        if (employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0) {
+            whereClause.id = { in: employeeIds };
+        }
+
+        const relevantEmployees = await prisma.employee.findMany({
+            where: whereClause,
             select: { id: true }
         });
 
@@ -79,17 +87,23 @@ router.post('/runs/:id/process', authenticate, async (req, res) => {
             const result = await PayrollEngine.calculateEmployeePayroll(emp.id, run.month, run.year, run.id);
             if (result.success) {
                 results.push(result.data);
-                totalGross += result.metrics?.totalEarnings || 0;
-                totalNet += result.metrics?.netSalary || 0;
             }
         }
+
+        // Recalculate totals for the whole run from the database
+        const allPayrolls = await prisma.payroll.findMany({
+            where: { payrollRunId: run.id }
+        });
+
+        totalGross = allPayrolls.reduce((sum, p) => sum + p.grossSalary, 0);
+        totalNet = allPayrolls.reduce((sum, p) => sum + p.netSalary, 0);
 
         // Update run stats
         await prisma.payrollRun.update({
             where: { id },
             data: {
                 status: 'review',
-                totalEmployees: relevantEmployees.length,
+                totalEmployees: allPayrolls.length,
                 totalGross,
                 totalNet,
                 processedAt: new Date(),
