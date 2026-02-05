@@ -267,6 +267,13 @@ export default function Tenants() {
                                         { id: 'projects', label: 'Projects' },
                                         { id: 'devices', label: 'Biometric Devices' },
                                         { id: 'employees', label: 'Employees (Core)' },
+                                        { id: 'recruitment', label: 'Recruitment' },
+                                        { id: 'performance', label: 'Performance' },
+                                        { id: 'expenses', label: 'Expenses' },
+                                        { id: 'training', label: 'LMS (Training)' },
+                                        { id: 'helpdesk', label: 'Helpdesk' },
+                                        { id: 'visitors', label: 'Visitors' },
+                                        { id: 'onboarding', label: 'Onboarding' }
                                     ].map(module => (
                                         <div key={module.id} className="flex items-center">
                                             <input
