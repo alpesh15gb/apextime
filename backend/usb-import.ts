@@ -78,25 +78,42 @@ async function importFromClipboard() {
     }
 
     const lines = content.split('\n').filter(l => l.trim());
+    console.log(`📊 Processing ${lines.length} lines from file...`);
+
     let imported = 0;
-    let skipped = 0;
+    let skippedByDate = 0;
+    let invalidFormat = 0;
 
-    for (const line of lines) {
-        // Handle Tab or Space separation
-        const parts = line.trim().split(/\s+/);
-        if (parts.length < 2) continue;
+    const jan1st = new Date('2026-01-01T00:00:00');
 
-        const deviceUserId = parts[0];
-        const dateStr = parts[1];
-        const timeStr = parts[2];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // Regex to match UserID, Date (YYYY-MM-DD), and Time (HH:mm:ss)
+        // This handles tabs, single spaces, or multiple spaces
+        const match = line.match(/(\S+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
+
+        if (!match) {
+            invalidFormat++;
+            continue;
+        }
+
+        const [_, deviceUserId, dateStr, timeStr] = match;
         const punchTime = new Date(`${dateStr}T${timeStr}`);
 
-        if (isNaN(punchTime.getTime())) continue;
+        if (isNaN(punchTime.getTime())) {
+            invalidFormat++;
+            continue;
+        }
 
         // Skip anything before Jan 1st
-        if (punchTime < new Date('2026-01-01T00:00:00')) {
-            skipped++;
+        if (punchTime < jan1st) {
+            skippedByDate++;
             continue;
+        }
+
+        // Log the first 2026 punch found
+        if (imported === 0) {
+            console.log(`✨ Found first 2026 punch: User ${deviceUserId} at ${punchTime.toLocaleString()}`);
         }
 
         const uniqueId = `USB_${deviceUserId}_${punchTime.getTime()}`;
@@ -124,9 +141,11 @@ async function importFromClipboard() {
     }
 
     console.log(`✅ IMPORT FINISHED.`);
-    console.log(`- Imported: ${imported} logs`);
-    console.log(`- Skipped (Pre-2026): ${skipped} logs`);
-    console.log(`\n🚀 NEXT STEP: Run 'npx ts-node reprocess-jan.ts' to update the reports.`);
+    console.log(`- Total Lines: ${lines.length}`);
+    console.log(`- Imported: ${imported} logs (2026 records)`);
+    console.log(`- Skipped (Old Logs): ${skippedByDate}`);
+    console.log(`- Skipped (Bad Format): ${invalidFormat}`);
+    console.log(`\n🚀 NEXT STEP: Run 'docker exec -it apextime-backend npx ts-node reprocess-jan.ts'`);
 }
 
 importFromClipboard()
