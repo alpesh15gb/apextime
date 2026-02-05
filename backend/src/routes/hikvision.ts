@@ -143,17 +143,19 @@ router.post('/event', upload.any(), async (req, res) => {
             const userIdStr = userId.toString();
             const uniqueId = `HIK_DIRECT_${SN}_${userIdStr}_${punchTime.getTime()}`;
 
-            // 1. FAST SAVE: Just dump the log into the raw table. 
-            // We use 'create' with a catch to ignore duplicates (faster than upsert)
+            // 1. SAVE RAW LOG
+            let rawLog;
             try {
-                await prisma.rawDeviceLog.create({
-                    data: {
+                rawLog = await prisma.rawDeviceLog.upsert({
+                    where: { id: uniqueId },
+                    update: { isProcessed: false }, // Force reprocessing if it hits again
+                    create: {
                         id: uniqueId,
                         tenantId: device.tenantId,
                         deviceId: device.id,
                         userId: userIdStr,
                         deviceUserId: userIdStr,
-                        userName: userName || 'HIK_SYNC',
+                        userName: userName || 'HIK_DIRECT',
                         timestamp: punchTime,
                         punchTime: punchTime,
                         punchType: '0',
@@ -161,19 +163,69 @@ router.post('/event', upload.any(), async (req, res) => {
                     }
                 });
             } catch (e) {
-                // If uniqueId exists, it's a duplicate. Skip quietly.
+                // Ignore duplicate errors
             }
 
-            // 2. SKIP EVERYTHING ELSE (Employee logic, attendance calc)
-            // This is what makes it 20x faster for the history dump.
-            logger.debug(`Hikvision Fast-Sync: Ingested log for ${userIdStr} from ${SN}`);
+            // 2. REAL-TIME PROCESSING (Now that sync is done, we want names & stats instantly)
+            try {
+                // Find or Create Employee
+                let employee = await prisma.employee.findFirst({
+                    where: {
+                        tenantId: device.tenantId,
+                        deviceUserId: userIdStr
+                    }
+                });
+
+                if (!employee) {
+                    // Auto-create if not found
+                    employee = await prisma.employee.create({
+                        data: {
+                            tenantId: device.tenantId,
+                            deviceUserId: userIdStr,
+                            employeeCode: `HIK_${userIdStr}`,
+                            firstName: userName || userIdStr,
+                            lastName: '',
+                            status: 'ACTIVE'
+                        }
+                    });
+                    logger.info(`Auto-created employee ${employee.employeeCode} for Hikvision punch`);
+                } else if (userName && (employee.firstName === userIdStr || employee.firstName === 'Employee')) {
+                    // Update name if we have a better one now
+                    await prisma.employee.update({
+                        where: { id: employee.id },
+                        data: { firstName: userName }
+                    });
+                }
+
+                // 3. Mark processed if it's for today (Real-time update)
+                const isToday = new Date().toDateString() === punchTime.toDateString();
+                if (isToday) {
+                    // Trigger attendance calculation for this employee/day
+                    // This makes the Dashboard update instantly
+                    await processAttendanceLogs([{
+                        DeviceLogId: Date.now(),
+                        DeviceId: SN.toString(),
+                        UserId: userIdStr,
+                        LogDate: punchTime,
+                        TableName: 'HIK_DIRECT'
+                    }]);
+
+                    await prisma.rawDeviceLog.update({
+                        where: { id: uniqueId },
+                        data: { isProcessed: true }
+                    });
+                }
+            } catch (procErr) {
+                logger.error(`Hikvision Real-time processing error for ${userIdStr}:`, procErr);
+            }
+
+            logger.info(`Hikvision Punch Received: ${userIdStr} (${userName || 'Unknown'}) at ${punchTime.toISOString()}`);
         }
 
-        // Hikvision expects a 200 OK or a specific XML response
         res.status(200).send('OK');
     } catch (error) {
         logger.error('Hikvision Event Handler Error:', error);
-        res.status(200).send('OK'); // Always send OK to keep device from retrying excessively
+        res.status(200).send('OK');
     }
 });
 
