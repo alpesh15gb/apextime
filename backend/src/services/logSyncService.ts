@@ -1048,7 +1048,9 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
       processedResults.push({
         employeeId: employeeId,
-        date: new Date(dateKey + 'T00:00:00'),
+        // FORCE UTC MIDNIGHT: Append 'Z' to ensure 2026-01-08 becomes 2026-01-08T00:00:00Z
+        // Otherwise, local midnight (IST) becomes UTC previous day (18:30), causing the shift.
+        date: new Date(dateKey + 'T00:00:00Z'),
         firstIn: firstIn,
         lastOut: lastOut || null,
         workingHours: Number(workingHours.toFixed(2)),
