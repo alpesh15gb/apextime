@@ -53,16 +53,23 @@ async function reprocessStandalone() {
         const dayMap = new Map<string, typeof allLogs>();
 
         for (const log of logs) {
-            // 1. Get IST Date Key (e.g. "2026-01-08") using container's TZ=Asia/Kolkata
+            // 1. Get IST Date Key straight from locale
             const istDatePart = log.punchTime.toLocaleDateString('en-CA');
 
-            // 2. Get IST Hour (0-23)
-            const istHour = parseInt(log.punchTime.toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
+            // 2. Get IST Hour safely using Intl
+            const istHourStr = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour: 'numeric',
+                hour12: false
+            }).format(log.punchTime);
+
+            // Format might return "24" for midnight or "0", handle cleanly
+            const istHour = parseInt(istHourStr.replace(/\D/g, ''));
 
             let dateKey = istDatePart;
 
             // 3. SHIFT RULE: If punch is between 12:00 AM and 05:00 AM, it belongs to PREVIOUS DAY.
-            if (istHour < 5) {
+            if (istHour >= 0 && istHour < 5) {
                 const d = new Date(dateKey);
                 d.setDate(d.getDate() - 1);
                 dateKey = d.toISOString().split('T')[0];
