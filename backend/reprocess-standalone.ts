@@ -43,11 +43,19 @@ async function reprocessStandalone() {
         });
 
         if (!employee) {
-            // console.warn(`⚠️ Skipping likely Auto-User ${userId} (No Employee Link)`);
-            // We should still process them if they exist in DB as an employee, but if findFirst fails, we can't save to AttendanceLog easily without ID
-            // Actually, for Auto-Users created by system, they DO have an employee record.
             continue;
         }
+
+        // CLEAN SLATE: Delete existing logs for this period to remove "Ghost Punches" from previous bad runs
+        await prisma.attendanceLog.deleteMany({
+            where: {
+                employeeId: employee.id,
+                date: {
+                    gte: start,
+                    lt: end
+                }
+            }
+        });
 
         // Group by Date (IST)
         const dayMap = new Map<string, typeof allLogs>();
