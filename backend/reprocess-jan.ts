@@ -20,9 +20,15 @@ async function run() {
 
     const janStart = new Date('2026-01-01T00:00:00');
 
-    if (latestLog && latestLog.punchTime < janStart) {
-        console.log('⚠️  Notice: The machine is still uploading historical data (2025 or earlier).');
-        console.log('            Reprocessing for 2026 will start once the sync reaches Jan 2026.');
+    // Check how many logs exist for January vs February
+    const janCount = await prisma.rawDeviceLog.count({ where: { punchTime: { gte: janStart, lt: new Date('2026-02-01') } } });
+    const febCount = await prisma.rawDeviceLog.count({ where: { punchTime: { gte: new Date('2026-02-01') } } });
+
+    console.log(`📊 Log Inventory: January: ${janCount} logs, February: ${febCount} logs.`);
+
+    if (janCount === 0) {
+        console.log('⚠️  WARNING: No logs found for January 2026. Reports will be empty.');
+        console.log('             Make sure the machines have finished uploading January data.');
     }
 
     const result = await reprocessHistoricalLogs(janStart);
