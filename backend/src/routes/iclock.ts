@@ -70,67 +70,14 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
     // DEBUG: Log every POST to cdata
     logger.info(`[ICLOCK_POST_DEBUG] SN: ${SN}, Table: ${table}, Query: ${JSON.stringify(req.query)}, Headers: ${JSON.stringify(req.headers)}, BodyLength: ${req.body?.length || 0}`);
 
-    // RealTime devices may send SN in POST body instead of query params
-    if (!SN && req.body) {
-        let bodyStr = '';
-
-        // Handle different body types
-        if (Buffer.isBuffer(req.body)) {
-            // Check for RealTime Binary-JSON format (4 byte header + JSON)
-            if (req.body.length > 4 && req.body[0] === 0x66) {
-                const jsonPart = req.body.slice(4).toString('utf-8');
-                try {
-                    const data = JSON.parse(jsonPart);
-                    console.log('--- REALTIME JSON DETECTED ---', data);
-
-                    // Note: If SN is missing in JSON, we'll try to get it from headers or bodyStr below
-                    if (data.SN) SN = data.SN;
-                    if (data.deviceId) SN = data.deviceId;
-
-                    // PARSE DATA FOR SAVING
-                    if (data.user_id && data.io_time) {
-                        const uId = data.user_id;
-                        const rawTime = data.io_time;
-                        const fmtTime = `${rawTime.substring(0, 4)}-${rawTime.substring(4, 6)}-${rawTime.substring(6, 8)} ${rawTime.substring(8, 10)}:${rawTime.substring(10, 12)}:${rawTime.substring(12, 14)}`;
-                        const state = data.verify_mode || 1;
-                        const type = data.io_mode || 0;
-
-                        req.body = `${uId}\t${fmtTime}\t${state}\t${type}`;
-                    }
-                } catch (e) {
-                    bodyStr = req.body.toString('utf-8');
-                }
-            } else {
-                bodyStr = req.body.toString('utf-8');
-            }
-        } else if (typeof req.body === 'string') {
-            bodyStr = req.body;
-        } else if (typeof req.body === 'object') {
-            bodyStr = JSON.stringify(req.body);
-            if (req.body.SN) SN = req.body.SN;
-            if (req.body.deviceId) SN = req.body.deviceId;
-        }
-
-        // Try to extract SN from body string via Regex
-        if (!SN) {
-            const snMatch = bodyStr.match(/SN=([^&\s\n\r]+)/i);
-            if (snMatch) {
-                SN = snMatch[1].trim();
-                console.log('--- EXTRACTED SN FROM BODY: ' + SN + ' ---');
-            }
-        }
-    }
-
-    // If still no SN, check headers (some proxies/devices add it)
+    // Simplified SN identification for Standard ADMS
     if (!SN) {
+        // Fallback: Try to find SN in headers
         SN = (req.headers['x-device-sn'] as string) || (req.headers['sn'] as string);
     }
 
-    if (SN) {
-        console.log('--- INCOMING PUSH FROM SN: ' + SN + ' ---');
-    } else {
-        console.log('=== POST /cdata WITHOUT SN ===');
-        console.log('Query params:', req.query);
+    if (!SN) {
+        logger.warn(`[ICLOCK_REJECT] POST /cdata without SN. Query: ${JSON.stringify(req.query)}`);
         return res.send('OK');
     }
 

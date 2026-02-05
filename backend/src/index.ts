@@ -133,14 +133,6 @@ app.use(['/api/iclock', '/iclock'], (req, res, next) => {
   next();
 });
 
-// Middleware to ensure raw body is a string for processing (only for iclock)
-app.use(['/api/iclock', '/iclock'], (req, res, next) => {
-  if (Buffer.isBuffer(req.body)) {
-    req.body = req.body.toString('utf8');
-  }
-  next();
-});
-
 // Biometric Routes
 app.use('/api/iclock', iclockRoutes);
 app.use('/iclock', iclockRoutes);
