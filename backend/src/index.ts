@@ -172,6 +172,28 @@ app.use('/api/onboarding', onboardingRoutes);
 // This handles the REALTIME_DIRECT protocol
 // Moved below server start
 
+// --- ONE-TIME AUTO PROCESS FEB ---
+(async () => {
+  console.log('🚀 [STARTUP] TRIGGERING AUTO-PROCESS FOR FEBRUARY 2026...');
+  try {
+    const { startLogSync, reprocessHistoricalLogs } = await import('./services/logSyncService');
+
+    // 1. Pull logs from SQL
+    console.log('🔄 [STARTUP] Syncing latest logs...');
+    await startLogSync(true);
+
+    // 2. Reprocess Feb
+    console.log('🔄 [STARTUP] Calculating February Attendance Logs...');
+    const febStart = new Date('2026-02-01T00:00:00');
+    const febEnd = new Date('2026-02-28T23:59:59');
+    const result = await reprocessHistoricalLogs(febStart, febEnd);
+
+    console.log(`✅ [STARTUP] FEB PROCESS COMPLETE: ${result.recordsUpdated} logs updated.`);
+  } catch (err) {
+    console.error('❌ [STARTUP] Feb auto-process failed:', err);
+  }
+})();
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
