@@ -1016,9 +1016,27 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
     const simpleSessions = new Map<string, RawLog[]>();
 
     for (const log of userLogs) {
-      // RELY ON SYSTEM TIMEZONE (TZ=Asia/Kolkata)
-      // Since Docker is set to IST, this naturally groups 09:23 AM (IST) into today's bucket.
-      const dateKey = log.LogDate.toLocaleDateString('en-CA');
+      // 1. Get IST Date Key straight from locale
+      const istDatePart = log.LogDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+      // 2. Get IST Hour safely using Intl
+      const istHourStr = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        hour12: false
+      }).format(log.LogDate);
+
+      // Format might return "24" for midnight or "0", handle cleanly
+      const istHour = parseInt(istHourStr.replace(/\D/g, ''));
+
+      let dateKey = istDatePart;
+
+      // 3. SHIFT RULE: If punch is between 12:00 AM and 05:00 AM, it belongs to PREVIOUS DAY.
+      if (istHour >= 0 && istHour < 5) {
+        const d = new Date(dateKey);
+        d.setDate(d.getDate() - 1);
+        dateKey = d.toISOString().split('T')[0];
+      }
 
       if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
       simpleSessions.get(dateKey)!.push(log);
