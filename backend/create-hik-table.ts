@@ -75,6 +75,9 @@ async function createTable() {
             CREATE TABLE IF NOT EXISTS "hik_minimal" (
                 "id" TEXT NOT NULL,
                 "person_id" TEXT,
+                "access_datetime" TEXT,
+                "access_date" TEXT,
+                "access_time" TEXT,
                 "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT "hik_minimal_pkey" PRIMARY KEY ("id")
             );
