@@ -1066,8 +1066,6 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 return processedResults;
 }
 
-return processedResults;
-}
 
 // This function is now mostly handled via per-tenant sync, but left for global manually triggered sync
 export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
