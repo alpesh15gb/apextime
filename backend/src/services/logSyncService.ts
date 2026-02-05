@@ -1072,12 +1072,12 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
         const endHour = shiftEndObj.getUTCHours();
         const endMinute = shiftEndObj.getUTCMinutes();
 
-        // Shift Start is on the Logical Date
-        shiftStart = new Date(dateKey);
+        // Shift Start is on the Logical Date (Parse as local time by adding T00:00:00)
+        shiftStart = new Date(dateKey + 'T00:00:00');
         shiftStart.setHours(startHour, startMinute, 0, 0);
 
         // Shift End might be on the next calendar day
-        shiftEnd = new Date(dateKey);
+        shiftEnd = new Date(dateKey + 'T00:00:00');
         shiftEnd.setHours(endHour, endMinute, 0, 0);
 
         if (endHour < startHour || (shift.isNightShift && endHour < 12)) {
@@ -1099,7 +1099,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
       processedResults.push({
         employeeId: employee.id,
-        date: new Date(dateKey),
+        date: new Date(dateKey + 'T00:00:00'),
         firstIn,
         lastOut,
         workingHours,

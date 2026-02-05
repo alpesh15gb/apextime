@@ -128,13 +128,15 @@ export const MonthlyReport = () => {
   };
 
   const formatTime = (dateStr: any) => {
-    if (!dateStr || typeof dateStr !== 'string') return '-';
+    if (!dateStr) return '-';
     try {
-      const match = dateStr.match(/T(\d{2}):(\d{2})/);
-      if (match) {
-        return `${match[1]}:${match[2]}`;
-      }
-      return '-';
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '-';
+      return date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
     } catch {
       return '-';
     }
