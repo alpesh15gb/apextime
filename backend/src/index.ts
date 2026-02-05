@@ -168,56 +168,9 @@ app.use('/api/helpdesk', helpdeskRoutes);
 app.use('/api/visitors', visitorRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 
+
 // Initialize WebSocket for RealTime Devices
-// This handles the REALTIME_DIRECT protocol
-// Moved below server start
-
-// --- ONE-TIME AUTO PROCESS FEB ---
-(async () => {
-  console.log('🚀 [STARTUP] TRIGGERING AUTO-PROCESS FOR FEBRUARY 2026...');
-  try {
-    const { startLogSync, reprocessHistoricalLogs } = await import('./services/logSyncService');
-
-    // 1. Pull logs from SQL
-    console.log('🔄 [STARTUP] Syncing latest logs...');
-    await startLogSync(true);
-
-    // 2. Reprocess Feb
-    console.log('🔄 [STARTUP] Calculating February Attendance Logs...');
-    const febStart = new Date('2026-02-01T00:00:00');
-    const febEnd = new Date('2026-02-28T23:59:59');
-    const result = await reprocessHistoricalLogs(febStart, febEnd);
-    console.log(`✅ [STARTUP] FEB PROCESS COMPLETE: ${result.recordsUpdated} logs updated.`);
-
-    // 3. Create Payroll Run for Feb if it doesn't exist
-    const existingRun = await prisma.payrollRun.findFirst({
-      where: { month: 2, year: 2026 }
-    });
-
-    if (!existingRun) {
-      console.log('📄 [STARTUP] Creating Payroll Run for February 2026...');
-      const tenant = await prisma.tenant.findFirst({ where: { isActive: true } });
-      if (tenant) {
-        await prisma.payrollRun.create({
-          data: {
-            tenantId: tenant.id,
-            month: 2,
-            year: 2026,
-            batchName: 'February 2026 Auto Run',
-            periodStart: febStart,
-            periodEnd: febEnd,
-            status: 'DRAFT'
-          }
-        });
-        console.log('✅ [STARTUP] February Payroll Run created.');
-      }
-    } else {
-      console.log('ℹ️ [STARTUP] February Payroll Run already exists.');
-    }
-  } catch (err) {
-    console.error('❌ [STARTUP] Feb auto-process failed:', err);
-  }
-})();
+initializeRealtimeWebSocket(server);
 
 // Health check
 app.get('/api/health', (req, res) => {
