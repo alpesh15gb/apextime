@@ -1016,7 +1016,11 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
     const simpleSessions = new Map<string, RawLog[]>();
 
     for (const log of userLogs) {
-      const dateKey = log.LogDate.toLocaleDateString('en-CA');
+      // STRICT IST GROUPING: Convert UTC to IST (UTC+5:30) before grouping
+      // This ensures logs that are technically on different UTC days but same IST day are grouped together
+      const istDate = new Date(log.LogDate.getTime() + (5.5 * 60 * 60 * 1000));
+      const dateKey = istDate.toISOString().split('T')[0];
+
       if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
       simpleSessions.get(dateKey)!.push(log);
     }
