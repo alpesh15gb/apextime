@@ -54,7 +54,7 @@ async function reprocessStandalone() {
 
         for (const log of logs) {
             // 1. Get IST Date Key straight from locale
-            const istDatePart = log.punchTime.toLocaleDateString('en-CA');
+            const istDatePart = log.punchTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
             // 2. Get IST Hour safely using Intl
             const istHourStr = new Intl.DateTimeFormat('en-US', {
@@ -73,6 +73,15 @@ async function reprocessStandalone() {
                 const d = new Date(dateKey);
                 d.setDate(d.getDate() - 1);
                 dateKey = d.toISOString().split('T')[0];
+            }
+
+            // DEBUG: Catch the ghost punch for HO059
+            if (log.deviceUserId === 'HO059' && log.punchTime.toISOString().includes('12:40:31')) {
+                console.log(`🐞 DEBUG HO059:`);
+                console.log(`   Raw: ${log.punchTime.toISOString()}`);
+                console.log(`   IST Date: ${istDatePart}`);
+                console.log(`   IST Hour: ${istHour}`);
+                console.log(`   Final Key: ${dateKey}`);
             }
 
             if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
