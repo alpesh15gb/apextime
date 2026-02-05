@@ -1,27 +1,48 @@
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
-async function main() {
-    const empCount = await prisma.employee.count();
-    const logCount = await prisma.attendanceLog.count();
-    const rawCount = await prisma.rawDeviceLog.count();
+async function checkDb(targetId: string, dateStr: string) {
+    console.log(`🔎 CHECKING FINAL DB RECORD FOR: ${targetId} ON ${dateStr}...\n`);
 
-    console.log('Total Employees:', empCount);
-    console.log('Total Attendance Logs:', logCount);
-    console.log('Total Raw Logs:', rawCount);
-
-    const testEmps = await prisma.employee.findMany({
-        where: { firstName: { contains: 'Auto' } },
-        take: 5
+    // 1. Find Employee
+    const emp = await prisma.employee.findFirst({
+        where: { deviceUserId: targetId }
     });
-    console.log('Sample Hik/Auto Emps:', JSON.stringify(testEmps, null, 2));
 
-    const recentAttendance = await prisma.attendanceLog.findMany({
-        orderBy: { date: 'desc' },
-        take: 5,
-        include: { employee: true }
+    if (!emp) {
+        console.log('❌ Employee not found!');
+        return;
+    }
+
+    console.log(`✅ Employee: ${emp.firstName} (Internal ID: ${emp.id})`);
+
+    // 2. Find Attendance Log
+    const targetDate = new Date(`${dateStr}T00:00:00.000Z`); // UTC midnight
+
+    const attLog = await prisma.attendanceLog.findFirst({
+        where: {
+            employeeId: emp.id,
+            date: targetDate
+        }
     });
-    console.log('Recent Attendance:', JSON.stringify(recentAttendance, null, 2));
+
+    if (!attLog) {
+        console.log(`❌ No Attendance Log found for ${dateStr} (UTC).`);
+    } else {
+        console.log(`\n📄 ATTENDANCE LOG RECORD:`);
+        console.log(`   - ID: ${attLog.id}`);
+        console.log(`   - Date: ${attLog.date.toISOString()}`);
+        console.log(`   - First In:  ${attLog.firstIn ? attLog.firstIn.toISOString() : 'NULL'}`);
+        console.log(`   - Last Out:  ${attLog.lastOut ? attLog.lastOut.toISOString() : 'NULL'}`);
+        console.log(`   - Work Hrs:  ${attLog.workingHours}`);
+        console.log(`   - Status:    ${attLog.status}`);
+        console.log(`   - Punches:   ${attLog.totalPunches}`);
+    }
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+const target = process.argv[2];
+const date = process.argv[3] || '2026-01-08';
+
+if (!target) console.error('Provide DeviceID');
+else checkDb(target, date).catch(console.error).finally(() => prisma.$disconnect());
