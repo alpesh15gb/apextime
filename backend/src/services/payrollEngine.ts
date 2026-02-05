@@ -70,10 +70,12 @@ export class PayrollEngine {
             const leaves = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'leave_paid').length;
             const halfDayCount = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'half_day').length;
 
+            console.log(`[PAYROLL_DIAG] Employee: ${employee.firstName}, Logs: ${employee.attendanceLogs.length}`);
+            employee.attendanceLogs.slice(0, 5).forEach(l => console.log(`[PAYROLL_DIAG] ${l.date.toISOString().split('T')[0]}: ${l.status}`));
+
             // Strict calculation based on available logs
             let effectivePresentDays = presentDays + holidays + leaves + (halfDayCount * 0.5);
-
-            console.log(`[PAYROLL_ENGINE] Found ${employee.attendanceLogs.length} logs. Present: ${presentDays}, Holidays: ${holidays}, Paid Leaves: ${leaves}`);
+            console.log(`[PAYROLL_ENGINE] Effective: ${effectivePresentDays}, Standard: ${standardWorkingDays}`);
 
             const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
             const paidDays = Math.max(0, standardWorkingDays - lopDays);
