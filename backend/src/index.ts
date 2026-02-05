@@ -124,6 +124,7 @@ app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
 app.use('/api/designations', designationRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/tenants', tenantRoutes);
 // Specialized Raw Body Parser for iClock (Only for POST/PUT data)
 app.use(['/api/iclock', '/iclock'], (req, res, next) => {
   if (req.method === 'POST' || req.method === 'PUT') {
