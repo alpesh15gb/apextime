@@ -683,25 +683,55 @@ export const Payroll = () => {
                                         <div className="flex justify-between items-center">
                                             <div className="text-sm">
                                                 <span className="font-bold">NET SALARY: </span>
-                                                <span className="font-bold">₹ {selectedPayroll.netSalary?.toFixed(2)}</span>
+                                                <span className="font-bold font-sans">₹ {selectedPayroll.netSalary?.toFixed(2)}</span>
                                             </div>
                                             {(selectedPayroll.retentionDeduction > 0) && (
                                                 <div className="text-sm text-red-600">
-                                                    <span className="font-bold">RETENTION: </span>
-                                                    <span className="font-bold">₹ {selectedPayroll.retentionDeduction?.toFixed(2)}</span>
+                                                    <span className="font-bold">RETENTION DEDUCTION: </span>
+                                                    <span className="font-bold font-sans text-xs"> (Saved for future payout) </span>
+                                                    <span className="font-bold font-sans ml-2 text-base">₹ {selectedPayroll.retentionDeduction?.toFixed(2)}</span>
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                                            <div className="text-base">
+                                            <div className="text-base text-gray-900">
                                                 <span className="font-extrabold uppercase">FINAL TAKE HOME: </span>
-                                                <span className="font-black text-xl">₹ {(selectedPayroll.finalTakeHome || selectedPayroll.netSalary)?.toFixed(2)}</span>
+                                                <span className="font-black text-xl font-sans">₹ {(selectedPayroll.finalTakeHome || selectedPayroll.netSalary)?.toFixed(2)}</span>
                                             </div>
                                         </div>
-                                        <div className="text-xs mt-2 italic text-gray-600">
+                                        <div className="text-[10px] mt-2 italic text-gray-600 font-sans">
                                             (In Words: Rupees {convertNumberToWords(Math.round(selectedPayroll.finalTakeHome || selectedPayroll.netSalary))} Only)
                                         </div>
                                     </div>
+
+                                    {/* Employer Section for CTC explanation */}
+                                    {(selectedPayroll.employerPF > 0 || selectedPayroll.employerESI > 0) && (
+                                        <div className="p-4 bg-gray-50/50 border-b-2 border-black">
+                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-200 pb-1">Employer Contributions (Part of CTC Benefits)</p>
+                                            <div className="grid grid-cols-4 gap-4 text-[10px]">
+                                                <div>
+                                                    <p className="text-gray-500 font-medium">Employer PF (12%)</p>
+                                                    <p className="font-bold text-gray-900 border-b border-gray-100">₹ {selectedPayroll.employerPF?.toFixed(2)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-500 font-medium">Employer ESI (3.25%)</p>
+                                                    <p className="font-bold text-gray-900 border-b border-gray-100">₹ {selectedPayroll.employerESI?.toFixed(2)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-500 font-medium">Monthly Bonus (8.33%)</p>
+                                                    <p className="font-bold text-gray-900 border-b border-gray-100">₹ {selectedPayroll.bonus?.toFixed(2)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-gray-500 font-medium">Monthly Gratuity (4.81%)</p>
+                                                    <p className="font-bold text-gray-900 border-b border-gray-100">₹ {selectedPayroll.gratuityAccrual?.toFixed(2)}</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 text-right">
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase">Total Other Benefits: </span>
+                                                <span className="text-[11px] font-black text-blue-600 ml-2">₹ {(selectedPayroll.employerPF + selectedPayroll.employerESI + selectedPayroll.bonus + selectedPayroll.gratuityAccrual)?.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Footer */}
                                     <div className="p-4 text-center text-[10px] text-gray-500">

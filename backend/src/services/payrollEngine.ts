@@ -65,17 +65,18 @@ export class PayrollEngine {
 
             const standardWorkingDays = daysInMonth - sundaysInMonth; // e.g. 26 or 27
 
-            const presentDays = employee.attendanceLogs.filter(l => l.status === 'present').length;
-            const weeklyOffs = employee.attendanceLogs.filter(l => l.status === 'weekly_off').length;
-            const holidays = employee.attendanceLogs.filter(l => l.status === 'holiday').length;
-            const leaves = employee.attendanceLogs.filter(l => l.status === 'leave_paid').length;
-            const halfDayCount = employee.attendanceLogs.filter(l => l.status === 'half_day').length;
+            const presentDays = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'present').length;
+            const holidays = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'holiday').length;
+            const leaves = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'leave_paid').length;
+            const halfDayCount = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'half_day').length;
 
             // In our system, if logs are sparse, we assume they were present on all working days
             let effectivePresentDays = presentDays + holidays + leaves + (halfDayCount * 0.5);
 
-            // If we have very few logs, assume full attendance for the demo
-            if (employee.attendanceLogs.length < 5 && employee.isActive) {
+            // Fallback: ONLY if there are exactly ZERO logs for the period AND the employee is active, we assume full attendance (e.g. for new setups)
+            // If they have ANY logs (even 1), we respect those logs and don't fallback to full pay.
+            if (employee.attendanceLogs.length === 0 && employee.isActive) {
+                console.log(`[PAYROLL_ENGINE] Zero attendance logs for ${employee.firstName}. Using fallback for demo.`);
                 effectivePresentDays = standardWorkingDays;
             }
 
@@ -238,6 +239,7 @@ export class PayrollEngine {
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
                     gratuityAccrual: components['GRATUITY'] || 0,
+                    bonus: components['BONUS'] || 0,
                     payrollRunId: payrollRunId,
                     details: JSON.stringify(components),
                     processedAt: new Date()
@@ -265,6 +267,7 @@ export class PayrollEngine {
                     employerPF: components['PF_ER'] || 0,
                     employerESI: components['ESI_ER'] || 0,
                     gratuityAccrual: components['GRATUITY'] || 0,
+                    bonus: components['BONUS'] || 0,
                     payrollRunId: payrollRunId,
                     details: JSON.stringify(components),
                     processedAt: new Date()
