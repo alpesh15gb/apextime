@@ -51,6 +51,9 @@ export class PayrollEngine {
 
             if (!employee) return { success: false, error: 'Employee not found' };
 
+            const CTC = employee.monthlyCtc || 0;
+            console.log(`[PAYROLL_ENGINE] Processing Employee: ${employee.firstName} (CTC: ${CTC}, Active: ${employee.isActive})`);
+
             // 1. Calculate Days
             const daysInMonth = new Date(year, month, 0).getDate();
             const presentDays = employee.attendanceLogs.filter(l => l.status === 'present').length;
@@ -61,19 +64,25 @@ export class PayrollEngine {
 
             let effectivePresentDays = presentDays + weeklyOffs + holidays + leaves + (halfDayCount * 0.5);
 
-            // Fallback: Default to full month if no logs and employee is active
-            if (employee.attendanceLogs.length === 0 && employee.isActive) {
-                effectivePresentDays = daysInMonth;
+            // Fallback: Default to full month if logs are missing or sparse for an active employee
+            const isCurrentMonth = new Date().getMonth() + 1 === month && new Date().getFullYear() === year;
+
+            if (employee.isActive && effectivePresentDays === 0) {
+                if (employee.attendanceLogs.length < 5 || isCurrentMonth) {
+                    console.log(`[PAYROLL_ENGINE] Incomplete logs detected for ${employee.firstName}. Using full month fallback.`);
+                    effectivePresentDays = daysInMonth;
+                }
             }
 
             const lopDays = Math.max(0, daysInMonth - effectivePresentDays);
             const paidDays = Math.max(0, daysInMonth - lopDays);
             const attendRatio = paidDays / daysInMonth;
 
+            console.log(`[PAYROLL_ENGINE] Attendance: ${paidDays}/${daysInMonth} days (Ratio: ${attendRatio})`);
+
             // 2. REVERSE CTC LOGIC (Keystone Structure)
             let totalEarnings = 0;
             const components: Record<string, number> = {};
-            const CTC = employee.monthlyCtc;
 
             if (CTC > 0) {
                 // A. Base Components (Standard Ratios)
