@@ -68,7 +68,7 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
     }
 
     // DEBUG: Log every POST to cdata
-    logger.info(`[ICLOCK_POST] Incoming POST from SN: ${SN}, Table: ${table}, BodySize: ${req.body?.length || 0}`);
+    logger.info(`[ICLOCK_POST_DEBUG] SN: ${SN}, Table: ${table}, Query: ${JSON.stringify(req.query)}, Headers: ${JSON.stringify(req.headers)}, BodyLength: ${req.body?.length || 0}`);
 
     // RealTime devices may send SN in POST body instead of query params
     if (!SN && req.body) {
@@ -343,6 +343,7 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
 // 3. Command Queue / Heartbeat
 router.get(['/getrequest*', '/getrequest.aspx*'], async (req, res) => {
     let SN = (req.query.SN as string) || (req.query.sn as string);
+    logger.info(`[ICLOCK_GET] Heartbeat from SN: ${SN}`);
     if (!SN) return res.set('Content-Type', 'text/plain').send('OK');
 
     try {
