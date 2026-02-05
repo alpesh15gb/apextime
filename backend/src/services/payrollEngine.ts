@@ -141,16 +141,28 @@ export class PayrollEngine {
             let matrixPaidLeave = 0;
             let matrixHolidayCount = 0;
             let matrixSundays = 0;
+            let daysAfterJoining = 0;
+
+            const joiningDate = employee.dateOfJoining ? new Date(employee.dateOfJoining) : null;
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month - 1, d);
+
+                // Only count days AFTER joining
+                if (joiningDate && date < joiningDate) continue;
+                daysAfterJoining++;
+
                 const isSunday = date.getDay() === 0;
                 const isHoliday = holidayDays.has(d);
 
                 if (isSunday) matrixSundays++;
                 else if (isHoliday) matrixHolidayCount++;
 
-                const dayLog = logs.find(l => new Date(l.date).getDate() === d);
+                const dayLog = logs.find(l => {
+                    const lDate = new Date(l.date);
+                    return lDate.getDate() === d && lDate.getMonth() + 1 === month;
+                });
+
                 if (dayLog) {
                     const status = (dayLog.status || '').toLowerCase().trim();
                     if (status === 'present' || status === 'late') matrixPresent++;
@@ -159,21 +171,21 @@ export class PayrollEngine {
                 }
             }
 
-            const standardWorkingDays = daysInMonth - matrixSundays;
-            const effectivePresentDays = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
+            // ROBUST CALCULATION:
+            // Standard Working Days for this employee = All days in month - (Days before joining) - (Sundays after joining)
+            const standardWorkingDays = daysAfterJoining - matrixSundays;
 
-            console.log(`[PAYROLL_MATRIX] Final -> Present: ${matrixPresent}, Half: ${matrixHalfDay}, Holidays: ${matrixHolidayCount}, Effective: ${effectivePresentDays}`);
+            // Effective Days = Days they actually worked + Paid benefits
+            const effectivePresentDays = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
 
             const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
             const paidDays = Math.max(0, standardWorkingDays - lopDays);
 
             // Salary is calculated on working days ratio
-            const attendRatio = paidDays / standardWorkingDays;
+            const attendRatio = standardWorkingDays > 0 ? (paidDays / standardWorkingDays) : 0;
 
-            console.log(`[PAYROLL_ENGINE] Days in Month: ${daysInMonth}, Sundays: ${matrixSundays}, Working Days: ${standardWorkingDays}`);
-            console.log(`[PAYROLL_ENGINE] Paid Days: ${paidDays} / ${standardWorkingDays}`);
-
-            console.log(`[PAYROLL_ENGINE] Attendance Ratio: ${attendRatio}`);
+            console.log(`[PAYROLL_ROBUST] Emp: ${employee.firstName}, TotalMonth: ${daysInMonth}, AfterJoin: ${daysAfterJoining}, Sundays: ${matrixSundays}, WorkingTotal: ${standardWorkingDays}`);
+            console.log(`[PAYROLL_ROBUST] Present: ${matrixPresent}, Half: ${matrixHalfDay}, Holidays: ${matrixHolidayCount}, Effective: ${effectivePresentDays}, Ratio: ${attendRatio}`);
 
             // 2. REVERSE CTC LOGIC (Match Excel Image Structure)
             let totalEarnings = 0;

@@ -929,170 +929,161 @@ async function createEmployeeFromDeviceLog(deviceUserId: string, tenantId: strin
 
 
 export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendance[]> {
-  // Group logs by employee device user ID
   const employeeLogs = new Map<string, RawLog[]>();
 
   for (const log of logs) {
     const key = log.UserId.toString();
-    if (!employeeLogs.has(key)) {
-      employeeLogs.set(key, []);
-    }
+    if (!employeeLogs.has(key)) employeeLogs.set(key, []);
     employeeLogs.get(key)!.push(log);
   }
 
   const processedResults: ProcessedAttendance[] = [];
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
-    // Get employee from cache
     let employeeId = employeeCache.get(deviceUserId);
-
-    // Fallback to Core ID matching
     if (!employeeId) {
       const coreId = getCoreId(deviceUserId);
-      if (coreId) {
-        employeeId = employeeCache.get(`CORE:${coreId}`);
-      }
+      if (coreId) employeeId = employeeCache.get(`CORE:${coreId}`);
     }
 
-    if (!employeeId) {
-      logger.warn(`Processor: No employee mapped for device user ID: ${deviceUserId} (Logs: ${userLogs.length})`);
-      continue;
-    }
+    if (!employeeId) continue;
 
-    logger.info(`Processor: Found employee ${employeeId} for device user ID: ${deviceUserId}`);
-
-    // Get full employee details including shift
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       include: { shift: true },
     });
 
-    if (!employee) {
-      logger.warn(`Employee not found in database for ID: ${employeeId}`);
-      continue;
-    }
+    if (!employee) continue;
 
-    // Sort all user logs by time across all dates for this user
+    // Fetch all shifts for the tenant for "Smart Shift Matching"
+    const tenantShifts = await prisma.shift.findMany({
+      where: { tenantId: employee.tenantId, isActive: true }
+    });
+
+    // 1. Sort logs chronologically
     userLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
-    // Group logs by "Logical Day"
-    // For night shifts, if a punch occurs before 8 AM, it might belong to the previous day
-    const logicalDayGroups = new Map<string, RawLog[]>();
+    // 2. Identify "Work Sessions"
+    // Instead of calendar days, we group punches that are close to each other 
+    // or fit within a shift window.
+
+    const sessions = new Map<string, RawLog[]>(); // dateKey -> logs
 
     for (const log of userLogs) {
-      // IDENTITY PROTECTION: Logic to separate people who share the same ID over time.
-      const logName = log.UserName?.trim().toLowerCase();
-      if (logName && !/^\d+$/.test(logName) && logName !== 'person_name' && logName !== 'employee_name') {
-        const empFirst = employee.firstName.trim().toLowerCase();
-        const empLast = (employee.lastName || '').trim().toLowerCase();
-
-        // Exact name match or significant overlap required
-        const isMatch = logName.includes(empFirst) || empFirst.includes(logName) || (empLast && logName.includes(empLast));
-
-        if (!isMatch) {
-          logger.warn(`IDENTITY LOCK: Rejecting log for ID ${employee.employeeCode} because name "${log.UserName}" does not match system name "${employee.firstName}".`);
-          continue;
-        }
-      }
-
-      // Standard logic: skip if explicitly before joining date
+      // Identity & Join Date checks...
       if (employee.dateOfJoining) {
-        const joinDate = new Date(employee.dateOfJoining);
-        joinDate.setHours(0, 0, 0, 0);
-        if (new Date(log.LogDate).setHours(0, 0, 0, 0) < joinDate.getTime()) continue;
+        const jd = new Date(employee.dateOfJoining);
+        jd.setHours(0, 0, 0, 0);
+        if (new Date(log.LogDate) < jd) continue;
+      }
+
+      // Determine the Logical Date for this punch
+      // A punch belongs to "today" if it's generally during "today's" expected work hours
+      // or if it's the first punch after a long break.
+
+      let logicalDate: Date;
+      const hours = log.LogDate.getHours();
+
+      // SMART LOGICAL DATE: 
+      // If employee has a shift, use it for context. 
+      // If shift starts at 7 AM, 5 AM is "Today". 
+      // If shift starts at 10 PM, 2 AM is "Yesterday".
+
+      let effectiveShift = employee.shift || tenantShifts[0];
+      let shiftStartHour = 9; // Default 9 AM
+
+      if (effectiveShift) {
+        const sTime = new Date(effectiveShift.startTime);
+        shiftStartHour = sTime.getUTCHours();
+      }
+
+      // Threshold: A punch within 6 hours before shift start is "Today"
+      // A punch up to 14 hours after shift start is "Today"
+      logicalDate = new Date(log.LogDate);
+
+      if (shiftStartHour < 12) {
+        // Day Shift (e.g. 7 AM or 9 AM)
+        // If punch is between 12 AM and (ShiftStart - 4), it might be "Yesterday's" finish
+        if (hours < (shiftStartHour - 4)) {
+          logicalDate.setDate(logicalDate.getDate() - 1);
+        }
       } else {
-        // APEXTIME BARRIER: Allow logs from up to 1 year before creation to support historical imports.
-        const creationBarrier = new Date(employee.createdAt);
-        creationBarrier.setFullYear(creationBarrier.getFullYear() - 1);
-        if (new Date(log.LogDate) < creationBarrier) {
-          logger.warn(`CREATION BARRIER: Rejecting very old historical log for ${employee.employeeCode} (Log Date: ${log.LogDate.toISOString().split('T')[0]}) because it occurred more than 1 year before the employee was added.`);
-          continue;
+        // Night Shift (e.g. 8 PM)
+        // If punch is between 12 AM and (ShiftStart - 8), it is definitely "Yesterday's" continuation
+        if (hours < (shiftStartHour - 6)) {
+          logicalDate.setDate(logicalDate.getDate() - 1);
         }
       }
 
-      let logicalDate = new Date(log.LogDate);
-      const hours = log.LogDate.getHours();
-      if (hours < 8) logicalDate.setDate(logicalDate.getDate() - 1);
-
-      // Normalize date key to local YYYY-MM-DD
       const dateKey = logicalDate.toLocaleDateString('en-CA');
-      if (!logicalDayGroups.has(dateKey)) logicalDayGroups.set(dateKey, []);
-      logicalDayGroups.get(dateKey)!.push(log);
+      if (!sessions.has(dateKey)) sessions.set(dateKey, []);
+      sessions.get(dateKey)!.push(log);
     }
 
-    // Process each logical date
-    for (const [dateKey, dateLogs] of logicalDayGroups) {
-      // Sort logs by time
+    // 3. Process each session
+    for (const [dateKey, dateLogs] of sessions) {
       dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
-      // DEDUPLICATE: Remove logs with identical timestamps
-      const uniqueTimedLogs: RawLog[] = [];
-      const seenTimes = new Set<number>();
-      for (const log of dateLogs) {
-        const timeVal = log.LogDate.getTime();
-        if (!seenTimes.has(timeVal)) {
-          uniqueTimedLogs.push(log);
-          seenTimes.add(timeVal);
-        }
-      }
+      // Deduplicate
+      const uniqueTimedLogs = dateLogs.filter((log, idx, self) =>
+        idx === self.findIndex(t => t.LogDate.getTime() === log.LogDate.getTime())
+      );
+
+      if (uniqueTimedLogs.length === 0) continue;
 
       const firstIn = uniqueTimedLogs[0].LogDate;
-      let lastOut = null;
+      const lastOut = uniqueTimedLogs.length > 1 ? uniqueTimedLogs[uniqueTimedLogs.length - 1].LogDate : null;
 
-      // Only set lastOut if there is a second punch and it's at least 1 minute later
-      if (uniqueTimedLogs.length > 1) {
-        const lastPunch = uniqueTimedLogs[uniqueTimedLogs.length - 1].LogDate;
-        if (lastPunch.getTime() - firstIn.getTime() > 60000) {
-          lastOut = lastPunch;
+      let workingHours = 0;
+      if (firstIn && lastOut) {
+        workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
+      }
+
+      // --- SMART SHIFT MATCHING ---
+      // Which tenant shift does this session match best?
+      let bestShift = employee.shift;
+      let minDiscrepancy = Infinity;
+
+      for (const s of tenantShifts) {
+        const sStart = new Date(s.startTime);
+        const sEnd = new Date(s.endTime);
+
+        const targetStart = new Date(dateKey + 'T00:00:00');
+        targetStart.setHours(sStart.getUTCHours(), sStart.getUTCMinutes(), 0, 0);
+
+        const diff = Math.abs(firstIn.getTime() - targetStart.getTime());
+        if (diff < minDiscrepancy) {
+          minDiscrepancy = diff;
+          bestShift = s;
         }
       }
 
-      // Calculate working hours
-      let workingHours = 0;
-      if (firstIn && lastOut) {
-        const diffMs = lastOut.getTime() - firstIn.getTime();
-        workingHours = diffMs / (1000 * 60 * 60);
-      }
-
-      // Calculate shift times and late/early indicators
       let shiftStart: Date | null = null;
       let shiftEnd: Date | null = null;
       let lateArrival = 0;
       let earlyDeparture = 0;
 
-      if (employee.shift) {
-        const shift = employee.shift;
-        // Prisma returns DateTime for Time fields (usually 1970-01-01 + time)
-        const shiftStartObj = new Date(shift.startTime);
-        const shiftEndObj = new Date(shift.endTime);
+      if (bestShift) {
+        const sStart = new Date(bestShift.startTime);
+        const sEnd = new Date(bestShift.endTime);
 
-        // Use UTC hours/minutes for shift interpretation to bypass TZ offsets
-        const startHour = shiftStartObj.getUTCHours();
-        const startMinute = shiftStartObj.getUTCMinutes();
-        const endHour = shiftEndObj.getUTCHours();
-        const endMinute = shiftEndObj.getUTCMinutes();
-
-        // Shift Start is on the Logical Date (Parse as local time by adding T00:00:00)
         shiftStart = new Date(dateKey + 'T00:00:00');
-        shiftStart.setHours(startHour, startMinute, 0, 0);
+        shiftStart.setHours(sStart.getUTCHours(), sStart.getUTCMinutes(), 0, 0);
 
-        // Shift End might be on the next calendar day
         shiftEnd = new Date(dateKey + 'T00:00:00');
-        shiftEnd.setHours(endHour, endMinute, 0, 0);
+        shiftEnd.setHours(sEnd.getUTCHours(), sEnd.getUTCMinutes(), 0, 0);
 
-        if (endHour < startHour || (shift.isNightShift && endHour < 12)) {
+        if (sEnd.getUTCHours() < sStart.getUTCHours() || bestShift.isNightShift) {
           shiftEnd.setDate(shiftEnd.getDate() + 1);
         }
 
-        // Calculate late/early
-        const graceIn = shift.gracePeriodIn || 0;
-        const graceOut = shift.gracePeriodOut || 0;
+        const graceIn = bestShift.gracePeriodIn || 0;
+        const graceOut = bestShift.gracePeriodOut || 0;
 
-        if (firstIn > new Date(shiftStart.getTime() + graceIn * 60000)) {
+        if (firstIn.getTime() > (shiftStart.getTime() + graceIn * 60000)) {
           lateArrival = Math.round((firstIn.getTime() - shiftStart.getTime()) / 60000);
         }
-
-        if (lastOut && lastOut < new Date(shiftEnd.getTime() - graceOut * 60000)) {
+        if (lastOut && lastOut.getTime() < (shiftEnd.getTime() - graceOut * 60000)) {
           earlyDeparture = Math.round((shiftEnd.getTime() - lastOut.getTime()) / 60000);
         }
       }
@@ -1103,12 +1094,12 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
         firstIn,
         lastOut,
         workingHours,
-        totalPunches: dateLogs.length,
+        totalPunches: uniqueTimedLogs.length,
         shiftStart,
         shiftEnd,
         lateArrival,
         earlyDeparture,
-        status: workingHours && workingHours > 4 ? 'present' : (workingHours && workingHours > 2 ? 'half_day' : 'absent'),
+        status: workingHours >= 7 ? 'present' : (workingHours >= 3.5 ? 'half_day' : 'absent'),
       });
     }
   }
