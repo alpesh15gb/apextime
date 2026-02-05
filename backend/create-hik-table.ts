@@ -70,6 +70,17 @@ async function createTable() {
         `);
         console.log('✅ Table "hikvisionlogs" (lowercase) created successfully!');
 
+        // ALSO Create MINIMAL version for testing
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "hik_minimal" (
+                "id" TEXT NOT NULL,
+                "person_id" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "hik_minimal_pkey" PRIMARY KEY ("id")
+            );
+        `);
+        console.log('✅ Table "hik_minimal" created successfully!');
+
 
     } catch (e) {
         console.error('❌ Error creating table:', e);
