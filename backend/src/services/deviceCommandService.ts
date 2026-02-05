@@ -359,7 +359,18 @@ export class DeviceCommandService {
      */
     formatCommandForDevice(command: any) {
         const { commandType, payload } = command;
-        const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        // Handle plain text payloads vs JSON
+        let data: any = payload;
+        if (typeof payload === 'string') {
+            if (payload.startsWith('C:')) {
+                return payload; // Already formatted command
+            }
+            try {
+                data = JSON.parse(payload);
+            } catch (e) {
+                data = {};
+            }
+        }
 
         // Convert UUID to a simple numeric ID (some devices only accept numbers)
         // We use a simple hash of the UUID string
@@ -408,3 +419,4 @@ export class DeviceCommandService {
         }
     }
 }
+
