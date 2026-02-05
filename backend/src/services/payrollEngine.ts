@@ -175,51 +175,48 @@ export class PayrollEngine {
 
             console.log(`[PAYROLL_ENGINE] Attendance Ratio: ${attendRatio}`);
 
-            // 2. REVERSE CTC LOGIC (Keystone Structure)
+            // 2. REVERSE CTC LOGIC (Match Excel Image Structure)
             let totalEarnings = 0;
             const components: Record<string, number> = {};
 
             if (CTC > 0) {
-                // A. Base Components (Standard Ratios)
-                const monthlyBasic = CTC * 0.40;
-                const monthlyHRA = monthlyBasic * 0.40; // Derived from sheet 3360/8400
-                const monthlyBonus = monthlyBasic * 0.0833;
-                const monthlyGratuity = monthlyBasic * 0.0481;
-                const monthlyEmpPF = monthlyBasic * 0.12;
+                // Fixed PF as per image
+                const monthlyEmpPF = 1800; // Fixed 1800 for both ER and EE
 
-                // Fixed Allowances (Standard)
-                const monthlyLTA = 1050;
-                const monthlyUniform = 3000;
+                // A. Base Components (Standard Ratios from Image)
+                const monthlyBasic = CTC * 0.50;  // 50% Basic
+                const monthlyHRA = CTC * 0.20;    // 20% HRA
+
+                // B. Fixed Allowances (Standard from Image)
+                const monthlyConveyance = 1600;
+                const monthlyMedical = 1250;
                 const monthlyEdu = 200;
 
-                // B. Calculate Gross for ESIC (The Tg variable)
-                // Formula: Tg = (CTC - Bonus - Gratuity) / 1.0325
-                const totalGrossForESIC = (CTC - monthlyBonus - monthlyGratuity) / 1.0325;
-                const monthlyEmpESI = totalGrossForESIC * 0.0325;
-
-                // C. Calculate Gross Salary (Payout Gross)
-                const monthlyGrossSalary = totalGrossForESIC - monthlyEmpPF;
+                // C. Gross Salary (Payout Gross) = CTC - Employer PF
+                const monthlyGrossSalary = CTC - monthlyEmpPF;
 
                 // D. Balancing Figure: Other Allowance
-                const calculatedFixed = monthlyBasic + monthlyHRA + monthlyLTA + monthlyUniform + monthlyEdu;
-                const monthlyOtherAllow = Math.max(0, monthlyGrossSalary - calculatedFixed);
+                // Total earnings sum up to CTC, but the Net is calculated from Gross Salary
+                const calculatedEarnings = monthlyBasic + monthlyHRA + monthlyConveyance + monthlyMedical + monthlyEdu;
+                const monthlyOtherAllow = Math.max(0, CTC - calculatedEarnings);
 
                 // --- PRO-RATA APPLICATION (Attendance Based) ---
                 components['BASIC'] = monthlyBasic * attendRatio;
                 components['HRA'] = monthlyHRA * attendRatio;
-                components['LTA'] = monthlyLTA * attendRatio;
-                components['UNIFORM'] = monthlyUniform * attendRatio;
+                components['CONVEYANCE'] = monthlyConveyance * attendRatio;
+                components['MEDICAL'] = monthlyMedical * attendRatio;
                 components['EDU_ALL'] = monthlyEdu * attendRatio;
                 components['OTHER_ALLOW'] = monthlyOtherAllow * attendRatio;
 
-                // Employer Share (Pro-rated for reporting)
+                // Employer Share (Pro-rated)
                 components['PF_ER'] = monthlyEmpPF * attendRatio;
-                components['ESI_ER'] = monthlyEmpESI * attendRatio;
-                components['BONUS'] = monthlyBonus * attendRatio;
-                components['GRATUITY'] = monthlyGratuity * attendRatio;
 
-                totalEarnings = components['BASIC'] + components['HRA'] + components['LTA'] +
-                    components['UNIFORM'] + components['EDU_ALL'] + components['OTHER_ALLOW'];
+                // Total Earned Salary (Pro-rated CTC)
+                totalEarnings = (monthlyBasic + monthlyHRA + monthlyConveyance + monthlyMedical + monthlyEdu + monthlyOtherAllow) * attendRatio;
+
+                // The actual "Gross" for deduction calculation is CTC - ER PF
+                const proRatedGross = (monthlyGrossSalary) * attendRatio;
+                components['GROSS_FOR_PAYOUT'] = proRatedGross;
             } else {
                 // Fallback to manual components if CTC is not set
                 employee.salaryComponents.forEach(esc => {
@@ -249,29 +246,39 @@ export class PayrollEngine {
                 }
             }
 
-            // 4. DEDUCTIONS
+            // 4. DEDUCTIONS (Match Excel Image Structure)
             let totalDeductions = 0;
 
-            // PF Employee (12% of Basic)
+            // PF Employee (Fixed 1800 pro-rated)
             if (employee.isPFEnabled) {
-                const pfEmp = Math.round((components['BASIC'] || 0) * 0.12);
+                const pfEmp = Math.round(1800 * attendRatio);
                 components['PF_EMP'] = pfEmp;
                 totalDeductions += pfEmp;
             }
 
-            // ESI Employee (0.75% of Total Gross)
+            // PT (Fixed 200 pro-rated)
+            if (employee.isPTEnabled) {
+                const pt = Math.round(200 * attendRatio);
+                components['PT'] = pt;
+                totalDeductions += pt;
+            }
+
+            // TDS (Standard 10% of CTC for this structure)
+            const tds = Math.round(totalEarnings * 0.10);
+            components['TDS'] = tds;
+            totalDeductions += tds;
+
+            // Staff Welfare (Fixed 250)
+            const welfare = 250;
+            components['STAFF_WELFARE'] = welfare;
+            totalDeductions += welfare;
+
+            // ESI Employee (Removed as per image - not shown)
             if (employee.isESIEnabled) {
                 const esiBasis = (totalEarnings + (components['PF_ER'] || 0));
                 const esiEmp = Math.ceil(esiBasis * 0.0075);
                 components['ESI_EMP'] = esiEmp;
                 totalDeductions += esiEmp;
-            }
-
-            // PT (Fixed 150 as per sheet or use calculator)
-            if (employee.isPTEnabled) {
-                const pt = PTCalculator.calculatePT(employee.state, totalEarnings) || 150;
-                components['PT'] = pt;
-                totalDeductions += pt;
             }
 
             // 5. LOANS
@@ -306,7 +313,7 @@ export class PayrollEngine {
                     totalWorkingDays: standardWorkingDays,
                     actualPresentDays: effectivePresentDays,
                     lopDays, paidDays,
-                    grossSalary: Math.round(totalEarnings),
+                    grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
                     totalDeductions: Math.round(totalDeductions),
                     netSalary: netSalary,
                     retentionDeduction: actualRetention,
@@ -314,7 +321,7 @@ export class PayrollEngine {
                     status: 'generated',
                     basicPaid: components['BASIC'] || 0,
                     hraPaid: components['HRA'] || 0,
-                    allowancesPaid: (components['LTA'] || 0) + (components['UNIFORM'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
+                    allowancesPaid: (components['CONVEYANCE'] || 0) + (components['MEDICAL'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
                     otPay: otAmount,
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
@@ -334,7 +341,7 @@ export class PayrollEngine {
                     totalWorkingDays: standardWorkingDays,
                     actualPresentDays: effectivePresentDays,
                     lopDays, paidDays,
-                    grossSalary: Math.round(totalEarnings),
+                    grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
                     totalDeductions: Math.round(totalDeductions),
                     netSalary: netSalary,
                     retentionDeduction: actualRetention,
@@ -342,7 +349,7 @@ export class PayrollEngine {
                     status: 'generated',
                     basicPaid: components['BASIC'] || 0,
                     hraPaid: components['HRA'] || 0,
-                    allowancesPaid: (components['LTA'] || 0) + (components['UNIFORM'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
+                    allowancesPaid: (components['CONVEYANCE'] || 0) + (components['MEDICAL'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
                     otPay: otAmount,
                     pfDeduction: components['PF_EMP'] || 0,
                     esiDeduction: components['ESI_EMP'] || 0,
