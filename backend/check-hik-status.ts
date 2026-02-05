@@ -12,7 +12,7 @@ async function checkHik() {
 
     console.log(`Found ${devices.length} Hikvision devices in DB:`);
     devices.forEach(d => {
-        console.log(` - [${d.id}] ${d.deviceID} (${d.name}) | IP: ${d.ipAddress} | Status: ${d.status} | Last Seen: ${d.lastSeen}`);
+        console.log(` - [${d.id}] ${d.deviceId} (${d.name}) | IP: ${d.ipAddress} | Status: ${d.status} | Last Seen: ${d.lastSeen}`);
     });
 
     // 2. Check for recent raw logs from Hikvision
