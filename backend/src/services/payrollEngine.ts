@@ -78,18 +78,38 @@ export class PayrollEngine {
             const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
             // SYNC WITH MATRIX: Query AttendanceLog table directly
-            // This catches logs even if they are on duplicate employee records with the same code
+            // We search by every possible identifier to be 100% sure
             const logs = await prisma.attendanceLog.findMany({
                 where: {
                     OR: [
                         { employeeId: employee.id },
-                        { employee: { employeeCode: employee.employeeCode } }
+                        { employee: { employeeCode: employee.employeeCode } },
+                        { employee: { deviceUserId: employee.deviceUserId } },
+                        { employee: { sourceEmployeeId: employee.sourceEmployeeId } }
                     ],
                     date: { gte: startOfMonth, lte: endOfMonth }
                 }
             });
 
-            // Get Holidays for standard working days (Sync with Monthly Report)
+            console.log(`[PAYROLL_MATRIX] Search Params for "${employee.firstName}":`);
+            console.log(`   - ID: ${employee.id}`);
+            console.log(`   - Code: ${employee.employeeCode}`);
+            console.log(`   - DeviceID: ${employee.deviceUserId}`);
+            console.log(`   - SourceID: ${employee.sourceEmployeeId}`);
+            console.log(`[PAYROLL_MATRIX] Found ${logs.length} logs in database.`);
+
+            if (logs.length === 0) {
+                // If 0 found, let's see who DOES have logs in this month just to see what the data looks like
+                const sampleLogs = await prisma.attendanceLog.findMany({
+                    where: { date: { gte: startOfMonth, lte: endOfMonth } },
+                    take: 5,
+                    include: { employee: true }
+                });
+                console.log(`[PAYROLL_DIAG] Sample logs in DB for Jan (Count: ${sampleLogs.length}):`);
+                sampleLogs.forEach(s => console.log(`   - Found Log for: ${s.employee?.firstName} (Code: ${s.employee?.employeeCode}, ID: ${s.employeeId})`));
+            }
+
+            // Get Holidays for calculations
             const holidays = await prisma.holiday.findMany({
                 where: {
                     OR: [
@@ -134,8 +154,7 @@ export class PayrollEngine {
             const standardWorkingDays = daysInMonth - matrixSundays;
             const effectivePresentDays = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
 
-            console.log(`[PAYROLL_MATRIX] Emp: ${employee.employeeCode}, Found ${logs.length} logs for Matrix`);
-            console.log(`[PAYROLL_MATRIX] Present: ${matrixPresent}, Half: ${matrixHalfDay}, Holidays: ${matrixHolidayCount}, Effective: ${effectivePresentDays}`);
+            console.log(`[PAYROLL_MATRIX] Final -> Present: ${matrixPresent}, Half: ${matrixHalfDay}, Holidays: ${matrixHolidayCount}, Effective: ${effectivePresentDays}`);
 
             const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
             const paidDays = Math.max(0, standardWorkingDays - lopDays);
