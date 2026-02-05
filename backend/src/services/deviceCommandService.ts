@@ -234,7 +234,8 @@ export class DeviceCommandService {
 
         const internalCmd = await this.queueCommand(deviceId, 'GET_LOGS', payload);
 
-        // Insert into SQL Server for legacy devices
+        // Insert into SQL Server for legacy devices - DISABLED FOR NOW
+        /*
         try {
             const device = await prisma.device.findUnique({ where: { id: deviceId } });
 
@@ -260,6 +261,7 @@ export class DeviceCommandService {
         } catch (error) {
             console.error('Failed to insert command into SQL Server:', error);
         }
+        */
 
         return internalCmd;
     }

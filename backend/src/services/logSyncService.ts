@@ -79,7 +79,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
 
     let allLogs: RawLog[] = [];
 
-    // --- SQL Server Connection (SQL_LOGS) ---
+    /* --- SQL Server Connection (SQL_LOGS) - DISABLED FOR NOW
     // Source 1: Legacy Tenant Settings
     const sqlConfigs: BiometricConfig[] = [];
 
@@ -259,7 +259,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       } catch (hikErr) {
         logger.error(`HikCentral sync failed for tenant ${tenant.id}:`, hikErr);
       }
-    }
+    } */
     // --- HikCentral Sync End ---
 
     // ALSO include logs that are already in RawDeviceLog but haven't been processed yet
