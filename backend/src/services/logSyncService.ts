@@ -974,7 +974,10 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       if (employee.dateOfJoining) {
         const jd = new Date(employee.dateOfJoining);
         jd.setHours(0, 0, 0, 0);
-        if (new Date(log.LogDate) < jd) continue;
+        if (new Date(log.LogDate) < jd) {
+          // logger.debug(`Skipping punch for ${employee.employeeCode} because it is before joining date ${jd.toISOString()}`);
+          continue;
+        }
       }
 
       // Determine the Logical Date for this punch

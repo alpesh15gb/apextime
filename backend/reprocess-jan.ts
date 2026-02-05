@@ -36,6 +36,14 @@ async function run() {
     console.log('\n✅ REPROCESSING COMPLETE');
     console.log(`- Sessions Analyzed: ${result.pairsProcessed}`);
     console.log(`- Matrix Records Updated: ${result.recordsUpdated}`);
+
+    // Add a summary of what's in the attendance log now
+    const totalJan = await prisma.attendanceLog.count({ where: { date: { gte: janStart, lt: new Date('2026-02-01') } } });
+    const totalFeb = await prisma.attendanceLog.count({ where: { date: { gte: new Date('2026-02-01') } } });
+
+    console.log(`\n📊 ATTENDANCE SUMMARY IN DB:`);
+    console.log(`- January 2026: ${totalJan} records`);
+    console.log(`- February 2026: ${totalFeb} records`);
 }
 
 run()
