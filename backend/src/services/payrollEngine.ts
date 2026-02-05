@@ -143,7 +143,7 @@ export class PayrollEngine {
             // Salary is calculated on working days ratio
             const attendRatio = paidDays / standardWorkingDays;
 
-            console.log(`[PAYROLL_ENGINE] Days in Month: ${daysInMonth}, Sundays: ${sundaysInMonth}, Working Days: ${standardWorkingDays}`);
+            console.log(`[PAYROLL_ENGINE] Days in Month: ${daysInMonth}, Sundays: ${matrixSundays}, Working Days: ${standardWorkingDays}`);
             console.log(`[PAYROLL_ENGINE] Paid Days: ${paidDays} / ${standardWorkingDays}`);
 
             console.log(`[PAYROLL_ENGINE] Attendance Ratio: ${attendRatio}`);
