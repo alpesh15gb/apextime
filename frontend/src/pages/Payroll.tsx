@@ -517,7 +517,7 @@ export const Payroll = () => {
                                 </div>
 
                                 {/* Sober Payslip Container */}
-                                <div className="border-2 border-black text-black font-serif text-sm">
+                                <div className="border-[1.5px] border-black text-black font-sans text-sm">
                                     {/* Header Section */}
                                     <div className="border-b-2 border-black p-3 flex gap-4 min-h-[80px]">
                                         <div className="w-24 h-24 flex items-center justify-center border border-gray-200 shrink-0">
@@ -528,8 +528,8 @@ export const Payroll = () => {
                                             )}
                                         </div>
                                         <div className="flex-1 text-center">
-                                            <h1 className="text-2xl font-bold uppercase tracking-wide">{companySettings?.name || 'Apextime Enterprises'}</h1>
-                                            <p className="whitespace-pre-wrap text-sm mt-1">{companySettings?.address || 'No Address Configure'}</p>
+                                            <h1 className="text-xl font-black uppercase tracking-tight">{companySettings?.name || 'Apextime Enterprises'}</h1>
+                                            <p className="whitespace-pre-wrap text-[11px] font-medium leading-relaxed mt-1">{companySettings?.address || 'No Address Configure'}</p>
                                         </div>
                                     </div>
 
