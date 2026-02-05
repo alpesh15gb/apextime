@@ -84,6 +84,20 @@ async function createTable() {
         `);
         console.log('✅ Table "hik_minimal" created successfully!');
 
+        // ALSO Create COMPAT version (VARCHAR, SERIAL ID)
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "hik_compat" (
+                "id" SERIAL PRIMARY KEY,
+                "person_id" VARCHAR(255),
+                "access_datetime" VARCHAR(255),
+                "access_date" VARCHAR(255),
+                "access_time" VARCHAR(255),
+                "auth_result" VARCHAR(255),
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ Table "hik_compat" created successfully!');
+
 
     } catch (e) {
         console.error('❌ Error creating table:', e);
