@@ -110,7 +110,11 @@ export const FieldLogs = () => {
                                     <div
                                         className="flex items-center gap-3 group/loc cursor-pointer"
                                         title="Click to view on Map"
-                                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(log.location || '')}`, '_blank')}
+                                        onClick={() => {
+                                            const parts = log.location?.split(' [');
+                                            const query = parts && parts.length > 1 ? parts[1].replace(']', '') : log.location;
+                                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query || '')}`, '_blank');
+                                        }}
                                     >
                                         <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover/loc:bg-blue-600 group-hover/loc:text-white transition-colors">
                                             <MapPin className="w-5 h-5" />
@@ -118,7 +122,10 @@ export const FieldLogs = () => {
                                         <div className="max-w-[200px]">
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Location</p>
                                             <p className="text-xs font-bold text-gray-700 truncate group-hover/loc:text-blue-600 transition-colors">
-                                                {log.location || 'Unknown Location'}
+                                                {(() => {
+                                                    const parts = log.location?.split(' [') || [log.location];
+                                                    return parts[0] || 'Unknown Location';
+                                                })()}
                                             </p>
                                         </div>
                                     </div>

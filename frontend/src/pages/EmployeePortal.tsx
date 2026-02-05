@@ -31,6 +31,7 @@ export const EmployeePortal = () => {
 
     const [punchData, setPunchData] = useState({
         location: '',
+        coords: '',
         image: '',
         remarks: ''
     });
@@ -113,9 +114,27 @@ export const EmployeePortal = () => {
     const getLocation = () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const loc = `${position.coords.latitude},${position.coords.longitude}`;
-                    setPunchData(prev => ({ ...prev, location: loc }));
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const locCoords = `${latitude},${longitude}`;
+
+                    try {
+                        // Attempt to get a human-readable address
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+                            headers: { 'Accept-Language': 'en' }
+                        });
+                        const data = await response.json();
+                        const address = data.display_name || locCoords;
+
+                        setPunchData(prev => ({
+                            ...prev,
+                            location: address,
+                            coords: locCoords // Keep raw coords for mapping
+                        }));
+                    } catch (e) {
+                        console.error('Reverse geocoding failed', e);
+                        setPunchData(prev => ({ ...prev, location: locCoords }));
+                    }
                 },
                 () => alert("GPS access required for field attendance.")
             );
@@ -129,9 +148,11 @@ export const EmployeePortal = () => {
         }
         try {
             setLoading(true);
-            await fieldLogsAPI.punch({ type: isPunching, ...punchData });
+            // Send Both address and coordinates if available
+            const finalLocation = punchData.coords ? `${punchData.location} [${punchData.coords}]` : punchData.location;
+            await fieldLogsAPI.punch({ type: isPunching, ...punchData, location: finalLocation });
             setIsPunching(null);
-            setPunchData({ location: '', image: '', remarks: '' });
+            setPunchData({ location: '', coords: '', image: '', remarks: '' });
             alert("Punch submitted! Please wait for HR approval.");
         } catch (e) {
             alert('Punch failed.');
