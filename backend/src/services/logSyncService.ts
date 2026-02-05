@@ -1055,7 +1055,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
         lateArrival: 0,
         earlyDeparture: 0,
         status: status,
-        shiftId: employee.shiftId
+
       });
     }
 
