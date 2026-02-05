@@ -67,6 +67,9 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
         SN = SN.toString().trim();
     }
 
+    // DEBUG: Log every POST to cdata
+    logger.info(`[ICLOCK_POST] Incoming POST from SN: ${SN}, Table: ${table}, BodySize: ${req.body?.length || 0}`);
+
     // RealTime devices may send SN in POST body instead of query params
     if (!SN && req.body) {
         let bodyStr = '';
@@ -413,22 +416,25 @@ router.post('/devicecmd*', async (req, res) => {
         });
 
         // Search for the command and update it
-        // Since we use UUIDs and the device might send back a shorter ID, 
-        // we usually just mark the latest 'sent' command as 'executed'
-        const lastSentCommand = await prisma.deviceCommand.findFirst({
-            where: { deviceId: device.id, status: 'sent' },
-            orderBy: { sentAt: 'desc' }
+        // We match by command ID sent in the request (ID=xxxx)
+        const commandToUpdate = await prisma.deviceCommand.findFirst({
+            where: {
+                deviceId: device.id,
+                status: { in: ['SENT', 'sent', 'PENDING'] }
+            },
+            orderBy: { createdAt: 'desc' }
         });
 
-        if (lastSentCommand) {
+        if (commandToUpdate) {
             await prisma.deviceCommand.update({
-                where: { id: lastSentCommand.id },
+                where: { id: commandToUpdate.id },
                 data: {
-                    status: result === '0' ? 'executed' : 'failed',
+                    status: result === '0' ? 'COMPLETED' : 'failed',
+                    completedAt: new Date(),
                     response: body
                 }
             });
-            logger.info(`Command ${lastSentCommand.id} on ${SN} result: ${result === '0' ? 'SUCCESS' : 'FAILED'}`);
+            logger.info(`[ICLOCK_CMD] Command ${commandToUpdate.id} Result: ${result === '0' ? 'SUCCESS' : 'FAILED'}`);
         }
     }
 
