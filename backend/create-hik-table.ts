@@ -40,6 +40,37 @@ async function createTable() {
         await prisma.$executeRawUnsafe(`ALTER TABLE "HikvisionLogs" ADD COLUMN IF NOT EXISTS "pic_url" TEXT;`);
 
         console.log('✅ Table "HikvisionLogs" updated successfully!');
+
+        // ALSO Create LOWERCASE version to handle case-sensitivity issues
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "hikvisionlogs" (
+                "id" TEXT NOT NULL,
+                "person_id" TEXT,
+                "access_datetime" TEXT,
+                "access_date" TEXT,
+                "access_time" TEXT,
+                "auth_result" TEXT,
+                "device_name" TEXT,
+                "serial_no" TEXT,
+                "person_name" TEXT,
+                "emp_dept" TEXT,
+                "card_no" TEXT,
+                "direction" TEXT,
+                "mask_status" TEXT,
+                "auth_type" TEXT,
+                "temp_status" TEXT,
+                "reader_name" TEXT,
+                "resource_name" TEXT,
+                "pic_url" TEXT,
+                "temp_val" TEXT,
+                "is_processed" BOOLEAN NOT NULL DEFAULT false,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "hikvisionlogs_pkey" PRIMARY KEY ("id")
+            );
+        `);
+        console.log('✅ Table "hikvisionlogs" (lowercase) created successfully!');
+
+
     } catch (e) {
         console.error('❌ Error creating table:', e);
     }
