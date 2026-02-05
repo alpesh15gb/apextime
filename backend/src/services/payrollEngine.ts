@@ -74,38 +74,68 @@ export class PayrollEngine {
 
             // 1. Calculate Days (Improved: Handle Working Days strictly)
             const daysInMonth = new Date(year, month, 0).getDate();
-            const startRange = new Date(year, month - 1, 1);
-            const endRange = new Date(year, month, 0, 23, 59, 59);
+            const startOfMonth = new Date(year, month - 1, 1);
+            const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
-            console.log(`[PAYROLL_DIAG] Searching Logs from ${startRange.toISOString()} to ${endRange.toISOString()}`);
+            // SYNC WITH MATRIX: Query AttendanceLog table directly
+            // This catches logs even if they are on duplicate employee records with the same code
+            const logs = await prisma.attendanceLog.findMany({
+                where: {
+                    OR: [
+                        { employeeId: employee.id },
+                        { employee: { employeeCode: employee.employeeCode } }
+                    ],
+                    date: { gte: startOfMonth, lte: endOfMonth }
+                }
+            });
 
-            // Calculate how many Sundays are in this month
-            let sundaysInMonth = 0;
+            // Get Holidays for standard working days (Sync with Monthly Report)
+            const holidays = await prisma.holiday.findMany({
+                where: {
+                    OR: [
+                        { date: { gte: startOfMonth, lte: endOfMonth } },
+                        { isRecurring: true }
+                    ],
+                    tenantId: employee.tenantId
+                }
+            });
+
+            const holidayDays = new Set<number>();
+            holidays.forEach(h => {
+                const d = new Date(h.date);
+                if (h.isRecurring || (d.getMonth() + 1 === month && d.getFullYear() === year)) {
+                    holidayDays.add(d.getDate());
+                }
+            });
+
+            let matrixPresent = 0;
+            let matrixHalfDay = 0;
+            let matrixPaidLeave = 0;
+            let matrixHolidayCount = 0;
+            let matrixSundays = 0;
+
             for (let d = 1; d <= daysInMonth; d++) {
-                if (new Date(year, month - 1, d).getDay() === 0) sundaysInMonth++;
+                const date = new Date(year, month - 1, d);
+                const isSunday = date.getDay() === 0;
+                const isHoliday = holidayDays.has(d);
+
+                if (isSunday) matrixSundays++;
+                else if (isHoliday) matrixHolidayCount++;
+
+                const dayLog = logs.find(l => new Date(l.date).getDate() === d);
+                if (dayLog) {
+                    const status = (dayLog.status || '').toLowerCase().trim();
+                    if (status === 'present' || status === 'late') matrixPresent++;
+                    else if (status === 'half_day') matrixHalfDay++;
+                    else if (status === 'leave_paid') matrixPaidLeave++;
+                }
             }
 
-            const standardWorkingDays = daysInMonth - sundaysInMonth; // e.g. 26 or 27
+            const standardWorkingDays = daysInMonth - matrixSundays;
+            const effectivePresentDays = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
 
-            // DEEP SCAN: Find ALL logs for this employee to see if they are in the wrong month
-            const allLogs = await prisma.attendanceLog.findMany({
-                where: { employeeId: employee.id },
-                orderBy: { date: 'desc' },
-                take: 31
-            });
-            console.log(`[PAYROLL_DIAG] TOTAL LOGS IN DB FOR ${employee.employeeCode}: ${allLogs.length}`);
-            allLogs.forEach(l => console.log(`   - [DB_LOG]: ${l.date.toISOString().split('T')[0]} Status: "${l.status}"`));
-
-            const presentDays = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'present').length;
-            const holidays = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'holiday').length;
-            const leaves = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'leave_paid').length;
-            const halfDayCount = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'half_day').length;
-
-            console.log(`[PAYROLL_DIAG] Employee: ${employee.firstName}, Period Logs (Jan): ${employee.attendanceLogs.length}`);
-
-            // Strict calculation based on available logs
-            let effectivePresentDays = presentDays + holidays + leaves + (halfDayCount * 0.5);
-            console.log(`[PAYROLL_ENGINE] Effective: ${effectivePresentDays}, Standard: ${standardWorkingDays}`);
+            console.log(`[PAYROLL_MATRIX] Emp: ${employee.employeeCode}, Found ${logs.length} logs for Matrix`);
+            console.log(`[PAYROLL_MATRIX] Present: ${matrixPresent}, Half: ${matrixHalfDay}, Holidays: ${matrixHolidayCount}, Effective: ${effectivePresentDays}`);
 
             const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
             const paidDays = Math.max(0, standardWorkingDays - lopDays);
