@@ -970,15 +970,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
     const sessions = new Map<string, RawLog[]>(); // dateKey -> logs
 
     for (const log of userLogs) {
-      // Identity & Join Date checks...
-      if (employee.dateOfJoining) {
-        const jd = new Date(employee.dateOfJoining);
-        jd.setHours(0, 0, 0, 0);
-        if (new Date(log.LogDate) < jd) {
-          // logger.debug(`Skipping punch for ${employee.employeeCode} because it is before joining date ${jd.toISOString()}`);
-          continue;
-        }
-      }
+      // Process all punches (Joining date filter removed as requested)
 
       // Determine the Logical Date for this punch
       // A punch belongs to "today" if it's generally during "today's" expected work hours
