@@ -69,10 +69,10 @@ export class PayrollEngine {
             const allLogs = await prisma.attendanceLog.findMany({
                 where: { employeeId: employee.id },
                 orderBy: { date: 'desc' },
-                take: 10
+                take: 31
             });
-            console.log(`[PAYROLL_DIAG] TOTAL LOGS IN DB FOR THIS EMP: ${allLogs.length}`);
-            allLogs.forEach(l => console.log(`   - Log: ${l.date.toISOString()} | Status: ${l.status}`));
+            console.log(`[PAYROLL_DIAG] TOTAL LOGS IN DB FOR ${employee.employeeCode}: ${allLogs.length}`);
+            allLogs.forEach(l => console.log(`   - [DB_LOG]: ${l.date.toISOString().split('T')[0]} Status: "${l.status}"`));
 
             const presentDays = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'present').length;
             const holidays = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'holiday').length;
