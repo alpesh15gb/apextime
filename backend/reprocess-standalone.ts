@@ -5,9 +5,9 @@ const prisma = new PrismaClient();
 async function reprocessStandalone() {
     console.log('🚀 STARTING STANDALONE REPROCESS (IST MODE)...');
 
-    // 1. Fetch ALL Raw Logs for Jan 2026
+    // 1. Fetch ALL Raw Logs for Jan-Feb 2026
     const start = new Date('2026-01-01T00:00:00Z');
-    const end = new Date('2026-02-01T00:00:00Z');
+    const end = new Date('2026-03-01T00:00:00Z');
 
     console.log('📥 Fetching raw logs...');
     const allLogs = await prisma.rawDeviceLog.findMany({
