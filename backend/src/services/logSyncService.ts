@@ -1059,69 +1059,11 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       });
     }
 
-    // Skip the old logic block
-    continue;
-
-    // ... (Rest of old logic is skipped by the continue above) ...
-
-    for (const s of tenantShifts) {
-      const sStart = new Date(s.startTime);
-      const sEnd = new Date(s.endTime);
-
-      const targetStart = new Date(dateKey + 'T00:00:00');
-      targetStart.setHours(sStart.getUTCHours(), sStart.getUTCMinutes(), 0, 0);
-
-      const diff = Math.abs(firstIn.getTime() - targetStart.getTime());
-      if (diff < minDiscrepancy) {
-        minDiscrepancy = diff;
-        bestShift = s;
-      }
-    }
-
-    let shiftStart: Date | null = null;
-    let shiftEnd: Date | null = null;
-    let lateArrival = 0;
-    let earlyDeparture = 0;
-
-    if (bestShift) {
-      const sStart = new Date(bestShift.startTime);
-      const sEnd = new Date(bestShift.endTime);
-
-      shiftStart = new Date(dateKey + 'T00:00:00');
-      shiftStart.setHours(sStart.getUTCHours(), sStart.getUTCMinutes(), 0, 0);
-
-      shiftEnd = new Date(dateKey + 'T00:00:00');
-      shiftEnd.setHours(sEnd.getUTCHours(), sEnd.getUTCMinutes(), 0, 0);
-
-      if (sEnd.getUTCHours() < sStart.getUTCHours() || bestShift.isNightShift) {
-        shiftEnd.setDate(shiftEnd.getDate() + 1);
-      }
-
-      const graceIn = bestShift.gracePeriodIn || 0;
-      const graceOut = bestShift.gracePeriodOut || 0;
-
-      if (firstIn.getTime() > (shiftStart.getTime() + graceIn * 60000)) {
-        lateArrival = Math.round((firstIn.getTime() - shiftStart.getTime()) / 60000);
-      }
-      if (lastOut && lastOut.getTime() < (shiftEnd.getTime() - graceOut * 60000)) {
-        earlyDeparture = Math.round((shiftEnd.getTime() - lastOut.getTime()) / 60000);
-      }
-    }
-
-    processedResults.push({
-      employeeId: employee.id,
-      date: new Date(dateKey + 'T00:00:00'),
-      firstIn,
-      lastOut,
-      workingHours,
-      totalPunches: uniqueTimedLogs.length,
-      shiftStart,
-      shiftEnd,
-      lateArrival,
-      earlyDeparture,
-      status: workingHours >= 7 ? 'present' : (workingHours >= 3.5 ? 'half_day' : 'absent'),
-    });
+    // Old logic removed
   }
+}
+
+return processedResults;
 }
 
 return processedResults;
