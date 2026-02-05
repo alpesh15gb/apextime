@@ -1061,9 +1061,9 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
     // Old logic removed
   }
-}
 
-return processedResults;
+
+  return processedResults;
 }
 
 
