@@ -189,6 +189,8 @@ router.post(
         ifscCode,
         panNumber,
         aadhaarNumber,
+        monthlyCtc,
+        retentionAmount,
       } = req.body;
 
       // Check if employee code already exists within this tenant
@@ -239,6 +241,8 @@ router.post(
             ifscCode,
             panNumber,
             aadhaarNumber,
+            monthlyCtc: sanitizeNumber(monthlyCtc),
+            retentionAmount: sanitizeNumber(retentionAmount),
           },
           include: {
             department: true,
@@ -303,7 +307,9 @@ router.put('/:id', async (req, res) => {
       accountNumber,
       ifscCode,
       panNumber,
-      aadhaarNumber
+      aadhaarNumber,
+      monthlyCtc,
+      retentionAmount,
     } = req.body;
 
     const employee = await prisma.employee.update({
@@ -335,6 +341,8 @@ router.put('/:id', async (req, res) => {
         ifscCode,
         panNumber,
         aadhaarNumber,
+        monthlyCtc: monthlyCtc !== undefined ? sanitizeNumber(monthlyCtc) : undefined,
+        retentionAmount: retentionAmount !== undefined ? sanitizeNumber(retentionAmount) : undefined,
       },
       include: {
         department: true,
