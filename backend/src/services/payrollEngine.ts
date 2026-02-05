@@ -70,15 +70,10 @@ export class PayrollEngine {
             const leaves = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'leave_paid').length;
             const halfDayCount = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'half_day').length;
 
-            // In our system, if logs are sparse, we assume they were present on all working days
+            // Strict calculation based on available logs
             let effectivePresentDays = presentDays + holidays + leaves + (halfDayCount * 0.5);
 
-            // Fallback: ONLY if there are exactly ZERO logs for the period AND the employee is active, we assume full attendance (e.g. for new setups)
-            // If they have ANY logs (even 1), we respect those logs and don't fallback to full pay.
-            if (employee.attendanceLogs.length === 0 && employee.isActive) {
-                console.log(`[PAYROLL_ENGINE] Zero attendance logs for ${employee.firstName}. Using fallback for demo.`);
-                effectivePresentDays = standardWorkingDays;
-            }
+            console.log(`[PAYROLL_ENGINE] Found ${employee.attendanceLogs.length} logs. Present: ${presentDays}, Holidays: ${holidays}, Paid Leaves: ${leaves}`);
 
             const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
             const paidDays = Math.max(0, standardWorkingDays - lopDays);
