@@ -359,28 +359,37 @@ export class DeviceCommandService {
         const { commandType, payload } = command;
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
+        // Convert UUID to a simple numeric ID (some devices only accept numbers)
+        // We use a simple hash of the UUID string
+        let numericId = 0;
+        for (let i = 0; i < command.id.length; i++) {
+            numericId = ((numericId << 5) - numericId) + command.id.charCodeAt(i);
+            numericId |= 0; // Convert to 32bit integer
+        }
+        const cleanId = Math.abs(numericId % 10000); // 0-9999 range
+
         switch (commandType) {
             case 'UPLOAD_USER':
                 // Format: C:ID:userId:name:cardNo:privilege:password
-                return `C:${command.id}:DATA USER PIN=${data.userId}\tName=${data.name}\tPri=${data.privilege}\tPasswd=${data.password}\tCard=${data.cardNo}\tGrp=${data.department}`;
+                return `C:${cleanId}:DATA USER PIN=${data.userId}\tName=${data.name}\tPri=${data.privilege}\tPasswd=${data.password}\tCard=${data.cardNo}\tGrp=${data.department}`;
 
             case 'DELETE_USER':
                 // Format: C:ID:userId
-                return `C:${command.id}:DATA DELETE USER PIN=${data.userId}`;
+                return `C:${cleanId}:DATA DELETE USER PIN=${data.userId}`;
 
             case 'CLEAR_ALL_USERS':
-                return `C:${command.id}:DATA DELETE USER`;
+                return `C:${cleanId}:DATA DELETE USER`;
 
             case 'SYNC_TIME':
                 const time = new Date(data.timestamp);
                 const timeStr = time.toISOString().replace('T', ' ').substring(0, 19);
-                return `C:${command.id}:DATA UPDATE STIME ${timeStr}`;
+                return `C:${cleanId}:DATA UPDATE STIME ${timeStr}`;
 
             case 'RESTART':
-                return `C:${command.id}:DATA RESTART`;
+                return `C:${cleanId}:DATA RESTART`;
 
             case 'GET_LOGS':
-                let cmd = `C:${command.id}:DATA QUERY ATTLOG`;
+                let cmd = `C:${cleanId}:DATA QUERY ATTLOG`;
                 if (data.startTime) {
                     cmd += ` StartTime=${data.startTime}`;
                 }
@@ -390,10 +399,10 @@ export class DeviceCommandService {
                 return cmd;
 
             case 'GET_USERS':
-                return `C:${command.id}:DATA QUERY USERINFO`;
+                return `C:${cleanId}:DATA QUERY USERINFO`;
 
             default:
-                return `C:${command.id}:${commandType}`;
+                return `C:${cleanId}:${commandType}`;
         }
     }
 }
