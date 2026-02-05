@@ -1,6 +1,6 @@
 import express from 'express';
 import { prisma, basePrisma } from '../config/database';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import bcrypt from 'bcryptjs';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticate, authorize('superadmin'));
 
 // Get all tenants
-router.get('/', async (req, res) => {
+router.get('/', async (req: AuthRequest, res) => {
     try {
         console.log(`[TENANTS_API] Fetching all tenants for user: ${req.user?.username} (Role: ${req.user?.role})`);
 
