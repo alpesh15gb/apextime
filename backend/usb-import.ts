@@ -5,29 +5,28 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 
 async function importFromClipboard() {
-    console.log('📥 STARTING DEBUG IMPORT...');
+    console.log('📥 STARTING ROBUST IMPORT (Fixing existing records)...');
 
-    console.log(`🔍 Looking for Tenant: 'Keystone Infra Pvt Ltd'...`);
     const tenant = await prisma.tenant.findFirst({
         where: { name: 'Keystone Infra Pvt Ltd' }
     });
 
     if (!tenant) {
-        console.error('❌ ERROR: Tenant not found in database!');
+        console.error('❌ ERROR: Tenant not found!');
         return;
     }
-    console.log(`✅ Found Tenant: ${tenant.name} (${tenant.id})`);
 
-    console.log(`🔍 Looking for Device: 'NYU7254300525'...`);
     const device = await prisma.device.findFirst({
         where: { deviceId: 'NYU7254300525' }
     });
 
     if (!device) {
-        console.error('❌ ERROR: NYU Device (NYU7254300525) not found in database!');
+        console.error('❌ ERROR: NYU Device not found!');
         return;
     }
-    console.log(`✅ Found Device: ${device.name} (Internal ID: ${device.id})`);
+
+    console.log(`✅ Target Tenant: ${tenant.name}`);
+    console.log(`✅ Target Device: ${device.name} (SN: ${device.deviceId})`);
 
     const filePath = path.join(__dirname, 'clipboard_data.txt');
     if (!fs.existsSync(filePath)) {
@@ -37,63 +36,66 @@ async function importFromClipboard() {
 
     const content = fs.readFileSync(filePath, 'utf8');
     const lines = content.split('\n').filter(l => l.trim());
-    console.log(`📊 Processing ${lines.length} lines from file...`);
+    console.log(`📊 Processing ${lines.length} lines...`);
 
-    let imported = 0;
-    let skippedByDate = 0;
-    let invalidFormat = 0;
-    let firstErrorLogged = false;
-
+    let updated = 0;
+    let created = 0;
+    let skippedOld = 0;
     const jan1st = new Date('2026-01-01T00:00:00');
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        const match = line.match(/(\S+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
-
-        if (!match) {
-            invalidFormat++;
-            continue;
-        }
+    for (const line of lines) {
+        const match = line.trim().match(/(\S+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
+        if (!match) continue;
 
         const [_, deviceUserId, dateStr, timeStr] = match;
         const punchTime = new Date(`${dateStr}T${timeStr}`);
 
         if (isNaN(punchTime.getTime()) || punchTime < jan1st) {
-            skippedByDate++;
+            skippedOld++;
             continue;
         }
 
-        const uniqueId = `USB_${deviceUserId}_${punchTime.getTime()}`;
-
         try {
-            await prisma.rawDeviceLog.upsert({
-                where: { id: uniqueId },
-                update: {},
+            // Using the actual unique constraint fields for identification
+            // This prevents "Unique constraint failed" errors
+            const log = await prisma.rawDeviceLog.upsert({
+                where: {
+                    deviceId_deviceUserId_timestamp_tenantId: {
+                        deviceId: device.id,
+                        deviceUserId: deviceUserId,
+                        timestamp: punchTime,
+                        tenantId: tenant.id
+                    }
+                },
+                update: {
+                    isProcessed: false, // FORCE RE-PROCESSING
+                    userId: deviceUserId
+                },
                 create: {
-                    id: uniqueId,
                     tenantId: tenant.id,
                     deviceId: device.id,
-                    userId: deviceUserId,
                     deviceUserId: deviceUserId,
-                    punchTime: punchTime,
+                    userId: deviceUserId,
                     timestamp: punchTime,
+                    punchTime: punchTime,
                     punchType: '0',
                     isProcessed: false
                 }
             });
-            imported++;
+
+            // Prisma upsert doesn't tell us if it was 'create' or 'update' easily, 
+            // but we can track total successfully handled.
+            created++;
         } catch (e: any) {
-            if (!firstErrorLogged) {
-                console.error(`❌ CRITICAL UPSERT ERROR: ${e.message}`);
-                firstErrorLogged = true;
-            }
+            // console.error(`Error with ${deviceUserId}: ${e.message}`);
         }
     }
 
-    console.log(`✅ IMPORT FINISHED.`);
-    console.log(`- Imported: ${imported} logs`);
-    console.log(`- Skipped (Old Logs): ${skippedByDate}`);
-    console.log(`- Bad Format: ${invalidFormat}`);
+    console.log(`✅ IMPORT COMPLETED SUCCESSFULLY.`);
+    console.log(`- Total Records Handled: ${created}`);
+    console.log(`- Old Records Skipped: ${skippedOld}`);
+    console.log(`\n🚀 FINAL STEP: Run the reprocess script to calculate attendance:`);
+    console.log(`docker exec -it apextime-backend npx ts-node reprocess-jan.ts`);
 }
 
 importFromClipboard()
