@@ -78,25 +78,24 @@ export class PayrollEngine {
             const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
             // SYNC WITH MATRIX: Query AttendanceLog table directly
-            // We search by every possible identifier to be 100% sure
+            // We build the OR condition dynamically to avoid matching nulls to the whole DB
+            const orConditions: any[] = [
+                { employeeId: employee.id }
+            ];
+
+            if (employee.employeeCode) orConditions.push({ employee: { employeeCode: employee.employeeCode } });
+            if (employee.deviceUserId) orConditions.push({ employee: { deviceUserId: employee.deviceUserId } });
+            if (employee.sourceEmployeeId) orConditions.push({ employee: { sourceEmployeeId: employee.sourceEmployeeId } });
+
             const logs = await prisma.attendanceLog.findMany({
                 where: {
-                    OR: [
-                        { employeeId: employee.id },
-                        { employee: { employeeCode: employee.employeeCode } },
-                        { employee: { deviceUserId: employee.deviceUserId } },
-                        { employee: { sourceEmployeeId: employee.sourceEmployeeId } }
-                    ],
+                    OR: orConditions,
                     date: { gte: startOfMonth, lte: endOfMonth }
                 }
             });
 
-            console.log(`[PAYROLL_MATRIX] Search Params for "${employee.firstName}":`);
-            console.log(`   - ID: ${employee.id}`);
-            console.log(`   - Code: ${employee.employeeCode}`);
-            console.log(`   - DeviceID: ${employee.deviceUserId}`);
-            console.log(`   - SourceID: ${employee.sourceEmployeeId}`);
-            console.log(`[PAYROLL_MATRIX] Found ${logs.length} logs in database.`);
+            console.log(`[PAYROLL_MATRIX] Search Identifiers: ID=${employee.id}, Code=${employee.employeeCode}, Device=${employee.deviceUserId}`);
+            console.log(`[PAYROLL_MATRIX] Final Log Count for this employee: ${logs.length}`);
 
             if (logs.length === 0) {
                 // If 0 found, let's see who DOES have logs in this month just to see what the data looks like
