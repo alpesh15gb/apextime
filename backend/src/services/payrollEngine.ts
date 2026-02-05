@@ -32,7 +32,7 @@ export class PayrollEngine {
                         where: {
                             date: {
                                 gte: new Date(year, month - 1, 1),
-                                lte: new Date(year, month, 0)
+                                lte: new Date(year, month, 0, 23, 59, 59) // Last day of month
                             }
                         }
                     },
@@ -51,14 +51,22 @@ export class PayrollEngine {
 
             if (!employee) return { success: false, error: 'Employee not found' };
 
-            // DUPLICATE SCAN: Check if there's another record for the same code
-            const others = await prisma.employee.findMany({
-                where: { employeeCode: employee.employeeCode, id: { not: employee.id } },
+            // FUZZY SCAN: Check for anyone else with the same name or partial code
+            const similar = await prisma.employee.findMany({
+                where: {
+                    OR: [
+                        { employeeCode: { contains: employee.employeeCode.trim() } },
+                        { AND: [{ firstName: employee.firstName }, { lastName: employee.lastName }] }
+                    ]
+                },
                 include: { _count: { select: { attendanceLogs: true } } }
             });
-            if (others.length > 0) {
-                console.log(`[PAYROLL_DIAG] !!! WARNING: FOUND ${others.length} DUPLICATE EMPLOYEES for code ${employee.employeeCode}`);
-                others.forEach(o => console.log(`[PAYROLL_DIAG] - Duplicate ID: ${o.id}, FirstName: ${o.firstName}, Logs: ${o._count.attendanceLogs}`));
+
+            if (similar.length > 1) {
+                console.log(`[PAYROLL_DIAG] !!! POTENTIAL DUPLICATES DETECTED (${similar.length} records found)`);
+                similar.forEach(s => {
+                    console.log(`   - RECORD: [ID=${s.id}] [CODE=${s.employeeCode}] [NAME=${s.firstName} ${s.lastName}] [LOGS=${s._count.attendanceLogs}]`);
+                });
             }
 
             const CTC = employee.monthlyCtc || 0;
@@ -66,6 +74,10 @@ export class PayrollEngine {
 
             // 1. Calculate Days (Improved: Handle Working Days strictly)
             const daysInMonth = new Date(year, month, 0).getDate();
+            const startRange = new Date(year, month - 1, 1);
+            const endRange = new Date(year, month, 0, 23, 59, 59);
+
+            console.log(`[PAYROLL_DIAG] Searching Logs from ${startRange.toISOString()} to ${endRange.toISOString()}`);
 
             // Calculate how many Sundays are in this month
             let sundaysInMonth = 0;
