@@ -65,13 +65,21 @@ export class PayrollEngine {
 
             const standardWorkingDays = daysInMonth - sundaysInMonth; // e.g. 26 or 27
 
-            const presentDays = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'present').length;
-            const holidays = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'holiday').length;
-            const leaves = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'leave_paid').length;
-            const halfDayCount = employee.attendanceLogs.filter(l => l.status.toLowerCase() === 'half_day').length;
+            // DEEP SCAN: Find ALL logs for this employee to see if they are in the wrong month
+            const allLogs = await prisma.attendanceLog.findMany({
+                where: { employeeId: employee.id },
+                orderBy: { date: 'desc' },
+                take: 10
+            });
+            console.log(`[PAYROLL_DIAG] TOTAL LOGS IN DB FOR THIS EMP: ${allLogs.length}`);
+            allLogs.forEach(l => console.log(`   - Log: ${l.date.toISOString()} | Status: ${l.status}`));
 
-            console.log(`[PAYROLL_DIAG] Employee: ${employee.firstName}, Logs: ${employee.attendanceLogs.length}`);
-            employee.attendanceLogs.slice(0, 5).forEach(l => console.log(`[PAYROLL_DIAG] ${l.date.toISOString().split('T')[0]}: ${l.status}`));
+            const presentDays = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'present').length;
+            const holidays = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'holiday').length;
+            const leaves = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'leave_paid').length;
+            const halfDayCount = employee.attendanceLogs.filter(l => l.status.toLowerCase().trim() === 'half_day').length;
+
+            console.log(`[PAYROLL_DIAG] Employee: ${employee.firstName}, Period Logs (Jan): ${employee.attendanceLogs.length}`);
 
             // Strict calculation based on available logs
             let effectivePresentDays = presentDays + holidays + leaves + (halfDayCount * 0.5);
