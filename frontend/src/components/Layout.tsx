@@ -100,7 +100,21 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           { path: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
           { path: '/tenants', icon: Building2, label: 'Tenants' },
           { path: '/settings', icon: Settings, label: 'System Settings' },
-        ]
+
+          // Show modules if enabled for superadmin tenant
+          { path: '/employees', icon: Users, label: 'Employees', module: 'employees' },
+          { path: '/recruitment', icon: Briefcase, label: 'Recruitment', module: 'recruitment' },
+          { path: '/performance', icon: Award, label: 'Performance', module: 'performance' },
+          { path: '/attendance', icon: ClipboardCheck, label: 'Attendance', module: 'attendance' },
+          { path: '/leaves', icon: Calendar, label: 'Leave', module: 'leaves' },
+          { path: '/expenses', icon: Receipt, label: 'Expenses', module: 'expenses' },
+          { path: '/training', icon: GraduationCap, label: 'Training (LMS)', module: 'training' },
+          { path: '/helpdesk', icon: LifeBuoy, label: 'Helpdesk', module: 'helpdesk' },
+          { path: '/visitors', icon: UserCheck, label: 'Visitors', module: 'visitors' },
+        ].filter(item => {
+          if (!item.module) return true;
+          return user.modules?.includes(item.module);
+        })
         : user?.tenantType === 'SCHOOL'
           ? [
             { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', module: 'core' },

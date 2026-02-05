@@ -11,6 +11,9 @@ router.use(authenticate, authorize('superadmin'));
 // Get all tenants
 router.get('/', async (req, res) => {
     try {
+        console.log(`[TENANTS_API] Fetching all tenants for user: ${req.user?.username} (Role: ${req.user?.role})`);
+
+        // Use basePrisma to explicitly bypass ANY middleware or context
         const tenants = await basePrisma.tenant.findMany({
             include: {
                 _count: {
@@ -21,8 +24,11 @@ router.get('/', async (req, res) => {
                 }
             }
         });
+
+        console.log(`[TENANTS_API] Found ${tenants.length} tenants in database.`);
         res.json(tenants);
     } catch (error) {
+        console.error('[TENANTS_API] CRITICAL ERROR:', error);
         res.status(500).json({ error: 'Failed to fetch tenants' });
     }
 });
