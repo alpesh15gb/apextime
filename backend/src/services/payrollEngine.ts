@@ -54,31 +54,41 @@ export class PayrollEngine {
             const CTC = employee.monthlyCtc || 0;
             console.log(`[PAYROLL_ENGINE] Processing Employee: ${employee.firstName} (CTC: ${CTC}, Active: ${employee.isActive})`);
 
-            // 1. Calculate Days
+            // 1. Calculate Days (Improved: Handle Working Days strictly)
             const daysInMonth = new Date(year, month, 0).getDate();
+
+            // Calculate how many Sundays are in this month
+            let sundaysInMonth = 0;
+            for (let d = 1; d <= daysInMonth; d++) {
+                if (new Date(year, month - 1, d).getDay() === 0) sundaysInMonth++;
+            }
+
+            const standardWorkingDays = daysInMonth - sundaysInMonth; // e.g. 26 or 27
+
             const presentDays = employee.attendanceLogs.filter(l => l.status === 'present').length;
             const weeklyOffs = employee.attendanceLogs.filter(l => l.status === 'weekly_off').length;
             const holidays = employee.attendanceLogs.filter(l => l.status === 'holiday').length;
             const leaves = employee.attendanceLogs.filter(l => l.status === 'leave_paid').length;
             const halfDayCount = employee.attendanceLogs.filter(l => l.status === 'half_day').length;
 
-            let effectivePresentDays = presentDays + weeklyOffs + holidays + leaves + (halfDayCount * 0.5);
+            // In our system, if logs are sparse, we assume they were present on all working days
+            let effectivePresentDays = presentDays + holidays + leaves + (halfDayCount * 0.5);
 
-            // Fallback: Default to full month if logs are missing or sparse for an active employee
-            const isCurrentMonth = new Date().getMonth() + 1 === month && new Date().getFullYear() === year;
-
-            if (employee.isActive && effectivePresentDays === 0) {
-                if (employee.attendanceLogs.length < 5 || isCurrentMonth) {
-                    console.log(`[PAYROLL_ENGINE] Incomplete logs detected for ${employee.firstName}. Using full month fallback.`);
-                    effectivePresentDays = daysInMonth;
-                }
+            // If we have very few logs, assume full attendance for the demo
+            if (employee.attendanceLogs.length < 5 && employee.isActive) {
+                effectivePresentDays = standardWorkingDays;
             }
 
-            const lopDays = Math.max(0, daysInMonth - effectivePresentDays);
-            const paidDays = Math.max(0, daysInMonth - lopDays);
-            const attendRatio = paidDays / daysInMonth;
+            const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
+            const paidDays = Math.max(0, standardWorkingDays - lopDays);
 
-            console.log(`[PAYROLL_ENGINE] Attendance: ${paidDays}/${daysInMonth} days (Ratio: ${attendRatio})`);
+            // Salary is calculated on working days ratio
+            const attendRatio = paidDays / standardWorkingDays;
+
+            console.log(`[PAYROLL_ENGINE] Days in Month: ${daysInMonth}, Sundays: ${sundaysInMonth}, Working Days: ${standardWorkingDays}`);
+            console.log(`[PAYROLL_ENGINE] Paid Days: ${paidDays} / ${standardWorkingDays}`);
+
+            console.log(`[PAYROLL_ENGINE] Attendance Ratio: ${attendRatio}`);
 
             // 2. REVERSE CTC LOGIC (Keystone Structure)
             let totalEarnings = 0;
@@ -208,7 +218,7 @@ export class PayrollEngine {
                     }
                 },
                 update: {
-                    totalWorkingDays: daysInMonth,
+                    totalWorkingDays: standardWorkingDays,
                     actualPresentDays: effectivePresentDays,
                     lopDays, paidDays,
                     grossSalary: Math.round(totalEarnings),
@@ -235,7 +245,7 @@ export class PayrollEngine {
                 create: {
                     tenantId: employee.tenantId,
                     employeeId, month, year,
-                    totalWorkingDays: daysInMonth,
+                    totalWorkingDays: standardWorkingDays,
                     actualPresentDays: effectivePresentDays,
                     lopDays, paidDays,
                     grossSalary: Math.round(totalEarnings),
