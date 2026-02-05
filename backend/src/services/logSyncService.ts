@@ -323,13 +323,11 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       for (const emp of existingEmployees) {
         if (emp.sourceEmployeeId) {
           employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
-          const coreSid = getCoreId(emp.sourceEmployeeId);
-          if (coreSid) employeeCache.set(`CORE:${coreSid}`, emp.id);
+          
         }
         if (emp.deviceUserId) {
           employeeCache.set(emp.deviceUserId, emp.id);
-          const coreDid = getCoreId(emp.deviceUserId);
-          if (coreDid) employeeCache.set(`CORE:${coreDid}`, emp.id);
+          
         }
       }
       logger.info(`Loaded ${employeeCache.size} employees into cache`);
@@ -941,11 +939,8 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
   const processedResults: ProcessedAttendance[] = [];
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
-    let employeeId = employeeCache.get(deviceUserId);
-    if (!employeeId) {
-      const coreId = getCoreId(deviceUserId);
-      if (coreId) employeeId = employeeCache.get(`CORE:${coreId}`);
-    }
+    // STRICT MATCHING ONLY - No fuzzy logic
+    const employeeId = employeeCache.get(deviceUserId);
 
     if (!employeeId) continue;
 
@@ -1236,20 +1231,15 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
     employeeCache.clear();
     for (const emp of existingEmployees) {
+      // STRICT MATCHING ONLY - No fuzzy logic
       if (emp.sourceEmployeeId) {
         employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
-        const coreSid = getCoreId(emp.sourceEmployeeId);
-        if (coreSid) employeeCache.set(`CORE:${coreSid}`, emp.id);
       }
       if (emp.deviceUserId) {
         employeeCache.set(emp.deviceUserId, emp.id);
-        const coreDid = getCoreId(emp.deviceUserId);
-        if (coreDid) employeeCache.set(`CORE:${coreDid}`, emp.id);
       }
       if (emp.employeeCode) {
         employeeCache.set(`CODE:${emp.employeeCode}`, emp.id);
-        const coreCode = getCoreId(emp.employeeCode);
-        if (coreCode) employeeCache.set(`CORE:${coreCode}`, emp.id);
       }
     }
     console.log(`Loaded ${employeeCache.size} employee mapping keys into memory for repair.`);
@@ -1313,8 +1303,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
         const results = await processAttendanceLogs(formattedLogs);
 
-        // Get tenantId for this specific employee
-        const empId = employeeCache.get(uId) || employeeCache.get(`CORE:${getCoreId(uId)}`);
+        // Get tenantId for this specific employee - STRICT MATCHING ONLY
+        const empId = employeeCache.get(uId);
         const empForTenant = empId ? await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } }) : null;
         const rlTenantId = empForTenant?.tenantId || '';
         if (!rlTenantId) continue;
@@ -1414,3 +1404,4 @@ if (require.main === module) {
       });
   }
 }
+
