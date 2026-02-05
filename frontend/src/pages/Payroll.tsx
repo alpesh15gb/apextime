@@ -244,6 +244,7 @@ export const Payroll = () => {
             const details = await payrollAPI.getRunDetails(runId);
             setSelectedRun(details.data);
             fetchRuns();
+            alert('Employee payroll processed successfully!');
         } catch (error) {
             alert('Individual processing failed');
         } finally {
@@ -478,10 +479,10 @@ export const Payroll = () => {
                                                             <button
                                                                 onClick={() => handleProcessSingle(selectedRun.id, p.employeeId)}
                                                                 disabled={processing}
-                                                                title="Recalculate Single"
-                                                                className="p-2.5 bg-blue-50 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all"
+                                                                className="px-3 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
                                                             >
-                                                                <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
+                                                                <RefreshCw className={`w-3.5 h-3.5 ${processing ? 'animate-spin' : ''}`} />
+                                                                <span>Process Individual</span>
                                                             </button>
                                                         )}
                                                         <button onClick={() => setSelectedPayroll(p)} className="p-2.5 bg-gray-50 text-gray-300 hover:bg-black hover:text-white rounded-xl transition-all">
@@ -821,11 +822,35 @@ export const Payroll = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-3 pt-8 border-t border-gray-50">
-                                        <button onClick={() => setEditingEmployee(null)} className="px-6 py-3 bg-white border border-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-50">Cancel</button>
-                                        <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center gap-2">
+                                    <div className="flex justify-end gap-3 pt-8 border-t border-gray-100">
+                                        <button type="button" onClick={() => setEditingEmployee(null)} className="px-6 py-3.5 bg-white border border-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-50">Cancel</button>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                try {
+                                                    setLoading(true);
+                                                    await employeesAPI.update(editingEmployee.id, editingEmployee);
+                                                    const draftRun = runs.find(r => r.status === 'draft' || r.status === 'review');
+                                                    if (draftRun) {
+                                                        await payrollAPI.processSingle(draftRun.id, editingEmployee.id);
+                                                        alert('Salary saved and payroll updated for this employee!');
+                                                        setActiveTab('runs');
+                                                        handleViewRun(draftRun);
+                                                    } else {
+                                                        alert('Salary saved! (Pro tip: Create a payroll run first to see calculations)');
+                                                    }
+                                                    setEditingEmployee(null);
+                                                    fetchEmployees();
+                                                } catch (e) { alert('Action failed'); } finally { setLoading(false); }
+                                            }}
+                                            className="px-8 py-3.5 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-100 flex items-center gap-2"
+                                        >
+                                            <RefreshCw className="w-4 h-4" />
+                                            <span>Save & Run Payroll</span>
+                                        </button>
+                                        <button type="submit" className="px-8 py-3.5 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-black flex items-center gap-2">
                                             <Save className="w-4 h-4" />
-                                            <span>Save Structure</span>
+                                            <span>Save Only</span>
                                         </button>
                                     </div>
                                 </form>
