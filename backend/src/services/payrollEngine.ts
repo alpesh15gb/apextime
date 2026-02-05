@@ -51,6 +51,16 @@ export class PayrollEngine {
 
             if (!employee) return { success: false, error: 'Employee not found' };
 
+            // DUPLICATE SCAN: Check if there's another record for the same code
+            const others = await prisma.employee.findMany({
+                where: { employeeCode: employee.employeeCode, id: { not: employee.id } },
+                include: { _count: { select: { attendanceLogs: true } } }
+            });
+            if (others.length > 0) {
+                console.log(`[PAYROLL_DIAG] !!! WARNING: FOUND ${others.length} DUPLICATE EMPLOYEES for code ${employee.employeeCode}`);
+                others.forEach(o => console.log(`[PAYROLL_DIAG] - Duplicate ID: ${o.id}, FirstName: ${o.firstName}, Logs: ${o._count.attendanceLogs}`));
+            }
+
             const CTC = employee.monthlyCtc || 0;
             console.log(`[PAYROLL_ENGINE] Processing Employee: ${employee.firstName} (CTC: ${CTC}, Active: ${employee.isActive})`);
 
