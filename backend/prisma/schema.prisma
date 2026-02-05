@@ -1971,3 +1971,26 @@ model OnboardingTask {
   @@index([tenantId])
   @@index([employeeId])
 }
+
+
+model HikvisionLog {
+  id              String   @id @default(uuid())
+  person_id       String?
+  access_datetime String?
+  access_date     String?
+  access_time     String?
+  auth_result     String?
+  device_name     String?
+  serial_no       String?
+  person_name     String?
+  emp_dept        String?
+  card_no         String?
+  direction       String?
+  mask_status     String?
+  
+  is_processed    Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  @@map("HikvisionLogs")
+}
+
