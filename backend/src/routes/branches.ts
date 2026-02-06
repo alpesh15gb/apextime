@@ -11,8 +11,9 @@ router.get('/', async (req, res) => {
   try {
     const { locationId, isActive } = req.query;
 
-    const where: any = {};
-    if (locationId) where.locationId = locationId as string;
+    const where: any = {
+      tenantId: (req as any).user.tenantId
+    }; if (locationId) where.locationId = locationId as string;
     if (isActive !== undefined) where.isActive = isActive === 'true';
 
     const branches = await prisma.branch.findMany({
