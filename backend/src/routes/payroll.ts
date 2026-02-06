@@ -3,6 +3,7 @@ import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { PayrollEngine } from '../services/payrollEngine';
 import { generateTallyXml } from '../services/tallyExportService';
+import ExcelJS from 'exceljs';
 
 const router = Router();
 
@@ -283,6 +284,178 @@ router.get('/runs/:id/export-tally', authenticate, async (req, res) => {
         res.status(200).send(xml);
 
     } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Detailed Ledger Review Excel Export (Pre-Finalize)
+router.get('/runs/:id/export-review', authenticate, async (req, res) => {
+    try {
+        const run = await prisma.payrollRun.findUnique({ where: { id: req.params.id } });
+        if (!run) return res.status(404).json({ error: 'Run not found' });
+
+        const payrolls = await prisma.payroll.findMany({
+            where: { payrollRunId: req.params.id },
+            include: {
+                employee: {
+                    include: {
+                        designation: true,
+                        department: true,
+                        branch: true
+                    }
+                }
+            },
+            orderBy: { employee: { employeeCode: 'asc' } }
+        });
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Payroll Ledger');
+
+        // Styles
+        const headerStyle: Partial<ExcelJS.Style> = {
+            font: { bold: true, size: 10, name: 'Calibri' },
+            alignment: { vertical: 'middle', horizontal: 'center' },
+            border: {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            },
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } }
+        };
+
+        const titleStyle: Partial<ExcelJS.Style> = {
+            font: { bold: true, size: 14, name: 'Calibri' },
+            alignment: { horizontal: 'center' }
+        };
+
+        // Row 1: Company Title (Placeholder)
+        worksheet.mergeCells('A1:AC1');
+        const titleRow = worksheet.getCell('A1');
+        const monthName = new Date(run.year, run.month - 1).toLocaleString('default', { month: 'long' });
+        titleRow.value = `Payroll Ledger for ${monthName} ${run.year}`;
+        titleRow.style = titleStyle as any;
+
+        // Row 2: Group Headers
+        // Emp Detail (A-F) | Attendance (G-I) | Fixed Salary (J-K) | Earned Salary (L-Q) | Deductions (R-Y) | Net Salary (Z-AA) | Other (AB-AC)
+
+        const setHeader = (cell: string, val: string) => {
+            const c = worksheet.getCell(cell);
+            c.value = val;
+            c.style = headerStyle as any;
+        };
+
+        // Emulating the merged header structure
+        // A2:F2 -> Employee Detail
+        worksheet.mergeCells('A2:F2');
+        setHeader('A2', 'Employee Detail');
+
+        // G2:I2 -> Attendance
+        worksheet.mergeCells('G2:I2');
+        setHeader('G2', 'Attendance');
+
+        // J2:L2 -> Fixed Salary
+        worksheet.mergeCells('J2:L2');
+        setHeader('J2', 'Fixed Salary');
+
+        // M2:Q2 -> Earned Salary
+        worksheet.mergeCells('M2:Q2');
+        setHeader('M2', 'Earned Salary');
+
+        // R2:Y2 -> Deductions
+        worksheet.mergeCells('R2:Y2');
+        setHeader('R2', 'Deductions');
+
+        // Z2:AA2 -> Final Salary / Net
+        worksheet.mergeCells('Z2:AA2');
+        setHeader('Z2', 'Net Salary');
+
+        // AB2:AC2 -> Actions/Notes
+        worksheet.mergeCells('AB2:AC2');
+        setHeader('AB2', 'Final Payable');
+
+        // Row 3: Column Headers
+        const columns = [
+            'SNo', 'Emp Name', 'DESIGNATION', 'DEPT', 'D.O.J.', 'PAN', // Emp Detail
+            'Total Days', 'Paid Days', 'LOP Days', // Attendance
+            'CTC (Monthly)', 'Employer PF', 'Fixed Gross', // Fixed
+            'Basic', 'HRA', 'Conveyance', 'Medical', 'Other Allow', // Earned
+            'TDS', 'Emp PF', 'PT', 'ESI', 'Welfare', 'Insurance', 'Uniform', 'Total Ded', // Deductions
+            'Net Salary', 'Retention', 'Final Pay' // Final
+        ];
+
+        const r3 = worksheet.getRow(3);
+        r3.values = columns;
+        r3.eachCell((cell) => {
+            cell.style = headerStyle as any;
+        });
+
+        // Data Rows
+        payrolls.forEach((p, index) => {
+            const details: any = p.details ? JSON.parse(p.details as string) : {};
+            const e = p.employee;
+
+            // Format dates
+            const doj = e.dateOfJoining ? new Date(e.dateOfJoining).toLocaleDateString() : '-';
+
+            const row = [
+                index + 1,
+                `${e.firstName} ${e.lastName}`,
+                e.designation?.name || '-',
+                e.department?.name || '-',
+                doj,
+                e.panNumber || '-',
+
+                // Attendance
+                p.totalWorkingDays, // Should be Month Days now
+                p.paidDays,
+                p.lopDays,
+
+                // Fixed Salary columns
+                e.monthlyCtc || 0,
+                p.employerPF || 0,
+                p.grossSalary || 0,
+
+                // Earned Salary Breakdown
+                p.basicPaid,
+                p.hraPaid,
+                details['CONVEYANCE'] || 0,
+                details['MEDICAL'] || 0,
+                (details['OTHER_ALLOW'] || 0) + (details['EDU_ALL'] || 0), // Bundle Edu into Other or separate if needed
+
+                // Deductions
+                details['TDS'] || 0,
+                p.pfDeduction,
+                p.ptDeduction,
+                p.esiDeduction,
+                details['STAFF_WELFARE'] || 0,
+                details['INSURANCE'] || 0,
+                details['UNIFORM'] || 0,
+                p.totalDeductions,
+
+                // Net
+                p.netSalary,
+                p.retentionDeduction,
+                p.finalTakeHome
+            ];
+
+            worksheet.addRow(row);
+        });
+
+        // Column Widths
+        worksheet.columns.forEach(column => {
+            column.width = 15;
+        });
+        if (worksheet.getColumn(2)) worksheet.getColumn(2).width = 25; // Name
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=payroll_review_${run.month}_${run.year}.xlsx`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error: any) {
+        console.error('Export Review Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -223,6 +223,20 @@ export const Payroll = () => {
         }
     };
 
+    const handleExportReview = async (id: string) => {
+        try {
+            const res = await payrollAPI.exportReview(id);
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `payroll_review_${id}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+        } catch (e) {
+            alert('Export Review failed');
+        }
+    };
+
     const handleDeleteRun = async (id: string) => {
         if (!window.confirm('Delete this payroll run and all its records? This cannot be undone.')) return;
         try {
@@ -389,6 +403,13 @@ export const Payroll = () => {
                                                 <span>Process Selected ({selectedEmployeeIds.length})</span>
                                             </button>
                                         )}
+                                        <button
+                                            onClick={() => handleExportReview(selectedRun.id)}
+                                            className="px-6 py-4 bg-purple-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-purple-700 shadow-xl shadow-purple-100 flex items-center space-x-3 mr-2"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            <span>Export Review Sheet</span>
+                                        </button>
                                         <button
                                             onClick={() => handleFinalize(selectedRun.id)}
                                             className="px-8 py-4 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 flex items-center space-x-3"

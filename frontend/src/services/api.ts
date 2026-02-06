@@ -190,6 +190,7 @@ export const payrollAPI = {
   generate: (data: any) => api.post('/payroll/generate', data),
   updateSalary: (employeeId: string, data: any) => api.put(`/payroll/salary/${employeeId}`, data),
   processPay: (data: any) => api.post('/payroll/process-pay', data),
+  exportReview: (id: string) => api.get(`/payroll/runs/${id}/export-review`, { responseType: 'blob' }),
 };
 
 export const reportsAPI = {
