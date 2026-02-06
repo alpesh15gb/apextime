@@ -1334,160 +1334,161 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       const affectedPairs = new Set<string>();
       const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
-      const uId = log.deviceUserId || log.userId;
-      if (!uId) continue;
+      for (const log of logs) {
+        const uId = log.deviceUserId || log.userId;
+        if (!uId) continue;
 
-      const istTime = new Date(log.punchTime.getTime() + IST_OFFSET);
-      const hour = istTime.getUTCHours();
-      let y = istTime.getUTCFullYear();
-      let m = istTime.getUTCMonth();
-      let d = istTime.getUTCDate();
+        const istTime = new Date(log.punchTime.getTime() + IST_OFFSET);
+        const hour = istTime.getUTCHours();
+        let y = istTime.getUTCFullYear();
+        let m = istTime.getUTCMonth();
+        let d = istTime.getUTCDate();
 
-      if (hour < 5) {
-        const p = new Date(Date.UTC(y, istTime.getUTCMonth(), istTime.getUTCDate() - 1));
-        y = p.getUTCFullYear();
-        m = p.getUTCMonth();
-        d = p.getUTCDate();
+        if (hour < 5) {
+          const p = new Date(Date.UTC(y, istTime.getUTCMonth(), istTime.getUTCDate() - 1));
+          y = p.getUTCFullYear();
+          m = p.getUTCMonth();
+          d = p.getUTCDate();
+        }
+
+        const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        affectedPairs.add(`${uId}|${dStr}`);
       }
-
-      const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      affectedPairs.add(`${uId}|${dStr}`);
-    }
 
       console.log(`Identified ${affectedPairs.size} employee-day sessions requiring recalculation.`);
 
-    let pairsProcessed = 0;
-    let recordsUpdated = 0;
+      let pairsProcessed = 0;
+      let recordsUpdated = 0;
 
-    for (const pair of affectedPairs) {
-      try {
-        const [uId, dStr] = pair.split('|');
-        // Create a window around the target date to catch night shift logs
-        const targetDate = new Date(dStr + 'T00:00:00Z'); // UTC midnight for @db.Date
-        const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000); // 8 hours before
-        const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);  // 32 hours after
+      for (const pair of affectedPairs) {
+        try {
+          const [uId, dStr] = pair.split('|');
+          // Create a window around the target date to catch night shift logs
+          const targetDate = new Date(dStr + 'T00:00:00Z'); // UTC midnight for @db.Date
+          const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000); // 8 hours before
+          const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);  // 32 hours after
 
-        const dayLogs = await prisma.rawDeviceLog.findMany({
-          where: {
-            OR: [
-              { deviceUserId: uId },
-              { userId: uId }
-            ],
-            punchTime: { gte: windowStart, lt: windowEnd }
-          },
-          orderBy: { punchTime: 'asc' }
-        });
-
-        if (dayLogs.length === 0) continue;
-
-        const formattedLogs: RawLog[] = dayLogs.map(rl => ({
-          DeviceLogId: 0,
-          DeviceId: rl.deviceId,
-          UserId: rl.deviceUserId || rl.userId || '',
-          LogDate: rl.punchTime
-        }));
-
-        const results = await processAttendanceLogs(formattedLogs);
-
-        // Get tenantId for this specific employee - STRICT MATCHING ONLY
-        const empId = employeeCache.get(uId);
-        const empForTenant = empId ? await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } }) : null;
-        const rlTenantId = empForTenant?.tenantId || '';
-        if (!rlTenantId) continue;
-
-        for (const attendance of results) {
-          await prisma.attendanceLog.upsert({
+          const dayLogs = await prisma.rawDeviceLog.findMany({
             where: {
-              employeeId_date_tenantId: {
-                employeeId: attendance.employeeId,
-                date: attendance.date,
-                tenantId: rlTenantId,
-              },
+              OR: [
+                { deviceUserId: uId },
+                { userId: uId }
+              ],
+              punchTime: { gte: windowStart, lt: windowEnd }
             },
-            update: {
-              firstIn: attendance.firstIn,
-              lastOut: attendance.lastOut,
-              workingHours: attendance.workingHours,
-              totalPunches: attendance.totalPunches,
-              shiftStart: attendance.shiftStart,
-              shiftEnd: attendance.shiftEnd,
-              lateArrival: attendance.lateArrival,
-              earlyDeparture: attendance.earlyDeparture,
-              status: attendance.status,
-            },
-            create: {
-              date: attendance.date,
-              firstIn: attendance.firstIn,
-              lastOut: attendance.lastOut,
-              workingHours: attendance.workingHours,
-              totalPunches: attendance.totalPunches,
-              shiftStart: attendance.shiftStart,
-              shiftEnd: attendance.shiftEnd,
-              lateArrival: attendance.lateArrival,
-              earlyDeparture: attendance.earlyDeparture,
-              status: attendance.status,
-              tenant: { connect: { id: rlTenantId } },
-              employee: { connect: { id: attendance.employeeId } }
-            },
+            orderBy: { punchTime: 'asc' }
           });
-          recordsUpdated++;
+
+          if (dayLogs.length === 0) continue;
+
+          const formattedLogs: RawLog[] = dayLogs.map(rl => ({
+            DeviceLogId: 0,
+            DeviceId: rl.deviceId,
+            UserId: rl.deviceUserId || rl.userId || '',
+            LogDate: rl.punchTime
+          }));
+
+          const results = await processAttendanceLogs(formattedLogs);
+
+          // Get tenantId for this specific employee - STRICT MATCHING ONLY
+          const empId = employeeCache.get(uId);
+          const empForTenant = empId ? await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } }) : null;
+          const rlTenantId = empForTenant?.tenantId || '';
+          if (!rlTenantId) continue;
+
+          for (const attendance of results) {
+            await prisma.attendanceLog.upsert({
+              where: {
+                employeeId_date_tenantId: {
+                  employeeId: attendance.employeeId,
+                  date: attendance.date,
+                  tenantId: rlTenantId,
+                },
+              },
+              update: {
+                firstIn: attendance.firstIn,
+                lastOut: attendance.lastOut,
+                workingHours: attendance.workingHours,
+                totalPunches: attendance.totalPunches,
+                shiftStart: attendance.shiftStart,
+                shiftEnd: attendance.shiftEnd,
+                lateArrival: attendance.lateArrival,
+                earlyDeparture: attendance.earlyDeparture,
+                status: attendance.status,
+              },
+              create: {
+                date: attendance.date,
+                firstIn: attendance.firstIn,
+                lastOut: attendance.lastOut,
+                workingHours: attendance.workingHours,
+                totalPunches: attendance.totalPunches,
+                shiftStart: attendance.shiftStart,
+                shiftEnd: attendance.shiftEnd,
+                lateArrival: attendance.lateArrival,
+                earlyDeparture: attendance.earlyDeparture,
+                status: attendance.status,
+                tenant: { connect: { id: rlTenantId } },
+                employee: { connect: { id: attendance.employeeId } }
+              },
+            });
+            recordsUpdated++;
+          }
+          pairsProcessed++;
+          if (pairsProcessed % 50 === 0) console.log(`Progress: ${pairsProcessed}/${affectedPairs.size} sessions repaired...`);
+        } catch (err) {
+          logger.error(`Failed to re-process pair ${pair}:`, err);
         }
-        pairsProcessed++;
-        if (pairsProcessed % 50 === 0) console.log(`Progress: ${pairsProcessed}/${affectedPairs.size} sessions repaired...`);
-      } catch (err) {
-        logger.error(`Failed to re-process pair ${pair}:`, err);
       }
+
+      logger.info(`Reprocessing complete. Pairs: ${pairsProcessed}, Records: ${recordsUpdated}`);
+      return { pairsProcessed, recordsUpdated };
+    } catch (error) {
+      logger.error('Historical re-processing failed:', error);
+      throw error;
     }
-
-    logger.info(`Reprocessing complete. Pairs: ${pairsProcessed}, Records: ${recordsUpdated}`);
-    return { pairsProcessed, recordsUpdated };
-  } catch (error) {
-    logger.error('Historical re-processing failed:', error);
-    throw error;
   }
-}
 
-// Export for manual execution
-if (require.main === module) {
-  const command = process.argv[2];
+  // Export for manual execution
+  if (require.main === module) {
+    const command = process.argv[2];
 
-  if (command === 'sync-names') {
-    syncEmployeeNamesFromDeviceUsers()
-      .then((result) => {
-        console.log(`Name sync complete. Updated: ${result.updated}, Failed: ${result.failed}`);
-        process.exit(0);
-      })
-      .catch((error) => {
-        console.error('Fatal error:', error);
-        process.exit(1);
-      });
-  } else if (command === 'reprocess') {
-    const startDateStr = process.argv[3];
-    const startDate = startDateStr ? new Date(startDateStr) : undefined;
-    reprocessHistoricalLogs(startDate)
-      .then((result) => {
-        console.log(`Reprocessing complete. Sessions: ${result.pairsProcessed}, Updates: ${result.recordsUpdated}`);
-        process.exit(0);
-      })
-      .catch((error) => {
-        console.error('Fatal error:', error);
-        process.exit(1);
-      });
-  } else if (command === 'full-sync') {
-    console.log('Initiating Full Historical Sync (2020-Present)...');
-    startLogSync(true)
-      .then(() => process.exit(0))
-      .catch((error) => {
-        console.error('Fatal error:', error);
-        process.exit(1);
-      });
-  } else {
-    startLogSync()
-      .then(() => process.exit(0))
-      .catch((error) => {
-        console.error('Fatal error:', error);
-        process.exit(1);
-      });
+    if (command === 'sync-names') {
+      syncEmployeeNamesFromDeviceUsers()
+        .then((result) => {
+          console.log(`Name sync complete. Updated: ${result.updated}, Failed: ${result.failed}`);
+          process.exit(0);
+        })
+        .catch((error) => {
+          console.error('Fatal error:', error);
+          process.exit(1);
+        });
+    } else if (command === 'reprocess') {
+      const startDateStr = process.argv[3];
+      const startDate = startDateStr ? new Date(startDateStr) : undefined;
+      reprocessHistoricalLogs(startDate)
+        .then((result) => {
+          console.log(`Reprocessing complete. Sessions: ${result.pairsProcessed}, Updates: ${result.recordsUpdated}`);
+          process.exit(0);
+        })
+        .catch((error) => {
+          console.error('Fatal error:', error);
+          process.exit(1);
+        });
+    } else if (command === 'full-sync') {
+      console.log('Initiating Full Historical Sync (2020-Present)...');
+      startLogSync(true)
+        .then(() => process.exit(0))
+        .catch((error) => {
+          console.error('Fatal error:', error);
+          process.exit(1);
+        });
+    } else {
+      startLogSync()
+        .then(() => process.exit(0))
+        .catch((error) => {
+          console.error('Fatal error:', error);
+          process.exit(1);
+        });
+    }
   }
-}
 
