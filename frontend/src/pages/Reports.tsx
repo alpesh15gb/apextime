@@ -21,7 +21,7 @@ import {
   Bus,
   Library
 } from 'lucide-react';
-import { reportsAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
+import { reportsAPI, departmentsAPI, branchesAPI, shiftsAPI, locationsAPI } from '../services/api';
 import { Department, Branch, Shift } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
