@@ -983,389 +983,360 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       // A punch belongs to "today" if it's generally during "today's" expected work hours
       // or if it's the first punch after a long break.
 
-      let logicalDate: Date;
-      const hours = log.LogDate.getHours();
+      // Legacy block removed to unify logic
 
-      // SMART LOGICAL DATE: 
-      // If employee has a shift, use it for context. 
-      // If shift starts at 7 AM, 5 AM is "Today". 
-      // If shift starts at 10 PM, 2 AM is "Yesterday".
+      // 3. Process each session - ABSOLUTE IST CALENDAR DAY LOGIC
+      const simpleSessions = new Map<string, RawLog[]>();
+      const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
-      let effectiveShift = employee.shift || tenantShifts[0];
-      let shiftStartHour = 9; // Default 9 AM
+      for (const log of userLogs) {
+        // Convert to IST timestamp to identify the correct calendar day
+        const istTime = new Date(log.LogDate.getTime() + IST_OFFSET);
+        const y = istTime.getUTCFullYear();
+        const m = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(istTime.getUTCDate()).padStart(2, '0');
+        const hour = istTime.getUTCHours();
 
-      if (effectiveShift) {
-        const sTime = new Date(effectiveShift.startTime);
-        shiftStartHour = sTime.getUTCHours();
-      }
+        let dateKey = `${y}-${m}-${d}`;
 
-      // Threshold: A punch within 6 hours before shift start is "Today"
-      // A punch up to 14 hours after shift start is "Today"
-      logicalDate = new Date(log.LogDate);
-
-      if (shiftStartHour < 12) {
-        // Day Shift (e.g. 7 AM or 9 AM)
-        // If punch is between 12 AM and (ShiftStart - 4), it might be "Yesterday's" finish
-        if (hours < (shiftStartHour - 4)) {
-          logicalDate.setDate(logicalDate.getDate() - 1);
+        // SHIFT RULE: Punches between 12:00 AM and 05:00 AM IST belong to PREVIOUS logical day
+        if (hour < 5) {
+          const p = new Date(Date.UTC(y, istTime.getUTCMonth(), istTime.getUTCDate() - 1));
+          dateKey = `${p.getUTCFullYear()}-${String(p.getUTCMonth() + 1).padStart(2, '0')}-${String(p.getUTCDate()).padStart(2, '0')}`;
         }
-      } else {
-        // Night Shift (e.g. 8 PM)
-        // If punch is between 12 AM and (ShiftStart - 8), it is definitely "Yesterday's" continuation
-        if (hours < (shiftStartHour - 6)) {
-          logicalDate.setDate(logicalDate.getDate() - 1);
+
+        if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
+        simpleSessions.get(dateKey)!.push(log);
+      }
+
+      for (const [dateKey, dateLogs] of simpleSessions) {
+        dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
+
+        const firstIn = dateLogs[0].LogDate;
+        const lastOut = dateLogs.length > 1 ? dateLogs[dateLogs.length - 1].LogDate : undefined;
+
+        let workingHours = 0;
+        if (firstIn && lastOut) {
+          workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
         }
+        // Guard against negative working hours (bad data / out-of-order punches)
+        if (workingHours < 0) workingHours = 0;
+
+        // Determine Status based on working hours
+        let status = 'Present'; // Default: any punch counts as Present
+        if (dateLogs.length > 1 && lastOut) {
+          // Multiple punches — determine based on hours worked
+          if (workingHours >= 4.5) status = 'Present';
+          else if (workingHours > 0) status = 'Half Day';
+          else status = 'Absent';
+        }
+        // Single punch (no lastOut): remains 'Present', operator can correct later
+
+        processedResults.push({
+          employeeId: employeeId,
+          // Store as UTC midnight for @db.Date column
+          date: new Date(dateKey + 'T00:00:00Z'),
+          firstIn: firstIn,
+          lastOut: lastOut || null,
+          workingHours: Number(workingHours.toFixed(2)),
+          totalPunches: dateLogs.length,
+          shiftStart: null,
+          shiftEnd: null,
+          lateArrival: 0,
+          earlyDeparture: 0,
+          status: status,
+
+        });
       }
 
-      const dateKey = logicalDate.toLocaleDateString('en-CA');
-      if (!sessions.has(dateKey)) sessions.set(dateKey, []);
-      sessions.get(dateKey)!.push(log);
+      // Old logic removed
     }
 
-    // 3. Process each session - ABSOLUTE IST CALENDAR DAY LOGIC
-    const simpleSessions = new Map<string, RawLog[]>();
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
-    for (const log of userLogs) {
-      // Create a date object that represents the time in IST
-      const istTime = new Date(log.LogDate.getTime() + IST_OFFSET);
-      const y = istTime.getUTCFullYear();
-      const m = String(istTime.getUTCMonth() + 1).padStart(2, '0');
-      const d = String(istTime.getUTCDate()).padStart(2, '0');
-      const hour = istTime.getUTCHours();
-
-      let dateKey = `${y}-${m}-${d}`;
-
-      // SHIFT RULE: Punches between 12:00 AM and 05:00 AM IST belong to PREVIOUS calendar day
-      if (hour < 5) {
-        const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000); // Shift back safely
-        dateKey = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}-${String(prev.getUTCDate()).padStart(2, '0')}`;
-      }
-
-      if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
-      simpleSessions.get(dateKey)!.push(log);
-    }
-
-    for (const [dateKey, dateLogs] of simpleSessions) {
-      dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
-
-      const firstIn = dateLogs[0].LogDate;
-      const lastOut = dateLogs.length > 1 ? dateLogs[dateLogs.length - 1].LogDate : undefined;
-
-      let workingHours = 0;
-      if (firstIn && lastOut) {
-        workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
-      }
-      // Guard against negative working hours (bad data / out-of-order punches)
-      if (workingHours < 0) workingHours = 0;
-
-      // Determine Status based on working hours
-      let status = 'Present'; // Default: any punch counts as Present
-      if (dateLogs.length > 1 && lastOut) {
-        // Multiple punches — determine based on hours worked
-        if (workingHours >= 4.5) status = 'Present';
-        else if (workingHours > 0) status = 'Half Day';
-        else status = 'Absent';
-      }
-      // Single punch (no lastOut): remains 'Present', operator can correct later
-
-      processedResults.push({
-        employeeId: employeeId,
-        // Store as UTC midnight for @db.Date column
-        date: new Date(dateKey + 'T00:00:00Z'),
-        firstIn: firstIn,
-        lastOut: lastOut || null,
-        workingHours: Number(workingHours.toFixed(2)),
-        totalPunches: dateLogs.length,
-        shiftStart: null,
-        shiftEnd: null,
-        lateArrival: 0,
-        earlyDeparture: 0,
-        status: status,
-
-      });
-    }
-
-    // Old logic removed
+    return processedResults;
   }
 
+  /**
+   * Triggered by real-time protocols (iClock, Hikvision) when a single punch is received.
+   * It identifies the logical date and recalculates attendance for that user-day.
+   */
+  export async function triggerRealtimeAttendanceSync(tenantId: string, userId: string, punchTime: Date): Promise<void> {
+    try {
+      // 1. Determine Logical Date for the punch in IST
+      const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+      const istTime = new Date(punchTime.getTime() + IST_OFFSET);
+      const hour = istTime.getUTCHours();
 
-  return processedResults;
-}
+      let logicalYear = istTime.getUTCFullYear();
+      let logicalMonth = istTime.getUTCMonth();
+      let logicalDay = istTime.getUTCDate();
 
-/**
- * Triggered by real-time protocols (iClock, Hikvision) when a single punch is received.
- * It identifies the logical date and recalculates attendance for that user-day.
- */
-export async function triggerRealtimeAttendanceSync(tenantId: string, userId: string, punchTime: Date): Promise<void> {
-  try {
-    // 1. Determine Logical Date for the punch in IST
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-    const istTime = new Date(punchTime.getTime() + IST_OFFSET);
-    const hour = istTime.getUTCHours();
+      if (hour < 5) {
+        const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000);
+        logicalYear = prev.getUTCFullYear();
+        logicalMonth = prev.getUTCMonth();
+        logicalDay = prev.getUTCDate();
+      }
 
-    let logicalYear = istTime.getUTCFullYear();
-    let logicalMonth = istTime.getUTCMonth();
-    let logicalDay = istTime.getUTCDate();
+      const dStr = `${logicalYear}-${String(logicalMonth + 1).padStart(2, '0')}-${String(logicalDay).padStart(2, '0')}`;
+      const targetDate = new Date(dStr + 'T00:00:00Z');
 
-    if (hour < 5) {
-      const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000);
-      logicalYear = prev.getUTCFullYear();
-      logicalMonth = prev.getUTCMonth();
-      logicalDay = prev.getUTCDate();
-    }
+      logger.debug(`Real-time sync triggered for ${userId} on ${dStr} (calculated from ${punchTime.toISOString()})`);
+      const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
+      const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
 
-    const dStr = `${logicalYear}-${String(logicalMonth + 1).padStart(2, '0')}-${String(logicalDay).padStart(2, '0')}`;
-    const targetDate = new Date(dStr + 'T00:00:00Z');
-
-    logger.debug(`Real-time sync triggered for ${userId} on ${dStr} (calculated from ${punchTime.toISOString()})`);
-    const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
-    const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
-
-    const logs = await prisma.rawDeviceLog.findMany({
-      where: {
-        userId: userId,
-        tenantId: tenantId,
-        punchTime: { gte: windowStart, lt: windowEnd }
-      },
-      orderBy: { punchTime: 'asc' }
-    });
-
-    if (logs.length === 0) return;
-
-    // 3. Process
-    const formattedLogs: RawLog[] = logs.map(rl => ({
-      DeviceLogId: 0,
-      DeviceId: rl.deviceId,
-      UserId: rl.userId!,
-      LogDate: rl.punchTime!
-    }));
-
-    const results = await processAttendanceLogs(formattedLogs);
-
-    // 4. Upsert AttendanceLog
-    for (const attendance of results) {
-      await prisma.attendanceLog.upsert({
+      const logs = await prisma.rawDeviceLog.findMany({
         where: {
-          employeeId_date_tenantId: {
-            employeeId: attendance.employeeId,
-            date: attendance.date,
-            tenantId: tenantId,
-          },
-        },
-        update: {
-          firstIn: attendance.firstIn,
-          lastOut: attendance.lastOut,
-          workingHours: attendance.workingHours,
-          totalPunches: attendance.totalPunches,
-          shiftStart: attendance.shiftStart,
-          shiftEnd: attendance.shiftEnd,
-          lateArrival: attendance.lateArrival,
-          earlyDeparture: attendance.earlyDeparture,
-          status: attendance.status,
-        },
-        create: {
-          date: attendance.date,
-          firstIn: attendance.firstIn,
-          lastOut: attendance.lastOut,
-          workingHours: attendance.workingHours,
-          totalPunches: attendance.totalPunches,
-          shiftStart: attendance.shiftStart,
-          shiftEnd: attendance.shiftEnd,
-          lateArrival: attendance.lateArrival,
-          earlyDeparture: attendance.earlyDeparture,
-          status: attendance.status,
-          tenant: { connect: { id: tenantId } },
-          employee: { connect: { id: attendance.employeeId } }
-        },
-      });
-
-      // Mark raw logs as processed
-      await prisma.rawDeviceLog.updateMany({
-        where: {
-          userId: userId,
+          OR: [
+            { deviceUserId: userId },
+            { userId: userId }
+          ],
           tenantId: tenantId,
           punchTime: { gte: windowStart, lt: windowEnd }
         },
-        data: { isProcessed: true }
+        orderBy: { punchTime: 'asc' }
       });
-    }
-  } catch (err) {
-    logger.error(`Failed real-time sync for ${userId}:`, err);
-  }
-}
 
+      if (logs.length === 0) return;
 
-// This function is now mostly handled via per-tenant sync, but left for global manually triggered sync
-export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
-  try {
-    const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
-    let totalResults = { updated: 0, failed: 0, deptUpdated: 0, desigUpdated: 0 };
+      // 3. Process
+      const formattedLogs: RawLog[] = logs.map(rl => ({
+        DeviceLogId: 0,
+        DeviceId: rl.deviceId,
+        UserId: rl.deviceUserId || rl.userId || '',
+        LogDate: rl.punchTime!
+      }));
 
-    for (const tenant of activeTenants) {
-      const biometricSettings = (tenant.settings as any)?.biometric as BiometricConfig;
-      if (!biometricSettings) continue;
+      const results = await processAttendanceLogs(formattedLogs);
 
-      const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
-      await loadDeviceUserInfoFromSqlServer(pool);
+      // 4. Upsert AttendanceLog
+      for (const attendance of results) {
+        await prisma.attendanceLog.upsert({
+          where: {
+            employeeId_date_tenantId: {
+              employeeId: attendance.employeeId,
+              date: attendance.date,
+              tenantId: tenantId,
+            },
+          },
+          update: {
+            firstIn: attendance.firstIn,
+            lastOut: attendance.lastOut,
+            workingHours: attendance.workingHours,
+            totalPunches: attendance.totalPunches,
+            shiftStart: attendance.shiftStart,
+            shiftEnd: attendance.shiftEnd,
+            lateArrival: attendance.lateArrival,
+            earlyDeparture: attendance.earlyDeparture,
+            status: attendance.status,
+          },
+          create: {
+            date: attendance.date,
+            firstIn: attendance.firstIn,
+            lastOut: attendance.lastOut,
+            workingHours: attendance.workingHours,
+            totalPunches: attendance.totalPunches,
+            shiftStart: attendance.shiftStart,
+            shiftEnd: attendance.shiftEnd,
+            lateArrival: attendance.lateArrival,
+            earlyDeparture: attendance.earlyDeparture,
+            status: attendance.status,
+            tenant: { connect: { id: tenantId } },
+            employee: { connect: { id: attendance.employeeId } }
+          },
+        });
 
-      const result = await syncNamesForTenant(tenant);
-      totalResults.updated += result.updated;
-      totalResults.failed += result.failed;
-      totalResults.deptUpdated += result.deptUpdated;
-      totalResults.desigUpdated += result.desigUpdated;
-
-      deviceUserInfoCache.clear();
-    }
-    return totalResults;
-  } catch (error) {
-    logger.error('Global name sync failed:', error);
-    throw error;
-  }
-}
-
-async function syncNamesForTenant(tenant: Tenant): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
-  try {
-    logger.info(`Starting employee name sync for tenant ${tenant.name}...`);
-
-    // Get all employees with deviceUserId
-    const employees = await prisma.employee.findMany({
-      where: { deviceUserId: { not: null } },
-    });
-
-    let updated = 0;
-    let failed = 0;
-    let deptUpdated = 0;
-    let desigUpdated = 0;
-
-    for (const employee of employees) {
-      if (!employee.deviceUserId) continue;
-
-      const userInfo = deviceUserInfoCache.get(employee.deviceUserId);
-      if (!userInfo?.Name) continue;
-
-      // Parse the name from SQL Server
-      const { firstName, lastName } = parseEmployeeName(userInfo.Name);
-
-      // Get or create department and designation
-      let departmentId: string | null = employee.departmentId;
-      let designationId: string | null = employee.designationId;
-
-      if (userInfo?.DepartmentName && !employee.departmentId) {
-        departmentId = await getOrCreateDepartment(userInfo.DepartmentName, tenant.id);
+        // Mark raw logs as processed
+        await prisma.rawDeviceLog.updateMany({
+          where: {
+            OR: [
+              { deviceUserId: userId },
+              { userId: userId }
+            ],
+            tenantId: tenantId,
+            punchTime: { gte: windowStart, lt: windowEnd }
+          },
+          data: { isProcessed: true, processedAt: new Date() }
+        });
       }
+    } catch (err) {
+      logger.error(`Failed real-time sync for ${userId}:`, err);
+    }
+  }
 
-      if (userInfo?.Designation && !employee.designationId) {
-        designationId = await getOrCreateDesignation(userInfo.Designation, tenant.id);
+
+  // This function is now mostly handled via per-tenant sync, but left for global manually triggered sync
+  export async function syncEmployeeNamesFromDeviceUsers(): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
+    try {
+      const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
+      let totalResults = { updated: 0, failed: 0, deptUpdated: 0, desigUpdated: 0 };
+
+      for (const tenant of activeTenants) {
+        const biometricSettings = (tenant.settings as any)?.biometric as BiometricConfig;
+        if (!biometricSettings) continue;
+
+        const pool = await getDynamicSqlPool(biometricSettings, tenant.id);
+        await loadDeviceUserInfoFromSqlServer(pool);
+
+        const result = await syncNamesForTenant(tenant);
+        totalResults.updated += result.updated;
+        totalResults.failed += result.failed;
+        totalResults.deptUpdated += result.deptUpdated;
+        totalResults.desigUpdated += result.desigUpdated;
+
+        deviceUserInfoCache.clear();
       }
+      return totalResults;
+    } catch (error) {
+      logger.error('Global name sync failed:', error);
+      throw error;
+    }
+  }
 
-      // Only update if something changed or was auto-generated
-      const currentFullName = `${employee.firstName} ${employee.lastName}`.trim();
-      const newFullName = `${firstName} ${lastName}`.trim();
+  async function syncNamesForTenant(tenant: Tenant): Promise<{ updated: number; failed: number; deptUpdated: number; desigUpdated: number }> {
+    try {
+      logger.info(`Starting employee name sync for tenant ${tenant.name}...`);
 
-      const shouldUpdateName = currentFullName !== newFullName &&
-        (employee.firstName === 'Employee' || currentFullName.includes(employee.deviceUserId));
+      // Get all employees with deviceUserId
+      const employees = await prisma.employee.findMany({
+        where: { deviceUserId: { not: null } },
+      });
 
-      const shouldUpdateDept = departmentId && !employee.departmentId;
-      const shouldUpdateDesig = designationId && !employee.designationId;
+      let updated = 0;
+      let failed = 0;
+      let deptUpdated = 0;
+      let desigUpdated = 0;
 
-      if (shouldUpdateName || shouldUpdateDept || shouldUpdateDesig) {
-        try {
-          const updateData: any = {};
-          if (shouldUpdateName) {
-            updateData.firstName = firstName;
-            updateData.lastName = lastName;
-          }
-          if (shouldUpdateDept) {
-            updateData.departmentId = departmentId;
-          }
-          if (shouldUpdateDesig) {
-            updateData.designationId = designationId;
-          }
+      for (const employee of employees) {
+        if (!employee.deviceUserId) continue;
 
-          await prisma.employee.update({
-            where: { id: employee.id },
-            data: updateData,
-          });
+        const userInfo = deviceUserInfoCache.get(employee.deviceUserId);
+        if (!userInfo?.Name) continue;
 
-          if (shouldUpdateName) {
-            logger.info(`Updated employee ${employee.employeeCode} name: ${newFullName}`);
-            updated++;
+        // Parse the name from SQL Server
+        const { firstName, lastName } = parseEmployeeName(userInfo.Name);
+
+        // Get or create department and designation
+        let departmentId: string | null = employee.departmentId;
+        let designationId: string | null = employee.designationId;
+
+        if (userInfo?.DepartmentName && !employee.departmentId) {
+          departmentId = await getOrCreateDepartment(userInfo.DepartmentName, tenant.id);
+        }
+
+        if (userInfo?.Designation && !employee.designationId) {
+          designationId = await getOrCreateDesignation(userInfo.Designation, tenant.id);
+        }
+
+        // Only update if something changed or was auto-generated
+        const currentFullName = `${employee.firstName} ${employee.lastName}`.trim();
+        const newFullName = `${firstName} ${lastName}`.trim();
+
+        const shouldUpdateName = currentFullName !== newFullName &&
+          (employee.firstName === 'Employee' || currentFullName.includes(employee.deviceUserId));
+
+        const shouldUpdateDept = departmentId && !employee.departmentId;
+        const shouldUpdateDesig = designationId && !employee.designationId;
+
+        if (shouldUpdateName || shouldUpdateDept || shouldUpdateDesig) {
+          try {
+            const updateData: any = {};
+            if (shouldUpdateName) {
+              updateData.firstName = firstName;
+              updateData.lastName = lastName;
+            }
+            if (shouldUpdateDept) {
+              updateData.departmentId = departmentId;
+            }
+            if (shouldUpdateDesig) {
+              updateData.designationId = designationId;
+            }
+
+            await prisma.employee.update({
+              where: { id: employee.id },
+              data: updateData,
+            });
+
+            if (shouldUpdateName) {
+              logger.info(`Updated employee ${employee.employeeCode} name: ${newFullName}`);
+              updated++;
+            }
+            if (shouldUpdateDept) {
+              logger.info(`Updated employee ${employee.employeeCode} department: ${userInfo.DepartmentName}`);
+              deptUpdated++;
+            }
+            if (shouldUpdateDesig) {
+              logger.info(`Updated employee ${employee.employeeCode} designation: ${userInfo.Designation}`);
+              desigUpdated++;
+            }
+          } catch (error) {
+            logger.error(`Failed to update employee ${employee.employeeCode}:`, error);
+            failed++;
           }
-          if (shouldUpdateDept) {
-            logger.info(`Updated employee ${employee.employeeCode} department: ${userInfo.DepartmentName}`);
-            deptUpdated++;
-          }
-          if (shouldUpdateDesig) {
-            logger.info(`Updated employee ${employee.employeeCode} designation: ${userInfo.Designation}`);
-            desigUpdated++;
-          }
-        } catch (error) {
-          logger.error(`Failed to update employee ${employee.employeeCode}:`, error);
-          failed++;
         }
       }
-    }
 
-    logger.info(`Employee sync complete. Names updated: ${updated}, Departments updated: ${deptUpdated}, Designations updated: ${desigUpdated}, Failed: ${failed}`);
-    return { updated, failed, deptUpdated, desigUpdated };
-  } catch (error) {
-    logger.error('Employee sync failed:', error);
-    throw error;
-  } finally {
-    deviceUserInfoCache.clear();
+      logger.info(`Employee sync complete. Names updated: ${updated}, Departments updated: ${deptUpdated}, Designations updated: ${desigUpdated}, Failed: ${failed}`);
+      return { updated, failed, deptUpdated, desigUpdated };
+    } catch (error) {
+      logger.error('Employee sync failed:', error);
+      throw error;
+    } finally {
+      deviceUserInfoCache.clear();
+    }
   }
-}
-// Historical recovery function - re-processes existing raw logs with improved logic
-export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, employeeId?: string): Promise<{ pairsProcessed: number; recordsUpdated: number }> {
-  try {
-    logger.info(`Starting historical re-processing... ${employeeId ? `Employee: ${employeeId}` : 'All employees'}`);
-    console.log(`[${new Date().toISOString()}] Starting historical repair...`);
+  // Historical recovery function - re-processes existing raw logs with improved logic
+  export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, employeeId?: string): Promise<{ pairsProcessed: number; recordsUpdated: number }> {
+    try {
+      logger.info(`Starting historical re-processing... ${employeeId ? `Employee: ${employeeId}` : 'All employees'}`);
+      console.log(`[${new Date().toISOString()}] Starting historical repair...`);
 
-    // Simplified fetch to avoid Prisma validation errors on non-nullable fields
-    const existingEmployees = await prisma.employee.findMany({
-      select: { id: true, deviceUserId: true, sourceEmployeeId: true, employeeCode: true }
-    });
+      // Simplified fetch to avoid Prisma validation errors on non-nullable fields
+      const existingEmployees = await prisma.employee.findMany({
+        select: { id: true, deviceUserId: true, sourceEmployeeId: true, employeeCode: true }
+      });
 
-    employeeCache.clear();
-    for (const emp of existingEmployees) {
-      // STRICT MATCHING ONLY - No fuzzy logic
-      if (emp.sourceEmployeeId) {
-        employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
+      employeeCache.clear();
+      for (const emp of existingEmployees) {
+        // STRICT MATCHING ONLY - No fuzzy logic
+        if (emp.sourceEmployeeId) {
+          employeeCache.set(`SID:${emp.sourceEmployeeId}`, emp.id);
+        }
+        if (emp.deviceUserId) {
+          employeeCache.set(emp.deviceUserId, emp.id);
+        }
+        if (emp.employeeCode) {
+          employeeCache.set(`CODE:${emp.employeeCode}`, emp.id);
+        }
       }
-      if (emp.deviceUserId) {
-        employeeCache.set(emp.deviceUserId, emp.id);
+      console.log(`Loaded ${employeeCache.size} employee mapping keys into memory for repair.`);
+
+      const where: any = {};
+      if (startDate || endDate) {
+        where.punchTime = {};
+        if (startDate) where.punchTime.gte = startDate;
+        if (endDate) where.punchTime.lte = endDate;
       }
-      if (emp.employeeCode) {
-        employeeCache.set(`CODE:${emp.employeeCode}`, emp.id);
+      if (employeeId) {
+        const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { deviceUserId: true } });
+        if (emp?.deviceUserId) where.userId = emp.deviceUserId;
       }
-    }
-    console.log(`Loaded ${employeeCache.size} employee mapping keys into memory for repair.`);
 
-    const where: any = {};
-    if (startDate || endDate) {
-      where.punchTime = {};
-      if (startDate) where.punchTime.gte = startDate;
-      if (endDate) where.punchTime.lte = endDate;
-    }
-    if (employeeId) {
-      const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { deviceUserId: true } });
-      if (emp?.deviceUserId) where.userId = emp.deviceUserId;
-    }
+      // Get unique deviceUserId + Date pairs from RawDeviceLog
+      const logs = await prisma.rawDeviceLog.findMany({
+        where,
+        select: { deviceUserId: true, userId: true, punchTime: true },
+        orderBy: { punchTime: 'asc' }
+      });
 
-    // Get unique userId + Date pairs from RawDeviceLog
-    const logs = await prisma.rawDeviceLog.findMany({
-      where,
-      select: { userId: true, punchTime: true },
-      orderBy: { punchTime: 'asc' }
-    });
+      console.log(`Found ${logs.length} raw logs to analyze.`);
 
-    console.log(`Found ${logs.length} raw logs to analyze.`);
+      const affectedPairs = new Set<string>();
+      const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
-    const affectedPairs = new Set<string>();
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+      const uId = log.deviceUserId || log.userId;
+      if (!uId) continue;
 
-    for (const log of logs) {
       const istTime = new Date(log.punchTime.getTime() + IST_OFFSET);
       const hour = istTime.getUTCHours();
       let y = istTime.getUTCFullYear();
@@ -1373,17 +1344,17 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
       let d = istTime.getUTCDate();
 
       if (hour < 5) {
-        const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000);
-        y = prev.getUTCFullYear();
-        m = prev.getUTCMonth();
-        d = prev.getUTCDate();
+        const p = new Date(Date.UTC(y, istTime.getUTCMonth(), istTime.getUTCDate() - 1));
+        y = p.getUTCFullYear();
+        m = p.getUTCMonth();
+        d = p.getUTCDate();
       }
 
       const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      affectedPairs.add(`${log.userId}|${dStr}`);
+      affectedPairs.add(`${uId}|${dStr}`);
     }
 
-    console.log(`Identified ${affectedPairs.size} employee-day sessions requiring recalculation.`);
+      console.log(`Identified ${affectedPairs.size} employee-day sessions requiring recalculation.`);
 
     let pairsProcessed = 0;
     let recordsUpdated = 0;
@@ -1398,7 +1369,10 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
         const dayLogs = await prisma.rawDeviceLog.findMany({
           where: {
-            userId: uId,
+            OR: [
+              { deviceUserId: uId },
+              { userId: uId }
+            ],
             punchTime: { gte: windowStart, lt: windowEnd }
           },
           orderBy: { punchTime: 'asc' }
@@ -1408,8 +1382,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
         const formattedLogs: RawLog[] = dayLogs.map(rl => ({
           DeviceLogId: 0,
-          DeviceId: rl.deviceId, // Preserve string UUID
-          UserId: rl.userId,
+          DeviceId: rl.deviceId,
+          UserId: rl.deviceUserId || rl.userId || '',
           LogDate: rl.punchTime
         }));
 

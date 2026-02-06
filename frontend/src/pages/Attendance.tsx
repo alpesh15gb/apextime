@@ -292,13 +292,7 @@ export const Attendance = () => {
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                          {log.date ? (() => {
-                            const d = new Date(log.date);
-                            // Detect if stored as IST midnight (ends in 18:30:00.000Z)
-                            const isShifted = d.getUTCHours() === 18 && d.getUTCMinutes() === 30;
-                            const dDisplay = isShifted ? new Date(d.getTime() + 6 * 60 * 60 * 1000) : d;
-                            return `${String(dDisplay.getUTCDate()).padStart(2, '0')}/${String(dDisplay.getUTCMonth() + 1).padStart(2, '0')}/${dDisplay.getUTCFullYear()}`;
-                          })() : '--'}
+                          {log.date ? new Date(log.date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).replace(/\//g, '/') : '--'}
                         </span>
                       </td>
                       <td className="px-6 py-5">
