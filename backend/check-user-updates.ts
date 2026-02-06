@@ -34,21 +34,20 @@ async function checkUserUpdates() {
     completedCommands.forEach(c => {
         console.log(` - Device ${c.deviceId}: ${c.status} at ${c.updatedAt}`);
     });
-});
 
-// 3. INVESTIGATE DUPLICATES for YLR668
-const duplicates = await prisma.employee.findMany({
-    where: {
-        OR: [
-            { deviceUserId: 'YLR668' },
-            { employeeCode: { contains: 'YLR668' } }
-        ]
-    }
-});
-console.log(`\n🕵️ Entries for YLR668: ${duplicates.length}`);
-duplicates.forEach(d => {
-    console.log(` - ID: ${d.id} | Code: ${d.employeeCode} | Name: ${d.firstName} ${d.lastName || ''} | DevID: ${d.deviceUserId}`);
-});
+    // 3. INVESTIGATE DUPLICATES for YLR668
+    const duplicates = await prisma.employee.findMany({
+        where: {
+            OR: [
+                { deviceUserId: 'YLR668' },
+                { employeeCode: { contains: 'YLR668' } }
+            ]
+        }
+    });
+    console.log(`\n🕵️ Entries for YLR668: ${duplicates.length}`);
+    duplicates.forEach(d => {
+        console.log(` - ID: ${d.id} | Code: ${d.employeeCode} | Name: ${d.firstName} ${d.lastName || ''} | DevID: ${d.deviceUserId}`);
+    });
 }
 
 checkUserUpdates()
