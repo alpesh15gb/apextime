@@ -26,8 +26,8 @@ async function getAttendanceData(filters: any) {
   const where: any = {
     tenantId,
     date: {
-      gte: startOfDay(parseISO(startDate)),
-      lte: endOfDay(parseISO(endDate)),
+      gte: new Date(startDate + 'T00:00:00Z'),
+      lte: new Date(endDate + 'T23:59:59Z'),
     },
   };
 
@@ -121,11 +121,12 @@ router.get('/weekly', async (req, res) => {
     const reportEndDate = endOfWeek(reportStartDate, { weekStartsOn: 1 });
 
     const logs = await getAttendanceData({
-      startDate: reportStartDate.toISOString(),
-      endDate: reportEndDate.toISOString(),
+      startDate: reportStartDate.toISOString().split('T')[0],
+      endDate: reportEndDate.toISOString().split('T')[0],
       departmentId: departmentId as string | undefined,
       branchId: branchId as string | undefined,
       employeeId: employeeId as string | undefined,
+      tenantId: (req as any).user.tenantId,
     });
 
     if (format === 'excel') {
@@ -185,12 +186,13 @@ router.get('/monthly', async (req, res) => {
     const reportEndDate = endOfMonth(new Date(targetYear, targetMonth - 1));
 
     const logs = await getAttendanceData({
-      startDate: reportStartDate.toISOString(),
-      endDate: reportEndDate.toISOString(),
+      startDate: reportStartDate.toISOString().split('T')[0],
+      endDate: reportEndDate.toISOString().split('T')[0],
       departmentId: departmentId as string | undefined,
       branchId: branchId as string | undefined,
       locationId: locationId as string | undefined,
       employeeId: employeeId as string | undefined,
+      tenantId: (req as any).user.tenantId,
     });
 
     if (format === 'excel') {

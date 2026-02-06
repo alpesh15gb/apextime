@@ -411,7 +411,7 @@ export const MonthlyReport = () => {
                 <thead>
                   <tr className="bg-gray-50/40 border-b border-gray-100">
                     <th className="px-4 py-6 text-left font-black text-gray-500 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)] text-xs">Employee Details</th>
-                    {days.map(day => {
+                    {Array.isArray(days) && days.map(day => {
                       const date = new Date(year, month - 1, day);
                       const isSun = date.getDay() === 0;
                       const isHol = report?.holidays?.some(h => h.day === day);
@@ -443,7 +443,7 @@ export const MonthlyReport = () => {
                           {dept} ({rows.length})
                         </td>
                       </tr>
-                      {rows.map((row, idx) => (
+                      {Array.isArray(rows) && rows.map((row, idx) => (
                         <tr key={row?.employee?.id || idx} className="group border-b border-gray-50 hover:bg-blue-50/10 transition-colors">
                           <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-blue-50/10 z-10 border-r border-gray-50 shadow-[1px_0_0_rgba(0,0,0,0.05)]">
                             <div className="font-extrabold text-gray-900 text-[10px] truncate whitespace-nowrap w-28" title={row?.employee?.name}>{row?.employee?.name || 'Unknown'}</div>

@@ -197,7 +197,7 @@ export const Attendance = () => {
                     className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
                   >
                     <option value="">All Branches</option>
-                    {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    {Array.isArray(branches) && branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                   <Building2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -212,7 +212,7 @@ export const Attendance = () => {
                     className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
                   >
                     <option value="">All Locations</option>
-                    {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    {Array.isArray(locations) && locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                   <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -227,7 +227,7 @@ export const Attendance = () => {
                     className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
                   >
                     <option value="">All Departments</option>
-                    {departments.map((dept: any) => (
+                    {Array.isArray(departments) && departments.map((dept: any) => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
                   </select>
@@ -277,7 +277,7 @@ export const Attendance = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {logs.map((log) => (
+                  {Array.isArray(logs) && logs.map((log) => (
                     <tr key={log.id} className="table-row group hover:bg-blue-50/5 transition-colors">
                       <td className="px-8 py-5">
                         <div className="flex items-center space-x-5">
@@ -345,7 +345,7 @@ export const Attendance = () => {
             {/* Pagination */}
             <div className="p-8 border-t border-gray-50 bg-gray-50/30 flex items-center justify-between">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                Subset {logs.length ? (page - 1) * 20 + 1 : 0} - {(page - 1) * 20 + logs.length} (Index {page})
+                Subset {(logs?.length || 0) ? (page - 1) * 20 + 1 : 0} - {(page - 1) * 20 + (logs?.length || 0)} (Index {page})
               </p>
               <div className="flex items-center space-x-3">
                 <button

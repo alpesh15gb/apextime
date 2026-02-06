@@ -36,12 +36,12 @@ router.get('/', async (req, res) => {
 
     if (startDate && endDate) {
       where.date = {
-        gte: startOfDay(parseISO(startDate as string)),
-        lte: endOfDay(parseISO(endDate as string)),
+        gte: new Date(startDate as string + 'T00:00:00Z'),
+        lte: new Date(endDate as string + 'T23:59:59Z'),
       };
     } else if (startDate) {
       where.date = {
-        gte: startOfDay(parseISO(startDate as string)),
+        gte: new Date(startDate as string + 'T00:00:00Z'),
       };
     }
 
@@ -450,8 +450,8 @@ router.post('/reprocess', async (req, res) => {
     // Dynamic import to avoid circular dependency
     const { reprocessHistoricalLogs } = await import('../services/logSyncService');
 
-    const start = startDate ? startOfDay(parseISO(startDate)) : undefined;
-    const end = endDate ? endOfDay(parseISO(endDate)) : undefined;
+    const start = startDate ? new Date(startDate + 'T00:00:00Z') : undefined;
+    const end = endDate ? new Date(endDate + 'T23:59:59Z') : undefined;
 
     const result = await reprocessHistoricalLogs(start, end, employeeId);
 
