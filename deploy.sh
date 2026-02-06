@@ -34,8 +34,8 @@ case $TARGET in
 esac
 
 # Wait for services to start
-echo "Waiting 10 seconds for services to stabilize..."
-sleep 10
+echo "Waiting 15 seconds for services to stabilize..."
+sleep 15
 
 # Run health check
 echo ""
