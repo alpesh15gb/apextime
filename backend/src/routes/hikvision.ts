@@ -248,4 +248,85 @@ router.post('/event', upload.any(), async (req, res) => {
     }
 });
 
+router.post('/event/batch', async (req, res) => {
+    const { punches, agentName } = req.body;
+
+    if (!punches || !Array.isArray(punches)) {
+        return res.status(400).send('Invalid punches data');
+    }
+
+    logger.info(`Received batch of ${punches.length} punches from agent: ${agentName}`);
+
+    for (const p of punches) {
+        try {
+            const { sn, userId, userName, punchTime: pTimeStr } = p;
+            const punchTime = new Date(pTimeStr);
+            const userIdStr = userId.toString();
+            const uniqueId = `HIK_AGENT_${sn}_${userIdStr}_${punchTime.getTime()}`;
+
+            const device = await prisma.device.findFirst({
+                where: { deviceId: { equals: sn, mode: 'insensitive' } }
+            });
+
+            if (!device) continue;
+
+            // 1. Save Raw Log
+            await prisma.rawDeviceLog.upsert({
+                where: { id: uniqueId },
+                update: {},
+                create: {
+                    id: uniqueId,
+                    tenantId: device.tenantId,
+                    deviceId: device.id,
+                    userId: userIdStr,
+                    deviceUserId: userIdStr,
+                    userName: userName || 'HIK_OFFLINE',
+                    timestamp: punchTime,
+                    punchTime: punchTime,
+                    punchType: '0',
+                    isProcessed: false
+                }
+            });
+
+            // 2. Process Employee and Attendance (Background)
+            let employee = await prisma.employee.findFirst({
+                where: { tenantId: device.tenantId, deviceUserId: userIdStr }
+            });
+
+            if (!employee) {
+                employee = await prisma.employee.create({
+                    data: {
+                        tenantId: device.tenantId,
+                        deviceUserId: userIdStr,
+                        employeeCode: userIdStr,
+                        firstName: userName || userIdStr,
+                        lastName: '',
+                        status: 'ACTIVE'
+                    }
+                });
+            }
+
+            // Trigger calc
+            processAttendanceLogs([{
+                DeviceLogId: Date.now(),
+                DeviceId: sn,
+                UserId: userIdStr,
+                LogDate: punchTime,
+                TableName: 'HIK_AGENT'
+            }]).then(async () => {
+                await prisma.rawDeviceLog.update({
+                    where: { id: uniqueId },
+                    data: { isProcessed: true }
+                });
+            }).catch(() => { });
+
+        } catch (err) {
+            logger.error('Error processing batch punch item:', err);
+        }
+    }
+
+    res.status(200).send('OK');
+});
+
 export default router;
+
