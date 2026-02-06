@@ -188,10 +188,14 @@ export class PayrollEngine {
             const components: Record<string, number> = {};
 
             if (CTC > 0) {
-                const monthlyEmpPF = 1800;
+                const monthlyEmpPF = 1800; // Fixed per month
 
-                const monthlyBasic = CTC * 0.50;
-                const monthlyHRA = CTC * 0.20;
+                // Configurable Percentages
+                const BASIC_PERCENTAGE = 0.50; // 50% of CTC
+                const HRA_PERCENTAGE = 0.20;   // 20% of CTC
+
+                const monthlyBasic = CTC * BASIC_PERCENTAGE;
+                const monthlyHRA = CTC * HRA_PERCENTAGE;
                 const monthlyConveyance = 1600;
                 const monthlyMedical = 1250;
                 const monthlyEdu = 200;
