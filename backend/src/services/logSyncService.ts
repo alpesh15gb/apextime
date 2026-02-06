@@ -1314,7 +1314,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     // Get unique deviceUserId + Date pairs from RawDeviceLog
     const logs = await prisma.rawDeviceLog.findMany({
       where,
-      select: { deviceUserId: true, userId: true, punchTime: true },
+      select: { deviceUserId: true, userId: true, punchTime: true, timestamp: true },
       orderBy: { punchTime: 'asc' }
     });
 
@@ -1327,7 +1327,10 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
       const uId = log.deviceUserId || log.userId;
       if (!uId) continue;
 
-      const istTime = new Date(log.punchTime.getTime() + IST_OFFSET);
+      const punchT = log.punchTime || log.timestamp;
+      if (!punchT) continue;
+
+      const istTime = new Date(punchT.getTime() + IST_OFFSET);
       const hour = istTime.getUTCHours();
       let y = istTime.getUTCFullYear();
       let m = istTime.getUTCMonth();
@@ -1374,7 +1377,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
           DeviceLogId: 0,
           DeviceId: rl.deviceId,
           UserId: rl.deviceUserId || rl.userId || '',
-          LogDate: rl.punchTime
+          LogDate: rl.punchTime || rl.timestamp
         }));
 
         const results = await processAttendanceLogs(formattedLogs);
