@@ -2,7 +2,7 @@ import express from 'express';
 import { prisma } from '../config/database';
 import logger from '../config/logger';
 import { DeviceCommandService } from '../services/deviceCommandService';
-import { processAttendanceLogs } from '../services/logSyncService';
+import { triggerRealtimeAttendanceSync } from '../services/logSyncService';
 
 const router = express.Router();
 const commandService = new DeviceCommandService();
@@ -198,12 +198,7 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
                             const isFresh = (new Date().getTime() - punchTime.getTime()) < (24 * 60 * 60 * 1000);
                             if (isFresh) {
                                 try {
-                                    await processAttendanceLogs([{
-                                        DeviceLogId: 0,
-                                        DeviceId: SN as string,
-                                        UserId: userId,
-                                        LogDate: punchTime
-                                    }]);
+                                    await triggerRealtimeAttendanceSync(device.tenantId, userId, punchTime);
                                 } catch (procErr) {
                                     logger.error(`Real-time process fail for ${userId}:`, procErr);
                                 }

@@ -2,7 +2,7 @@ import express from 'express';
 import { prisma } from '../config/database';
 import multer from 'multer';
 import logger from '../config/logger';
-import { processAttendanceLogs } from '../services/logSyncService';
+import { triggerRealtimeAttendanceSync } from '../services/logSyncService';
 
 const router = express.Router();
 const upload = multer();
@@ -226,13 +226,7 @@ router.post('/event', upload.any(), async (req, res) => {
                 if (isToday) {
                     // Start processing in background, do NOT await it here.
                     // This prevents 502 Bad Gateway by responding to the device immediately.
-                    processAttendanceLogs([{
-                        DeviceLogId: Date.now(),
-                        DeviceId: SN.toString(),
-                        UserId: userIdStr,
-                        LogDate: punchTime,
-                        TableName: 'HIK_DIRECT'
-                    }]).then(async () => {
+                    triggerRealtimeAttendanceSync(device.tenantId, userIdStr, punchTime).then(async () => {
                         await prisma.rawDeviceLog.update({
                             where: { id: uniqueId },
                             data: { isProcessed: true }
@@ -314,13 +308,7 @@ router.post('/event/batch', async (req, res) => {
             }
 
             // Trigger calc
-            processAttendanceLogs([{
-                DeviceLogId: Date.now(),
-                DeviceId: sn,
-                UserId: userIdStr,
-                LogDate: punchTime,
-                TableName: 'HIK_AGENT'
-            }]).then(async () => {
+            triggerRealtimeAttendanceSync(device.tenantId, userIdStr, punchTime).then(async () => {
                 await prisma.rawDeviceLog.update({
                     where: { id: uniqueId },
                     data: { isProcessed: true }

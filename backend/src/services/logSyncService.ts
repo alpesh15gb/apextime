@@ -942,16 +942,24 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
   const processedResults: ProcessedAttendance[] = [];
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
-    // STRICT MATCHING ONLY - No fuzzy logic
-    const employeeId = employeeCache.get(deviceUserId);
+    // HYDRATE CACHE IF MISSING: Crucial for real-time logs from iclock.ts/hikvision.ts
+    if (!employeeCache.has(deviceUserId)) {
+      const emp = await prisma.employee.findFirst({
+        where: { deviceUserId: deviceUserId },
+        select: { id: true, tenantId: true }
+      });
+      if (emp) {
+        employeeCache.set(deviceUserId, emp.id);
+      }
+    }
 
+    const employeeId = employeeCache.get(deviceUserId);
     if (!employeeId) continue;
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       include: { shift: true },
     });
-
     if (!employee) continue;
 
     // Fetch all shifts for the tenant for "Smart Shift Matching"
@@ -1084,6 +1092,105 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
 
   return processedResults;
+}
+
+/**
+ * Triggered by real-time protocols (iClock, Hikvision) when a single punch is received.
+ * It identifies the logical date and recalculates attendance for that user-day.
+ */
+export async function triggerRealtimeAttendanceSync(tenantId: string, userId: string, punchTime: Date): Promise<void> {
+  try {
+    // 1. Determine Logical Date for the punch
+    const hours = punchTime.getHours();
+    let logicalDate = new Date(punchTime);
+    logicalDate.setHours(0, 0, 0, 0);
+    if (hours < 5) {
+      logicalDate.setDate(logicalDate.getDate() - 1);
+    }
+
+    const y = logicalDate.getFullYear();
+    const m = String(logicalDate.getMonth() + 1).padStart(2, '0');
+    const d = String(logicalDate.getDate()).padStart(2, '0');
+    const dStr = `${y}-${m}-${d}`;
+
+    logger.debug(`Real-time sync triggered for ${userId} on ${dStr}`);
+
+    // 2. Fetch all logs in the window for this user
+    const targetDate = new Date(dStr);
+    const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
+    const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
+
+    const logs = await prisma.rawDeviceLog.findMany({
+      where: {
+        userId: userId,
+        tenantId: tenantId,
+        punchTime: { gte: windowStart, lt: windowEnd }
+      },
+      orderBy: { punchTime: 'asc' }
+    });
+
+    if (logs.length === 0) return;
+
+    // 3. Process
+    const formattedLogs: RawLog[] = logs.map(rl => ({
+      DeviceLogId: 0,
+      DeviceId: rl.deviceId,
+      UserId: rl.userId!,
+      LogDate: rl.punchTime!
+    }));
+
+    const results = await processAttendanceLogs(formattedLogs);
+
+    // 4. Upsert AttendanceLog
+    for (const attendance of results) {
+      await prisma.attendanceLog.upsert({
+        where: {
+          employeeId_date_tenantId: {
+            employeeId: attendance.employeeId,
+            date: attendance.date,
+            tenantId: tenantId,
+          },
+        },
+        update: {
+          firstIn: attendance.firstIn,
+          lastOut: attendance.lastOut,
+          workingHours: attendance.workingHours,
+          totalPunches: attendance.totalPunches,
+          shiftStart: attendance.shiftStart,
+          shiftEnd: attendance.shiftEnd,
+          lateArrival: attendance.lateArrival,
+          earlyDeparture: attendance.earlyDeparture,
+          status: attendance.status,
+        },
+        create: {
+          date: attendance.date,
+          firstIn: attendance.firstIn,
+          lastOut: attendance.lastOut,
+          workingHours: attendance.workingHours,
+          totalPunches: attendance.totalPunches,
+          shiftStart: attendance.shiftStart,
+          shiftEnd: attendance.shiftEnd,
+          lateArrival: attendance.lateArrival,
+          earlyDeparture: attendance.earlyDeparture,
+          status: attendance.status,
+          tenant: { connect: { id: tenantId } },
+          employee: { connect: { id: attendance.employeeId } }
+        },
+      });
+
+      // Mark raw logs as processed
+      await prisma.rawDeviceLog.updateMany({
+        where: {
+          userId: userId,
+          tenantId: tenantId,
+          punchTime: { gte: windowStart, lt: windowEnd }
+        },
+        data: { isProcessed: true }
+      });
+    }
+  } catch (err) {
+    logger.error(`Failed real-time sync for ${userId}:`, err);
+  }
 }
 
 

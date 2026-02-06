@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { prisma } from '../config/database';
 import logger from '../config/logger';
 import { Server } from 'http';
+import { triggerRealtimeAttendanceSync } from '../services/logSyncService';
 
 const router = express.Router();
 
@@ -131,17 +132,29 @@ export function initializeRealtimeWebSocket(server: Server) {
                             return;
                         }
 
-                        // Store in DeviceLog
-                        await prisma.deviceLog.create({
-                            data: {
+                        // Store in RawDeviceLog (Target table for the sync system)
+                        const punchTime = new Date(timestamp);
+                        const uniqueId = `REALTIME_${deviceSerial}_${userId}_${punchTime.getTime()}`;
+
+                        await prisma.rawDeviceLog.upsert({
+                            where: { id: uniqueId },
+                            update: { isProcessed: false },
+                            create: {
+                                id: uniqueId,
                                 tenantId: tenantId,
                                 deviceId: deviceId,
                                 deviceUserId: userId.toString(),
-                                punchTime: new Date(timestamp),
+                                punchTime: punchTime,
+                                timestamp: punchTime,
                                 punchType: ioMode || 'IN',
-                                rawData: message,
-                                source: 'DEVICE'
+                                isProcessed: false
                             }
+                        });
+
+
+                        // Trigger real-time recalculation
+                        triggerRealtimeAttendanceSync(tenantId, userId.toString(), punchTime).catch(e => {
+                            logger.error(`Realtime WS sync fail for ${userId}:`, e);
                         });
 
 

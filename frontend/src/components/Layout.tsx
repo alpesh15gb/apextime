@@ -33,8 +33,8 @@ import {
   Receipt,
   BookOpenCheck,
   LifeBuoy,
-  UserPlus
-
+  UserPlus,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -184,6 +184,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 { path: '/locations', icon: MapPin, label: 'Locations' },
                 { path: '/designations', icon: Award, label: 'Designations' },
                 { path: '/departments', icon: Briefcase, label: 'Departments' },
+                { path: '/shifts', icon: Clock, label: 'Shifts' },
               ]
             },
             { path: '/recruitment', icon: Briefcase, label: 'Recruitment', module: 'recruitment' },
