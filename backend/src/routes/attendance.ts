@@ -9,76 +9,90 @@ router.use(authenticate);
 
 // Get attendance logs
 router.get('/', async (req, res) => {
-  const tenantId = (req as any).user.tenantId;
+  try {
+    const {
+      employeeId,
+      departmentId,
+      branchId,
+      startDate,
+      endDate,
+      status,
+      locationId,
+      search,
+      page = '1',
+      limit = '50'
+    } = req.query;
 
-  const pageNum = parseInt(page as string);
-  const limitNum = Math.min(parseInt(limit as string) || 50, 500); // Cap at 500 to prevent OOM
-  const skip = (pageNum - 1) * limitNum;
+    const tenantId = (req as any).user.tenantId;
 
-  const where: any = { tenantId };
+    const pageNum = parseInt(page as string);
+    const limitNum = Math.min(parseInt(limit as string) || 50, 500); // Cap at 500 to prevent OOM
+    const skip = (pageNum - 1) * limitNum;
 
-  if (employeeId) where.employeeId = employeeId as string;
-  if (status) where.status = status as string;
+    const where: any = { tenantId };
 
-  if (startDate && endDate) {
-    where.date = {
-      gte: startOfDay(parseISO(startDate as string)),
-      lte: endOfDay(parseISO(endDate as string)),
-    };
-  } else if (startDate) {
-    where.date = {
-      gte: startOfDay(parseISO(startDate as string)),
-    };
-  }
+    if (employeeId) where.employeeId = employeeId as string;
+    if (status) where.status = status as string;
 
-  let employeeWhere: any = {};
-  if (departmentId) employeeWhere.departmentId = departmentId as string;
-  if (branchId) employeeWhere.branchId = branchId as string;
-  if (locationId) employeeWhere.locationId = locationId as string;
+    if (startDate && endDate) {
+      where.date = {
+        gte: startOfDay(parseISO(startDate as string)),
+        lte: endOfDay(parseISO(endDate as string)),
+      };
+    } else if (startDate) {
+      where.date = {
+        gte: startOfDay(parseISO(startDate as string)),
+      };
+    }
 
-  if (search) {
-    employeeWhere.OR = [
-      { firstName: { contains: search as string, mode: 'insensitive' } },
-      { lastName: { contains: search as string, mode: 'insensitive' } },
-      { employeeCode: { contains: search as string, mode: 'insensitive' } },
-    ];
-  }
+    let employeeWhere: any = {};
+    if (departmentId) employeeWhere.departmentId = departmentId as string;
+    if (branchId) employeeWhere.branchId = branchId as string;
+    if (locationId) employeeWhere.locationId = locationId as string;
 
-  if (Object.keys(employeeWhere).length > 0) {
-    where.employee = employeeWhere;
-  }
+    if (search) {
+      employeeWhere.OR = [
+        { firstName: { contains: search as string, mode: 'insensitive' } },
+        { lastName: { contains: search as string, mode: 'insensitive' } },
+        { employeeCode: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
 
-  const [logs, total] = await Promise.all([
-    prisma.attendanceLog.findMany({
-      where,
-      include: {
-        employee: {
-          include: {
-            department: true,
-            branch: true,
+    if (Object.keys(employeeWhere).length > 0) {
+      where.employee = employeeWhere;
+    }
+
+    const [logs, total] = await Promise.all([
+      prisma.attendanceLog.findMany({
+        where,
+        include: {
+          employee: {
+            include: {
+              department: true,
+              branch: true,
+            },
           },
         },
-      },
-      skip,
-      take: limitNum,
-      orderBy: { date: 'desc' },
-    }),
-    prisma.attendanceLog.count({ where }),
-  ]);
+        skip,
+        take: limitNum,
+        orderBy: { date: 'desc' },
+      }),
+      prisma.attendanceLog.count({ where }),
+    ]);
 
-  res.json({
-    logs,
-    pagination: {
-      page: pageNum,
-      limit: limitNum,
-      total,
-      totalPages: Math.ceil(total / limitNum),
-    },
-  });
-} catch (error) {
-  console.error('Get attendance logs error:', error);
-  res.status(500).json({ error: 'Internal server error' });
-}
+    res.json({
+      logs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error('Get attendance logs error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Get attendance summary for an employee
