@@ -8,18 +8,17 @@ async function checkUserUpdates() {
     // 1. Check for Employees updated in last 10 mins
     const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-    const updatedUsers = await prisma.user.findMany({
+    const updatedEmployees = await prisma.employee.findMany({
         where: {
             updatedAt: { gt: tenMinsAgo }
         },
-        include: { employee: true },
         orderBy: { updatedAt: 'desc' },
         take: 10
     });
 
-    console.log(`\n👥 Users updated in last 10 mins: ${updatedUsers.length}`);
-    updatedUsers.forEach(u => {
-        console.log(` - [${u.employee?.deviceUserId || '?'}] ${u.name} (Source: ${u.employee?.source || 'Unknown'})`);
+    console.log(`\n👥 Employees updated in last 10 mins: ${updatedEmployees.length}`);
+    updatedEmployees.forEach(e => {
+        console.log(` - [${e.deviceUserId || '?'}] ${e.firstName} ${e.lastName || ''} (Code: ${e.employeeCode})`);
     });
 
     // 2. Check for fulfilled commands
