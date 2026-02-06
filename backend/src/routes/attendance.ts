@@ -9,88 +9,76 @@ router.use(authenticate);
 
 // Get attendance logs
 router.get('/', async (req, res) => {
-  try {
-    const {
-      employeeId,
-      departmentId,
-      branchId,
-      startDate,
-      endDate,
-      status,
-      locationId,
-      search,
-      page = '1',
-      limit = '50'
-    } = req.query;
+  const tenantId = (req as any).user.tenantId;
 
-    const pageNum = parseInt(page as string);
-    const limitNum = Math.min(parseInt(limit as string) || 50, 500); // Cap at 500 to prevent OOM
-    const skip = (pageNum - 1) * limitNum;
+  const pageNum = parseInt(page as string);
+  const limitNum = Math.min(parseInt(limit as string) || 50, 500); // Cap at 500 to prevent OOM
+  const skip = (pageNum - 1) * limitNum;
 
-    const where: any = {};
+  const where: any = { tenantId };
 
-    if (employeeId) where.employeeId = employeeId as string;
-    if (status) where.status = status as string;
+  if (employeeId) where.employeeId = employeeId as string;
+  if (status) where.status = status as string;
 
-    if (startDate && endDate) {
-      where.date = {
-        gte: startOfDay(parseISO(startDate as string)),
-        lte: endOfDay(parseISO(endDate as string)),
-      };
-    } else if (startDate) {
-      where.date = {
-        gte: startOfDay(parseISO(startDate as string)),
-      };
-    }
+  if (startDate && endDate) {
+    where.date = {
+      gte: startOfDay(parseISO(startDate as string)),
+      lte: endOfDay(parseISO(endDate as string)),
+    };
+  } else if (startDate) {
+    where.date = {
+      gte: startOfDay(parseISO(startDate as string)),
+    };
+  }
 
-    let employeeWhere: any = {};
-    if (departmentId) employeeWhere.departmentId = departmentId as string;
-    if (branchId) employeeWhere.branchId = branchId as string;
-    if (locationId) employeeWhere.locationId = locationId as string;
+  let employeeWhere: any = {};
+  if (departmentId) employeeWhere.departmentId = departmentId as string;
+  if (branchId) employeeWhere.branchId = branchId as string;
+  if (locationId) employeeWhere.locationId = locationId as string;
 
-    if (search) {
-      employeeWhere.OR = [
-        { firstName: { contains: search as string, mode: 'insensitive' } },
-        { lastName: { contains: search as string, mode: 'insensitive' } },
-        { employeeCode: { contains: search as string, mode: 'insensitive' } },
-      ];
-    }
+  if (search) {
+    employeeWhere.OR = [
+      { firstName: { contains: search as string, mode: 'insensitive' } },
+      { lastName: { contains: search as string, mode: 'insensitive' } },
+      { employeeCode: { contains: search as string, mode: 'insensitive' } },
+    ];
+  }
 
-    if (Object.keys(employeeWhere).length > 0) {
-      where.employee = employeeWhere;
-    }
+  if (Object.keys(employeeWhere).length > 0) {
+    where.employee = employeeWhere;
+  }
 
-    const [logs, total] = await Promise.all([
-      prisma.attendanceLog.findMany({
-        where,
-        include: {
-          employee: {
-            include: {
-              department: true,
-              branch: true,
-            },
+  const [logs, total] = await Promise.all([
+    prisma.attendanceLog.findMany({
+      where,
+      include: {
+        employee: {
+          include: {
+            department: true,
+            branch: true,
           },
         },
-        skip,
-        take: limitNum,
-        orderBy: { date: 'desc' },
-      }),
-      prisma.attendanceLog.count({ where }),
-    ]);
-
-    res.json({
-      logs,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum),
       },
-    });
-  } catch (error) {
-    console.error('Get attendance logs error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+      skip,
+      take: limitNum,
+      orderBy: { date: 'desc' },
+    }),
+    prisma.attendanceLog.count({ where }),
+  ]);
+
+  res.json({
+    logs,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+    },
+  });
+} catch (error) {
+  console.error('Get attendance logs error:', error);
+  res.status(500).json({ error: 'Internal server error' });
+}
 });
 
 // Get attendance summary for an employee
@@ -302,7 +290,8 @@ router.get('/monthly-report', async (req, res) => {
     // AttendanceLog.date is @db.Date — use UTC getters
     const logsByEmployee = new Map();
     for (const log of logs) {
-      const dateKey = new Date(log.date).getDate();
+      // Use getUTCDate() because Prisma @db.Date stores date at 00:00:00 UTC
+      const dateKey = new Date(log.date).getUTCDate();
       if (!logsByEmployee.has(log.employeeId)) {
         logsByEmployee.set(log.employeeId, new Map());
       }
@@ -388,9 +377,10 @@ router.get('/monthly-report', async (req, res) => {
 
     holidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
+      // Use getUTC getters for @db.Date
+      if (d.getUTCMonth() + 1 === targetMonth && d.getUTCFullYear() === targetYear) {
         formattedHolidays.push({
-          day: d.getDate(),
+          day: d.getUTCDate(),
           name: h.name,
           isRecurring: h.isRecurring,
         });
@@ -399,9 +389,9 @@ router.get('/monthly-report', async (req, res) => {
 
     recurringHolidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getMonth() + 1 === targetMonth) {
+      if (d.getUTCMonth() + 1 === targetMonth) {
         formattedHolidays.push({
-          day: d.getDate(),
+          day: d.getUTCDate(),
           name: h.name,
           isRecurring: h.isRecurring,
         });

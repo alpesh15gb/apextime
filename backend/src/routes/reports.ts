@@ -21,9 +21,10 @@ async function getBranding() {
 
 // Helper function to get attendance data
 async function getAttendanceData(filters: any) {
-  const { startDate, endDate, departmentId, branchId, locationId, employeeId } = filters;
+  const { startDate, endDate, departmentId, branchId, locationId, employeeId, tenantId } = filters;
 
   const where: any = {
+    tenantId,
     date: {
       gte: startOfDay(parseISO(startDate)),
       lte: endOfDay(parseISO(endDate)),
@@ -79,6 +80,7 @@ router.get('/daily', async (req, res) => {
       branchId: branchId as string | undefined,
       locationId: locationId as string | undefined,
       employeeId: employeeId as string | undefined,
+      tenantId: (req as any).user.tenantId
     });
 
     if (format === 'excel') {
@@ -747,6 +749,11 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
   doc.text(`Year: ${data.year}`, 25, y);
   doc.text(`Month: ${monthName}`, 80, y);
 
+  const today = new Date();
+  if (data.month === today.getUTCMonth() + 1 && data.year === today.getUTCFullYear()) {
+    doc.text(`As of: ${today.toLocaleTimeString()}`, 150, y);
+  }
+
   // Table Header
   y = 100;
   const colWidths = { id: 40, name: 110, month: 45, days: 27, stats: 25 };
@@ -779,9 +786,9 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
     let pCount = 0, aCount = 0, lCount = 0;
 
     for (let d = 1; d <= data.daysInMonth; d++) {
-      const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getDate() === d);
-      const dayDate = new Date(data.year, data.month - 1, d);
-      const isSun = dayDate.getDay() === 0;
+      const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getUTCDate() === d);
+      const dayDate = new Date(Date.UTC(data.year, data.month - 1, d));
+      const isSun = dayDate.getUTCDay() === 0;
 
       let row1 = '-';
       let row2 = '';
@@ -877,8 +884,9 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
     let p = 0, a = 0, l = 0;
 
     for (let d = 1; d <= data.daysInMonth; d++) {
-      const log = data.logs.find((log: any) => log.employeeId === emp.id && new Date(log.date).getDate() === d);
-      const isSun = new Date(data.year, data.month - 1, d).getDay() === 0;
+      const log = data.logs.find((log: any) => log.employeeId === emp.id && new Date(log.date).getUTCDate() === d);
+      const dayDate = new Date(Date.UTC(data.year, data.month - 1, d));
+      const isSun = dayDate.getUTCDay() === 0;
 
       if (log) {
         const inStr = log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'P';
