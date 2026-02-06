@@ -743,8 +743,9 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
   // Info Row
   doc.fillColor('black').fontSize(8).font('Helvetica');
   let y = 80;
+  const monthName = new Date(2000, data.month - 1).toLocaleString('default', { month: 'long' });
   doc.text(`Year: ${data.year}`, 25, y);
-  doc.text(`Month: ${new Date(2000, data.month - 1).toLocaleString('default', { month: 'long' })}`, 80, y);
+  doc.text(`Month: ${monthName}`, 80, y);
 
   // Table Header
   y = 100;
@@ -883,16 +884,16 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
         const inStr = log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'P';
         const outStr = log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
         rowData[`d${d}`] = inStr + (outStr ? '\n' + outStr : '');
-        pCount++;
-        if (log.lateArrival > 0) lCount++;
+        p++;
+        if (log.lateArrival > 0) l++;
       } else if (isSun) {
         rowData[`d${d}`] = 'WO';
       } else {
         rowData[`d${d}`] = 'A';
-        aCount++;
+        a++;
       }
     }
-    rowData.p = pCount; rowData.a = aCount; rowData.l = lCount;
+    rowData.p = p; rowData.a = a; rowData.l = l;
 
     const row = ws.addRow(rowData);
 
