@@ -271,18 +271,19 @@ router.get('/monthly-report', async (req, res) => {
     // Holiday.date is @db.Date — Prisma returns UTC midnight. Use UTC getters.
     holidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getUTCMonth() + 1 === targetMonth && d.getUTCFullYear() === targetYear) {
-        holidayDays.add(d.getUTCDate());
-        holidayNames.set(d.getUTCDate(), h.name);
+      // Use local date for matching
+      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
+        holidayDays.add(d.getDate());
+        holidayNames.set(d.getDate(), h.name);
       }
     });
 
     // Add recurring holidays
     recurringHolidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getUTCMonth() + 1 === targetMonth) {
-        holidayDays.add(d.getUTCDate());
-        holidayNames.set(d.getUTCDate(), h.name + (h.isRecurring ? ' (R)' : ''));
+      if (d.getMonth() + 1 === targetMonth) {
+        holidayDays.add(d.getDate());
+        holidayNames.set(d.getDate(), h.name + (h.isRecurring ? ' (R)' : ''));
       }
     });
 
@@ -290,7 +291,7 @@ router.get('/monthly-report', async (req, res) => {
     // AttendanceLog.date is @db.Date — use UTC getters
     const logsByEmployee = new Map();
     for (const log of logs) {
-      const dateKey = new Date(log.date).getUTCDate();
+      const dateKey = new Date(log.date).getDate();
       if (!logsByEmployee.has(log.employeeId)) {
         logsByEmployee.set(log.employeeId, new Map());
       }
@@ -376,9 +377,9 @@ router.get('/monthly-report', async (req, res) => {
 
     holidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getUTCMonth() + 1 === targetMonth && d.getUTCFullYear() === targetYear) {
+      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
         formattedHolidays.push({
-          day: d.getUTCDate(),
+          day: d.getDate(),
           name: h.name,
           isRecurring: h.isRecurring,
         });
@@ -387,9 +388,9 @@ router.get('/monthly-report', async (req, res) => {
 
     recurringHolidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getUTCMonth() + 1 === targetMonth) {
+      if (d.getMonth() + 1 === targetMonth) {
         formattedHolidays.push({
-          day: d.getUTCDate(),
+          day: d.getDate(),
           name: h.name,
           isRecurring: h.isRecurring,
         });

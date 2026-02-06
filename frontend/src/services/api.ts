@@ -109,6 +109,9 @@ export const attendanceAPI = {
   getSummary: (params?: any) => api.get('/attendance/summary', { params }),
   getMonthlyReport: (params?: any) => api.get('/attendance/monthly-report', { params }),
   update: (id: string, data: any) => api.put(`/attendance/${id}`, data),
+  downloadMatrixPDF: (params: any) => api.get('/attendance/monthly-report', { params: { ...params, format: 'pdf' }, responseType: 'blob' }),
+  downloadMatrixExcel: (params: any) => api.get('/attendance/monthly-report', { params: { ...params, format: 'excel' }, responseType: 'blob' }),
+  reprocess: (data: { startDate?: string; endDate?: string; employeeId?: string }) => api.post('/attendance/reprocess', data),
 };
 
 export const holidaysAPI = {

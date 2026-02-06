@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer, Share2, Filter, MoreVertical, LayoutGrid, Briefcase } from 'lucide-react';
-import { attendanceAPI, departmentsAPI, branchesAPI } from '../services/api';
+import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer, Share2, Filter, MoreVertical, LayoutGrid, Briefcase, RefreshCw, FileSpreadsheet, File as FilePdf } from 'lucide-react';
+import { attendanceAPI, departmentsAPI, branchesAPI, reportsAPI } from '../services/api';
 
 interface DailyData {
   day: number;
@@ -112,6 +112,57 @@ export const MonthlyReport = () => {
       setError('Failed to load report data. Please check your connection or try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = async (format: 'pdf' | 'excel') => {
+    try {
+      setLoading(true);
+      const params: Record<string, string> = {
+        month: month.toString(),
+        year: year.toString(),
+      };
+      if (selectedDepartment) params.departmentId = selectedDepartment;
+      if (selectedBranch) params.branchId = selectedBranch;
+
+      let response;
+      if (format === 'pdf') {
+        response = await reportsAPI.downloadPDF('monthly_matrix', params);
+      } else {
+        response = await reportsAPI.downloadExcel('monthly_matrix', params);
+      }
+
+      const blob = new Blob([response.data], {
+        type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Monthly_Matrix_${month}_${year}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      alert('Download failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncData = async () => {
+    if (confirm('Recalculate all logs for this month? (Fixes "Not Updating" issues)')) {
+      try {
+        setLoading(true);
+        const start = `${year}-${String(month).padStart(2, '0')}-01`;
+        const end = `${year}-${String(month).padStart(2, '0')}-${report?.daysInMonth || 31}`;
+        await attendanceAPI.reprocess({ startDate: start, endDate: end });
+        alert('Sync Complete');
+        fetchReport();
+      } catch (e) {
+        alert('Sync failed');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -235,9 +286,24 @@ export const MonthlyReport = () => {
             </button>
           </div>
 
+          <button onClick={handleSyncData} className="btn-app bg-white border border-gray-100 text-blue-600 hover:bg-blue-50" title="Recalculate Data">
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <span className="text-xs">Sync Data</span>
+          </button>
+
+          <button onClick={() => handleDownload('pdf')} className="btn-app bg-white border border-gray-100 text-red-500 hover:bg-red-50">
+            <FilePdf className="w-5 h-5" />
+            <span className="text-xs">PDF</span>
+          </button>
+
+          <button onClick={() => handleDownload('excel')} className="btn-app bg-white border border-gray-100 text-green-600 hover:bg-green-50">
+            <FileSpreadsheet className="w-5 h-5" />
+            <span className="text-xs">Excel</span>
+          </button>
+
           <button onClick={handlePrint} className="btn-app bg-white border border-gray-100 text-gray-600 hover:bg-gray-50">
             <Printer className="w-5 h-5" />
-            <span className="text-xs">Print Report</span>
+            <span className="text-xs">Print</span>
           </button>
         </div>
       </div>

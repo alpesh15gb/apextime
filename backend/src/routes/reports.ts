@@ -596,8 +596,131 @@ router.get('/:type/download/:format', async (req, res) => {
     return generateDeptPDFReport(summary, `Department Summary Report`, res, { startDate: start, endDate: end });
   }
 
+  if (type === 'monthly_matrix') {
+    const { month, year } = req.query;
+    const m = parseInt(month as string) || new Date().getMonth() + 1;
+    const y = parseInt(year as string) || new Date().getFullYear();
+    const matrixRes = await fetchMatrixData(m, y, departmentId as string, branchId as string, (req as any).user.tenantId);
+
+    if (format === 'excel') return generateMatrixExcelReport(matrixRes, `Monthly_Matrix_${m}_${y}`, res);
+    return generateMatrixPDFReport(matrixRes, `Employee Attendance Sheet`, res);
+  }
+
   res.status(404).json({ error: 'Report type not supported' });
 });
+
+async function fetchMatrixData(month: number, year: number, departmentId: string, branchId: string, tenantId: string) {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+  const daysInMonth = end.getDate();
+
+  const employees = await prisma.employee.findMany({
+    where: { tenantId, isActive: true, ...(departmentId ? { departmentId } : {}), ...(branchId ? { branchId } : {}) },
+    include: { department: true, branch: true },
+    orderBy: { firstName: 'asc' }
+  });
+
+  const logs = await prisma.attendanceLog.findMany({
+    where: { tenantId, date: { gte: start, lte: end }, employeeId: { in: employees.map(e => e.id) } }
+  });
+
+  const holidays = await prisma.holiday.findMany({
+    where: { tenantId, date: { gte: start, lte: end } }
+  });
+
+  return { month, year, daysInMonth, employees, logs, holidays };
+}
+
+async function generateMatrixPDFReport(data: any, title: string, res: express.Response) {
+  const branding = await getBranding();
+  const doc = new PDFDocument({ margin: 20, layout: 'landscape', size: 'A3' });
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  const TEAL = '#297972';
+
+  // Header Box
+  doc.rect(20, 20, doc.page.width - 40, 50).fill(TEAL);
+  doc.fillColor('white').fontSize(20).font('Helvetica-Bold').text(branding.name || 'Your Company Name', 0, 30, { align: 'center' });
+  doc.fontSize(12).text(title, 0, 52, { align: 'center' });
+
+  // Info Row
+  doc.fillColor('black').fontSize(8).font('Helvetica');
+  let y = 80;
+  doc.text(`Year: ${data.year}`, 25, y);
+  doc.text(`Month: ${new Date(2000, data.month - 1).toLocaleString('default', { month: 'long' })}`, 80, y);
+
+  // Table Header
+  y = 100;
+  const colWidths = { id: 40, name: 100, month: 40, days: 22, stats: 25 };
+  doc.rect(20, y, doc.page.width - 40, 25).fill('#e0f2f1');
+  doc.fillColor(TEAL).font('Helvetica-Bold');
+  doc.text('Emp. ID', 25, y + 8);
+  doc.text('Employee Name', 65, y + 8);
+  doc.text('Month', 165, y + 8);
+
+  let dayX = 205;
+  for (let i = 1; i <= data.daysInMonth; i++) {
+    doc.text(i.toString(), dayX, y + 8, { width: colWidths.days, align: 'center' });
+    dayX += colWidths.days;
+  }
+  doc.text('P', dayX, y + 8, { width: colWidths.stats, align: 'center' });
+  doc.text('A', dayX + colWidths.stats, y + 8, { width: colWidths.stats, align: 'center' });
+  doc.text('L', dayX + colWidths.stats * 2, y + 8, { width: colWidths.stats, align: 'center' });
+
+  y += 25;
+  doc.font('Helvetica').fontSize(7).fillColor('black');
+
+  data.employees.forEach((emp: any) => {
+    if (y > doc.page.height - 50) { doc.addPage({ layout: 'landscape', size: 'A3' }); y = 40; }
+
+    doc.text(emp.employeeCode, 25, y);
+    doc.text(`${emp.firstName} ${emp.lastName || ''}`.substring(0, 20), 65, y);
+    doc.text(new Date(2).toLocaleString('en-US', { month: 'short' }), 165, y);
+
+    let dX = 205;
+    let pCount = 0, aCount = 0, lCount = 0;
+
+    for (let d = 1; d <= data.daysInMonth; d++) {
+      const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getDate() === d);
+      const dayDate = new Date(data.year, data.month - 1, d);
+      const isSun = dayDate.getDay() === 0;
+
+      let status = '-';
+      let color = 'black';
+
+      if (log) {
+        status = 'P';
+        pCount++;
+        if (log.lateArrival > 0) {
+          status = 'L';
+          lCount++;
+          color = 'orange';
+        }
+      } else if (isSun) {
+        status = 'H';
+        color = TEAL;
+      } else {
+        status = 'A';
+        aCount++;
+        color = 'red';
+      }
+
+      doc.fillColor(color).text(status, dX, y, { width: colWidths.days, align: 'center' });
+      dX += colWidths.days;
+    }
+
+    doc.fillColor('black');
+    doc.text(pCount.toString(), dX, y, { width: colWidths.stats, align: 'center' });
+    doc.text(aCount.toString(), dX + colWidths.stats, y, { width: colWidths.stats, align: 'center' });
+    doc.text(lCount.toString(), dX + colWidths.stats * 2, y, { width: colWidths.stats, align: 'center' });
+
+    y += 12;
+    doc.moveTo(20, y - 2).lineTo(doc.page.width - 20, y - 2).strokeColor('#eeeeee').lineWidth(0.5).stroke();
+  });
+
+  doc.end();
+}
 
 function groupDepartmentSummary(logs: any[]) {
   const groups: any = {};
@@ -619,6 +742,77 @@ function groupDepartmentSummary(logs: any[]) {
     if (log.earlyDeparture > 0) stats.Early++;
   });
   return groups;
+}
+
+async function generateMatrixExcelReport(data: any, filename: string, res: express.Response) {
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('Monthly Matrix');
+
+  const TEAL = 'FF297972';
+
+  // Columns
+  const cols = [
+    { header: 'Emp Code', key: 'code', width: 12 },
+    { header: 'Name', key: 'name', width: 25 },
+  ];
+  for (let i = 1; i <= data.daysInMonth; i++) {
+    cols.push({ header: i.toString(), key: `d${i}`, width: 4 });
+  }
+  cols.push({ header: 'P', key: 'p', width: 5 });
+  cols.push({ header: 'A', key: 'a', width: 5 });
+  cols.push({ header: 'L', key: 'l', width: 5 });
+
+  ws.columns = cols;
+
+  // Header Style
+  const headerRow = ws.getRow(1);
+  headerRow.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TEAL } };
+    cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+    cell.alignment = { horizontal: 'center' };
+  });
+
+  data.employees.forEach((emp: any) => {
+    const rowData: any = { code: emp.employeeCode, name: `${emp.firstName} ${emp.lastName || ''}` };
+    let p = 0, a = 0, l = 0;
+
+    for (let d = 1; d <= data.daysInMonth; d++) {
+      const log = data.logs.find((log: any) => log.employeeId === emp.id && new Date(log.date).getDate() === d);
+      const isSun = new Date(data.year, data.month - 1, d).getDay() === 0;
+
+      if (log) {
+        rowData[`d${d}`] = 'P';
+        p++;
+        if (log.lateArrival > 0) { rowData[`d${d}`] = 'L'; l++; }
+      } else if (isSun) {
+        rowData[`d${d}`] = 'H';
+      } else {
+        rowData[`d${d}`] = 'A';
+        a++;
+      }
+    }
+    rowData.p = p; rowData.a = a; rowData.l = l;
+
+    const row = ws.addRow(rowData);
+
+    // Style the row cells
+    for (let d = 1; d <= data.daysInMonth; d++) {
+      const cell = row.getCell(2 + d);
+      const val = cell.value;
+      if (val === 'L') {
+        cell.font = { color: { argb: 'FFFFA500' }, bold: true }; // Orange
+      } else if (val === 'A') {
+        cell.font = { color: { argb: 'FFFF0000' } }; // Red
+      } else if (val === 'H') {
+        cell.font = { color: { argb: 'FF0000FF' } }; // Blue/Teal
+      }
+    }
+  });
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
 }
 
 async function generateLeavePDFReport(employees: any[], title: string, res: express.Response) {

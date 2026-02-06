@@ -9,9 +9,11 @@ import {
   MoreVertical,
   Zap,
   Activity,
-  Search
+  Search,
+  Building2,
+  MapPin
 } from 'lucide-react';
-import { attendanceAPI, employeesAPI, departmentsAPI } from '../services/api';
+import { attendanceAPI, employeesAPI, departmentsAPI, branchesAPI, locationsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AttendanceLog } from '../types';
 
@@ -26,27 +28,38 @@ export const Attendance = () => {
     endDate: new Date().toLocaleDateString('en-CA'),
     employeeId: user?.role === 'employee' ? user.employeeId : '',
     departmentId: '',
+    branchId: '',
+    locationId: '',
+    search: '',
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
+  const [branches, setBranches] = useState([]);
+  const [locations, setLocations] = useState([]);
 
   useEffect(() => {
     fetchAttendance();
     fetchEmployees();
     fetchDepartments();
-  }, [page, filters]);
+    fetchBranches();
+    fetchLocations();
+  }, [page, limit, filters]);
 
   const fetchAttendance = async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = {
         page: page.toString(),
-        limit: '20',
+        limit: limit.toString(),
         startDate: filters.startDate,
         endDate: filters.endDate,
       };
       if (filters.employeeId) params.employeeId = filters.employeeId;
       if (filters.departmentId) params.departmentId = filters.departmentId;
+      if (filters.branchId) params.branchId = filters.branchId;
+      if (filters.locationId) params.locationId = filters.locationId;
+      if (filters.search) params.search = filters.search;
 
       const response = await attendanceAPI.getAll(params);
       setLogs(response.data.logs);
@@ -67,13 +80,18 @@ export const Attendance = () => {
     }
   };
 
-  const fetchDepartments = async () => {
+  const fetchBranches = async () => {
     try {
-      const response = await departmentsAPI.getAll();
-      setDepartments(response.data);
-    } catch (error) {
-      console.error('Failed to fetch departments:', error);
-    }
+      const response = await branchesAPI.getAll();
+      setBranches(response.data);
+    } catch (error) { console.error(error); }
+  };
+
+  const fetchLocations = async () => {
+    try {
+      const response = await locationsAPI.getAll();
+      setLocations(response.data);
+    } catch (error) { console.error(error); }
   };
 
   const getStatusBadge = (log: AttendanceLog) => {
@@ -122,7 +140,7 @@ export const Attendance = () => {
       {/* Control Deck */}
       <div className="app-card p-10 bg-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-2xl -mr-10 -mt-10"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative z-10">
           <div className="space-y-4">
             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
               <Calendar className="w-3 h-3 text-blue-500" /> Start Date
@@ -147,22 +165,49 @@ export const Attendance = () => {
             />
           </div>
 
+          <div className="space-y-4">
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Search Employee</label>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Name or ID..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                className="w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all uppercase tracking-wider"
+              />
+            </div>
+          </div>
+
           {user?.role !== 'employee' && (
             <>
               <div className="space-y-4">
-                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee</label>
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Branch</label>
                 <div className="relative">
                   <select
-                    value={filters.employeeId}
-                    onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
+                    value={filters.branchId}
+                    onChange={(e) => setFilters({ ...filters, branchId: e.target.value })}
                     className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
                   >
-                    <option value="">All Employees</option>
-                    {employees.map((emp: any) => (
-                      <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                    ))}
+                    <option value="">All Branches</option>
+                    {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
-                  <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <Building2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Location</label>
+                <div className="relative">
+                  <select
+                    value={filters.locationId}
+                    onChange={(e) => setFilters({ ...filters, locationId: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+                  >
+                    <option value="">All Locations</option>
+                    {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                  <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
@@ -184,6 +229,19 @@ export const Attendance = () => {
               </div>
             </>
           )}
+
+          <div className="space-y-4">
+            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Show</label>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="w-full px-5 py-4 bg-gray-50/50 border border-transparent rounded-2xl text-[11px] font-black text-gray-800 focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none cursor-pointer uppercase tracking-wider"
+            >
+              <option value={20}>20 Rows</option>
+              <option value={50}>50 Rows</option>
+              <option value={100}>100 Rows</option>
+            </select>
+          </div>
         </div>
       </div>
 
