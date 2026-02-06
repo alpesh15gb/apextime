@@ -46,21 +46,35 @@ router.get('/', async (req, res) => {
       };
     }
 
-    let employeeWhere: any = {};
-    if (departmentId) employeeWhere.departmentId = departmentId as string;
-    if (branchId) employeeWhere.branchId = branchId as string;
-    if (locationId) employeeWhere.locationId = locationId as string;
+    const employeeFilters: any[] = [];
 
-    if (search) {
-      employeeWhere.OR = [
-        { firstName: { contains: search as string, mode: 'insensitive' } },
-        { lastName: { contains: search as string, mode: 'insensitive' } },
-        { employeeCode: { contains: search as string, mode: 'insensitive' } },
-      ];
+    if (departmentId) employeeFilters.push({ departmentId: departmentId as string });
+    if (branchId) employeeFilters.push({ branchId: branchId as string });
+
+    // Cascading Location Filter: Check direct location OR branch's location
+    if (locationId) {
+      employeeFilters.push({
+        OR: [
+          { locationId: locationId as string },
+          { branch: { locationId: locationId as string } }
+        ]
+      });
     }
 
-    if (Object.keys(employeeWhere).length > 0) {
-      where.employee = employeeWhere;
+    if (search) {
+      employeeFilters.push({
+        OR: [
+          { firstName: { contains: search as string, mode: 'insensitive' } },
+          { lastName: { contains: search as string, mode: 'insensitive' } },
+          { employeeCode: { contains: search as string, mode: 'insensitive' } },
+        ]
+      });
+    }
+
+    if (employeeFilters.length > 0) {
+      where.employee = {
+        AND: employeeFilters
+      };
     }
 
     const [logs, total] = await Promise.all([
@@ -226,7 +240,9 @@ router.post('/manual', async (req, res) => {
 // Get monthly attendance report (matrix format like the paper)
 router.get('/monthly-report', async (req, res) => {
   try {
-    const { month, year, departmentId, branchId } = req.query;
+    const { month, year, departmentId, branchId, locationId } = req.query;
+
+    // ... params ...
 
     const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
     const targetYear = parseInt(year as string) || new Date().getFullYear();
@@ -245,9 +261,26 @@ router.get('/monthly-report', async (req, res) => {
     };
 
     // Build employee filter
-    const employeeWhere: any = { status: 'active', tenantId: (req as any).user.tenantId };
+    const employeeWhere: any = {
+      status: 'active',
+      tenantId: (req as any).user.tenantId,
+      AND: []
+    };
+
     if (departmentId) employeeWhere.departmentId = departmentId as string;
     if (branchId) employeeWhere.branchId = branchId as string;
+
+    if (locationId) {
+      employeeWhere.AND.push({
+        OR: [
+          { locationId: locationId as string },
+          { branch: { locationId: locationId as string } }
+        ]
+      });
+    }
+
+    // Clean up empty AND
+    if (employeeWhere.AND.length === 0) delete employeeWhere.AND;
 
     // Get all active employees
     const employees = await prisma.employee.findMany({
