@@ -24,6 +24,7 @@ import { Employee, Department, Branch, Shift } from '../types';
 export const Employees = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const employeeImportRef = useRef<HTMLInputElement>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,64 @@ export const Employees = () => {
     fetchShifts();
     fetchShifts();
   }, [page, searchTerm, selectedDepartment, statusFilter, itemsPerPage]);
+
+  const downloadEmployeeTemplate = () => {
+    const headers = ['EmployeeCode', 'FirstName', 'LastName', 'Email', 'Phone', 'DepartmentName', 'BranchName'];
+    const dummy = ['EMP101', 'John', 'Doe', 'john@example.com', '9876543210', 'Sales', 'Head Office'];
+    const csvContent = [headers.join(','), dummy.join(',')].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'employee_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleImportEmployees = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        const rows = text.split('\n').map(r => r.trim()).filter(r => r);
+        if (rows.length < 2) { alert('Empty file'); return; }
+
+        const h = rows[0].split(',').map(item => item.trim().toLowerCase());
+        const records: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const c = rows[i].split(',').map(item => item.trim());
+          if (c.length < 2) continue;
+
+          records.push({
+            employeeCode: c[h.indexOf('employeecode')] || c[0],
+            firstName: c[h.indexOf('firstname')] || c[1],
+            lastName: c[h.indexOf('lastname')] || c[2],
+            email: c[h.indexOf('email')] || c[3],
+            phone: c[h.indexOf('phone')] || c[4],
+            departmentName: c[h.indexOf('departmentname')] || c[5],
+            branchName: c[h.indexOf('branchname')] || c[6],
+          });
+        }
+
+        if (confirm(`Upload ${records.length} employees? Smart matching: existing IDs will ONLY have names/dept updated.`)) {
+          const res = await employeesAPI.bulkImport({ records });
+          alert(`Success: ${res.data.created} created, ${res.data.updated} updated. Failed: ${res.data.failed}`);
+          fetchEmployees();
+        }
+      } catch (err) {
+        alert('Import failed. Check CSV format.');
+      }
+      if (employeeImportRef.current) employeeImportRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
 
   const downloadBankTemplate = () => {
     const headers = ['EmployeeCode', 'BankName', 'AccountNumber', 'IFSCCode', 'PANNumber', 'BasicSalary', 'HRA', 'OtherAllowances', 'StandardDeductions', 'IsPFEnabled', 'IsESIEnabled', 'OTRateMultiplier'];
@@ -343,6 +402,29 @@ export const Employees = () => {
             className="text-gray-600 hover:text-blue-600 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-200"
           >
             <Key className="w-4 h-4" /> Fix Logins
+          </button>
+
+          <div className="h-6 w-px bg-gray-200 mx-1 hidden lg:block" />
+
+          <input
+            type="file"
+            ref={employeeImportRef}
+            onChange={handleImportEmployees}
+            className="hidden"
+            accept=".csv"
+          />
+          <button
+            onClick={downloadEmployeeTemplate}
+            className="text-blue-600 hover:bg-blue-50 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-blue-50/50 rounded-lg border border-blue-100 transition-all"
+            title="Download Import Template"
+          >
+            <Download className="w-4 h-4" /> Template
+          </button>
+          <button
+            onClick={() => employeeImportRef.current?.click()}
+            className="text-blue-600 hover:bg-blue-50 font-medium text-sm flex items-center gap-2 px-3 py-2 bg-blue-50/50 rounded-lg border border-blue-100 transition-all"
+          >
+            <Upload className="w-4 h-4" /> Bulk Employee Import
           </button>
           <button
             onClick={() => navigate('/employees/new')}

@@ -494,4 +494,114 @@ router.post('/repair-user-accounts', async (req, res) => {
   }
 });
 
+
+// Smart Bulk Import (Upsert)
+router.post('/bulk-import', async (req, res) => {
+  try {
+    const { records } = req.body;
+    const tenantId = (req as any).user.tenantId;
+
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ error: 'Records must be an array' });
+    }
+
+    const results = {
+      total: records.length,
+      created: 0,
+      updated: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    // Pre-fetch departments and branches for mapping if names are provided
+    const [departments, branches] = await Promise.all([
+      prisma.department.findMany({ where: { tenantId } }),
+      prisma.branch.findMany({ where: { tenantId } })
+    ]);
+
+    for (const record of records) {
+      try {
+        const { employeeCode, firstName, lastName, email, phone, departmentName, branchName } = record;
+
+        if (!employeeCode || !firstName) {
+          results.failed++;
+          results.errors.push(`Missing required fields for code: ${employeeCode || 'Unknown'}`);
+          continue;
+        }
+
+        const existing = await prisma.employee.findFirst({
+          where: { employeeCode, tenantId }
+        });
+
+        // Resolve Department/Branch IDs if names provided
+        let departmentId = undefined;
+        let branchId = undefined;
+
+        if (departmentName) {
+          const dept = departments.find(d => d.name.toLowerCase() === departmentName.toLowerCase());
+          if (dept) departmentId = dept.id;
+        }
+
+        if (branchName) {
+          const br = branches.find(b => b.name.toLowerCase() === branchName.toLowerCase());
+          if (br) branchId = br.id;
+        }
+
+        if (existing) {
+          // Update existing
+          await prisma.employee.update({
+            where: { id: existing.id },
+            data: {
+              firstName,
+              lastName: lastName || '',
+              email: email || undefined,
+              phone: phone || undefined,
+              departmentId,
+              branchId
+            }
+          });
+          results.updated++;
+        } else {
+          // Create new with transaction for user record
+          await prisma.$transaction(async (tx) => {
+            const employee = await tx.employee.create({
+              data: {
+                tenantId,
+                employeeCode: employeeCode.toString(),
+                firstName,
+                lastName: lastName || '',
+                email: email || undefined,
+                phone: phone || undefined,
+                departmentId,
+                branchId,
+                isActive: true
+              }
+            });
+
+            const hashedPassword = await bcrypt.hash(employeeCode.toString(), 10);
+            await tx.user.create({
+              data: {
+                tenantId,
+                username: employeeCode.toString(),
+                password: hashedPassword,
+                role: 'employee',
+                employeeId: employee.id
+              }
+            });
+          });
+          results.created++;
+        }
+      } catch (err: any) {
+        results.failed++;
+        results.errors.push(`Error with ${record.employeeCode}: ${err.message}`);
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('Bulk import error:', error);
+    res.status(500).json({ error: 'Internal server error during bulk import' });
+  }
+});
+
 export default router;

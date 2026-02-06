@@ -58,6 +58,7 @@ export const employeesAPI = {
   delete: (id: string) => api.delete(`/employees/${id}`),
   bulkUpdate: (ids: string[], data: any) => api.patch('/employees/bulk-update', { ids, data }),
   importBankDetails: (data: any) => api.post('/employees/import-bank-details', data),
+  bulkImport: (data: any) => api.post('/employees/bulk-import', data),
   repairUserAccounts: () => api.post('/employees/repair-user-accounts'),
 };
 
