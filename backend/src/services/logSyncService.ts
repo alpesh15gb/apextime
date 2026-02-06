@@ -76,15 +76,6 @@ async function findEmployeeId(uId: string, tenantId?: string): Promise<string | 
   return null;
 }
 
-// 3. Robust Numeric Fallback (e.g. Log "5" -> DB "005" or Log "005" -> DB "5")
-
-if (emp) {
-  employeeCache.set(sId, emp.id);
-  return emp.id;
-}
-
-return null;
-}
 
 export async function startLogSync(fullSync: boolean = false): Promise<void> {
   const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
