@@ -748,14 +748,14 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
 
   // Table Header
   y = 100;
-  const colWidths = { id: 40, name: 100, month: 40, days: 22, stats: 25 };
+  const colWidths = { id: 40, name: 110, month: 45, days: 27, stats: 25 };
   doc.rect(20, y, doc.page.width - 40, 25).fill('#e0f2f1');
-  doc.fillColor(TEAL).font('Helvetica-Bold');
+  doc.fontSize(10).fillColor(TEAL).font('Helvetica-Bold');
   doc.text('Emp. ID', 25, y + 8);
   doc.text('Employee Name', 65, y + 8);
-  doc.text('Month', 165, y + 8);
+  doc.text('Month', 175, y + 8);
 
-  let dayX = 205;
+  let dayX = 220;
   for (let i = 1; i <= data.daysInMonth; i++) {
     doc.text(i.toString(), dayX, y + 8, { width: colWidths.days, align: 'center' });
     dayX += colWidths.days;
@@ -765,16 +765,16 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
   doc.text('L', dayX + colWidths.stats * 2, y + 8, { width: colWidths.stats, align: 'center' });
 
   y += 25;
-  doc.font('Helvetica').fontSize(7).fillColor('black');
+  doc.font('Helvetica').fontSize(10).fillColor('black');
 
   data.employees.forEach((emp: any) => {
-    if (y > doc.page.height - 50) { doc.addPage({ layout: 'landscape', size: 'A3' }); y = 40; }
+    if (y > doc.page.height - 80) { doc.addPage({ layout: 'landscape', size: 'A3' }); y = 40; }
 
     doc.text(emp.employeeCode, 25, y);
-    doc.text(`${emp.firstName} ${emp.lastName || ''}`.substring(0, 20), 65, y);
-    doc.text(new Date(2).toLocaleString('en-US', { month: 'short' }), 165, y);
+    doc.text(`${emp.firstName} ${emp.lastName || ''}`.substring(0, 25), 65, y);
+    doc.text(monthName.substring(0, 3), 175, y);
 
-    let dX = 205;
+    let dX = 220;
     let pCount = 0, aCount = 0, lCount = 0;
 
     for (let d = 1; d <= data.daysInMonth; d++) {
@@ -782,36 +782,39 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
       const dayDate = new Date(data.year, data.month - 1, d);
       const isSun = dayDate.getDay() === 0;
 
-      let status = '-';
-      let color = 'black';
+      let row1 = '-';
+      let row2 = '';
+      let color = '#333333';
 
       if (log) {
-        status = 'P';
+        row1 = log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'P';
+        row2 = log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
         pCount++;
         if (log.lateArrival > 0) {
-          status = 'L';
           lCount++;
-          color = 'orange';
+          color = '#cc6600';
         }
       } else if (isSun) {
-        status = 'H';
+        row1 = 'WO';
         color = TEAL;
       } else {
-        status = 'A';
+        row1 = 'A';
         aCount++;
-        color = 'red';
+        color = '#cc0000';
       }
 
-      doc.fillColor(color).text(status, dX, y, { width: colWidths.days, align: 'center' });
+      doc.fillColor(color).fontSize(8).text(row1, dX, y - 2, { width: colWidths.days, align: 'center' });
+      if (row2) doc.text(row2, dX, y + 8, { width: colWidths.days, align: 'center' });
+      doc.fontSize(10);
       dX += colWidths.days;
     }
 
     doc.fillColor('black');
-    doc.text(pCount.toString(), dX, y, { width: colWidths.stats, align: 'center' });
-    doc.text(aCount.toString(), dX + colWidths.stats, y, { width: colWidths.stats, align: 'center' });
-    doc.text(lCount.toString(), dX + colWidths.stats * 2, y, { width: colWidths.stats, align: 'center' });
+    doc.text(pCount.toString(), dX, y + 4, { width: colWidths.stats, align: 'center' });
+    doc.text(aCount.toString(), dX + colWidths.stats, y + 4, { width: colWidths.stats, align: 'center' });
+    doc.text(lCount.toString(), dX + colWidths.stats * 2, y + 4, { width: colWidths.stats, align: 'center' });
 
-    y += 12;
+    y += 28;
     doc.moveTo(20, y - 2).lineTo(doc.page.width - 20, y - 2).strokeColor('#eeeeee').lineWidth(0.5).stroke();
   });
 
@@ -852,7 +855,7 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
     { header: 'Name', key: 'name', width: 25 },
   ];
   for (let i = 1; i <= data.daysInMonth; i++) {
-    cols.push({ header: i.toString(), key: `d${i}`, width: 4 });
+    cols.push({ header: i.toString(), key: `d${i}`, width: 8 });
   }
   cols.push({ header: 'P', key: 'p', width: 5 });
   cols.push({ header: 'A', key: 'a', width: 5 });
@@ -877,30 +880,41 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
       const isSun = new Date(data.year, data.month - 1, d).getDay() === 0;
 
       if (log) {
-        rowData[`d${d}`] = 'P';
-        p++;
-        if (log.lateArrival > 0) { rowData[`d${d}`] = 'L'; l++; }
+        const inStr = log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'P';
+        const outStr = log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+        rowData[`d${d}`] = inStr + (outStr ? '\n' + outStr : '');
+        pCount++;
+        if (log.lateArrival > 0) lCount++;
       } else if (isSun) {
-        rowData[`d${d}`] = 'H';
+        rowData[`d${d}`] = 'WO';
       } else {
         rowData[`d${d}`] = 'A';
-        a++;
+        aCount++;
       }
     }
-    rowData.p = p; rowData.a = a; rowData.l = l;
+    rowData.p = pCount; rowData.a = aCount; rowData.l = lCount;
 
     const row = ws.addRow(rowData);
 
     // Style the row cells
+    row.height = 30; // Double height for stacked times
     for (let d = 1; d <= data.daysInMonth; d++) {
       const cell = row.getCell(2 + d);
-      const val = cell.value;
-      if (val === 'L') {
-        cell.font = { color: { argb: 'FFFFA500' }, bold: true }; // Orange
+      const val = cell.value?.toString() || '';
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+
+      if (val.includes(':')) {
+        // Check if late (based on data.logs lookup or just color if it's there)
+        // For simplicity, we can't easily re-lookup here safely without original logs, 
+        // but we can re-find it.
+        const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getDate() === d);
+        if (log && log.lateArrival > 0) {
+          cell.font = { color: { argb: 'FFFFA500' }, bold: true };
+        }
       } else if (val === 'A') {
-        cell.font = { color: { argb: 'FFFF0000' } }; // Red
-      } else if (val === 'H') {
-        cell.font = { color: { argb: 'FF0000FF' } }; // Blue/Teal
+        cell.font = { color: { argb: 'FFFF0000' } };
+      } else if (val === 'WO') {
+        cell.font = { color: { argb: 'FF0000FF' } };
       }
     }
   });

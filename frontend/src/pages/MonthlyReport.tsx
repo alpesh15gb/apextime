@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Calendar, ChevronLeft, ChevronRight, Printer, Share2, Filter, MoreVertical, LayoutGrid, Briefcase, RefreshCw, FileSpreadsheet, File as FilePdf } from 'lucide-react';
-import { attendanceAPI, departmentsAPI, branchesAPI, reportsAPI } from '../services/api';
+import { attendanceAPI, departmentsAPI, branchesAPI, locationsAPI, reportsAPI } from '../services/api';
 
 interface DailyData {
   day: number;
@@ -197,7 +197,7 @@ export const MonthlyReport = () => {
 
   const getDayShortName = (day: number) => {
     const date = new Date(year, month - 1, day);
-    return date.toLocaleString('default', { weekday: 'narrow' });
+    return date.toLocaleString('default', { weekday: 'short' });
   };
 
   const getCellContent = (data: DailyData) => {
@@ -221,9 +221,9 @@ export const MonthlyReport = () => {
     if (!data.firstIn && !data.lastOut) return <span className="text-gray-300 font-bold">-</span>;
 
     return (
-      <div className="text-[7px] font-black leading-tight text-gray-900 group-hover:scale-110 transition-transform">
-        <div className={(data.lateArrival || 0) > 0 ? 'text-orange-500' : ''}>{formatTime(data.firstIn)}</div>
-        <div className={(data.earlyDeparture || 0) > 0 ? 'text-orange-500' : ''}>{formatTime(data.lastOut)}</div>
+      <div className="text-[9px] font-black leading-tight text-gray-900 group-hover:scale-110 transition-transform">
+        <div className={(data.lateArrival || 0) > 0 ? 'text-orange-600' : ''}>{formatTime(data.firstIn)}</div>
+        <div className={(data.earlyDeparture || 0) > 0 ? 'text-orange-600' : ''}>{formatTime(data.lastOut)}</div>
       </div>
     );
   };
@@ -259,7 +259,7 @@ export const MonthlyReport = () => {
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">All Locations</option>
-                {locations.map((loc) => (
+                {Array.isArray(locations) && locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
               </select>
@@ -272,7 +272,7 @@ export const MonthlyReport = () => {
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">All Branches</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                {Array.isArray(branches) && branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
             <div className="relative flex-1 xl:w-48">
@@ -283,7 +283,7 @@ export const MonthlyReport = () => {
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
               >
                 <option value="">All Departments</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {Array.isArray(departments) && departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
           </div>
@@ -409,16 +409,16 @@ export const MonthlyReport = () => {
             <div className="overflow-x-auto w-full pb-4 custom-scrollbar print:overflow-visible">
               <table className="w-full text-[9px] border-collapse">
                 <thead>
-                  <tr className="bg-gray-50/50">
-                    <th className="px-2 py-4 text-left font-black text-gray-400 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-32 shadow-[1px_0_0_rgba(0,0,0,0.05)]">Emp</th>
+                  <tr className="bg-gray-50/40 border-b border-gray-100">
+                    <th className="px-4 py-6 text-left font-black text-gray-500 uppercase tracking-widest border-r border-gray-100 sticky left-0 bg-gray-50 z-20 w-40 shadow-[2px_0_5px_rgba(0,0,0,0.05)] text-xs">Employee Details</th>
                     {days.map(day => {
                       const date = new Date(year, month - 1, day);
                       const isSun = date.getDay() === 0;
                       const isHol = report?.holidays?.some(h => h.day === day);
                       return (
-                        <th key={day} className={`px-0.5 py-2 text-center border-r border-gray-100 min-w-[26px] ${isSun ? 'bg-gray-100' : isHol ? 'bg-blue-50' : ''}`}>
-                          <div className={`text-[9px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
-                          <div className="text-[6px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
+                        <th key={day} className={`px-1 py-3 text-center border-r border-gray-100 min-w-[35px] ${isSun ? 'bg-gray-100/50' : isHol ? 'bg-blue-50' : ''}`}>
+                          <div className={`text-[11px] font-black ${isSun ? 'text-gray-400' : isHol ? 'text-blue-500' : 'text-gray-800'}`}>{day}</div>
+                          <div className="text-[8px] font-black text-gray-400 uppercase">{getDayShortName(day)}</div>
                         </th>
                       );
                     })}
@@ -450,14 +450,14 @@ export const MonthlyReport = () => {
                             <div className="text-[8px] font-bold text-gray-400 truncate">{row?.employee?.employeeCode || '-'}</div>
                           </td>
                           {row?.dailyData?.map((dayInfo, i) => (
-                            <td key={dayInfo?.day || i} className={`p-0.5 text-center border-r border-gray-50 transition-all ${getCellClass(dayInfo)}`}>
+                            <td key={dayInfo?.day || i} className={`p-1 text-center border-r border-gray-50 transition-all text-xs ${getCellClass(dayInfo)}`}>
                               {getCellContent(dayInfo)}
                             </td>
                           ))}
-                          <td className="text-center font-black text-emerald-600 border-l border-gray-50 bg-emerald-50/10">{row?.summary?.presentDays || 0}</td>
-                          <td className="text-center font-black text-red-600 border-x border-gray-50 bg-red-50/10">{row?.summary?.absentDays || 0}</td>
-                          <td className="text-center font-black text-orange-600 border-r border-gray-50 bg-orange-50/10">{row?.summary?.lateDays || 0}</td>
-                          <td className="text-center font-black text-gray-800 bg-gray-50/20">{(row?.summary?.totalWorkingHours || 0).toFixed(0)}</td>
+                          <td className="text-center font-black text-emerald-600 border-l border-gray-200 bg-emerald-50/30 py-3 text-xs">{row?.summary?.presentDays || 0}</td>
+                          <td className="text-center font-black text-red-600 border-x border-gray-200 bg-red-50/30 py-3 text-xs">{row?.summary?.absentDays || 0}</td>
+                          <td className="text-center font-black text-orange-600 border-r border-gray-200 bg-orange-50/30 py-3 text-xs">{row?.summary?.lateDays || 0}</td>
+                          <td className="text-center font-black text-gray-800 bg-gray-50/50 py-3 text-xs">{(row?.summary?.totalWorkingHours || 0).toFixed(0)}</td>
                         </tr>
                       ))}
                     </>

@@ -431,11 +431,10 @@ router.post('/reprocess', async (req, res) => {
     // Dynamic import to avoid circular dependency
     const { reprocessHistoricalLogs } = await import('../services/logSyncService');
 
-    const result = await reprocessHistoricalLogs(
-      startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined,
-      employeeId
-    );
+    const start = startDate ? startOfDay(parseISO(startDate)) : undefined;
+    const end = endDate ? endOfDay(parseISO(endDate)) : undefined;
+
+    const result = await reprocessHistoricalLogs(start, end, employeeId);
 
     res.json({
       message: 'Historical re-processing completed successfully',
