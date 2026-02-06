@@ -33,9 +33,10 @@ async function queueUserInfoPull() {
         await prisma.deviceCommand.create({
             data: {
                 deviceId: d.id,
-                command: 'DATA QUERY USERINFO', // The ADMS command to upload user data
+                tenantId: d.tenantId,
+                commandType: 'DATA QUERY USERINFO', // The ADMS command to upload user data
                 status: 'PENDING',
-                issuedAt: new Date(),
+                // issuedAt does not exist in schema, relying on createdAt
                 payload: '{}' // No arguments needed
             }
         });
