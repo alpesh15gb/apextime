@@ -44,6 +44,7 @@ async function findEmployeeId(uId: string, tenantId?: string): Promise<string | 
   if (employeeCache.has(`CODE:${sId}`)) return employeeCache.get(`CODE:${sId}`)!;
 
   // 2. Database Lookup
+  // Standard check
   const emp = await prisma.employee.findFirst({
     where: {
       tenantId: tenantId,
@@ -56,7 +57,7 @@ async function findEmployeeId(uId: string, tenantId?: string): Promise<string | 
         { deviceUserId: sId.length <= 4 && /^\d+$/.test(sId) ? `HO${sId.padStart(3, '0')}` : undefined }
       ].filter(condition => condition !== undefined) as any
     },
-    select: { id: true }
+    select: { id: true, deviceUserId: true, employeeCode: true }
   });
 
   if (emp) {
@@ -64,7 +65,25 @@ async function findEmployeeId(uId: string, tenantId?: string): Promise<string | 
     return emp.id;
   }
 
+  // Log failures to help debug exact match issues
+  // Use a static set to avoid flooding logs
+  if (!(global as any).missingUserLogCache) (global as any).missingUserLogCache = new Set();
+  if (!(global as any).missingUserLogCache.has(sId)) {
+    console.log(`[SYNC-DEBUG] NO MATCH for Device UserID: '${sId}' (Tenant: ${tenantId || 'Any'})`);
+    (global as any).missingUserLogCache.add(sId);
+  }
+
   return null;
+}
+
+// 3. Robust Numeric Fallback (e.g. Log "5" -> DB "005" or Log "005" -> DB "5")
+
+if (emp) {
+  employeeCache.set(sId, emp.id);
+  return emp.id;
+}
+
+return null;
 }
 
 export async function startLogSync(fullSync: boolean = false): Promise<void> {
