@@ -321,12 +321,17 @@ export class PayrollEngine {
                 components['ESI_EMP'] = esiEmp;
             }
 
-            // LOANS
+            // 5. LOANS
             let totalLoanDeduction = 0;
-            // ... (loops logic unchanged, just aggregating)
+            const loanDeductionsToCreate = [];
             for (const loan of employee.loans) {
-                // ...
+                if (loan.balanceAmount <= 0) continue;
+                let deduction = Math.min(loan.monthlyDeduction, loan.balanceAmount);
+                totalLoanDeduction += deduction;
+                // Don't add to totalDeductions here, we sum it up below
+                loanDeductionsToCreate.push({ loanId: loan.id, amount: deduction });
             }
+            components['LOAN'] = totalLoanDeduction;
 
             // Recalculate Total Deductions from rounded components for accuracy
             totalDeductions =
@@ -336,21 +341,6 @@ export class PayrollEngine {
                 welfare + insurance + uniform +
                 (components['ESI_EMP'] || 0) +
                 totalLoanDeduction;
-
-            // 6. NET SALARY & RETENTION
-            const netSalary = Math.round(totalEarnings - totalDeductions);
-
-            // 5. LOANS
-            let totalLoanDeduction = 0;
-            const loanDeductionsToCreate = [];
-            for (const loan of employee.loans) {
-                if (loan.balanceAmount <= 0) continue;
-                let deduction = Math.min(loan.monthlyDeduction, loan.balanceAmount);
-                totalLoanDeduction += deduction;
-                totalDeductions += deduction;
-                loanDeductionsToCreate.push({ loanId: loan.id, amount: deduction });
-            }
-            components['LOAN'] = totalLoanDeduction;
 
             // 6. NET SALARY & RETENTION
             const netSalary = Math.round(totalEarnings - totalDeductions);
