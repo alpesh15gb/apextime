@@ -54,8 +54,10 @@ export const MonthlyReport = () => {
   const [report, setReport] = useState<ReportData | null>(null);
   const [departments, setDepartments] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const printRef = useRef<HTMLDivElement>(null);
@@ -65,29 +67,25 @@ export const MonthlyReport = () => {
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
   useEffect(() => {
-    fetchDepartments();
-    fetchBranches();
+    fetchFilters();
   }, []);
 
   useEffect(() => {
     fetchReport();
-  }, [currentDate, selectedDepartment, selectedBranch]);
+  }, [currentDate, selectedDepartment, selectedBranch, selectedLocation]);
 
-  const fetchDepartments = async () => {
+  const fetchFilters = async () => {
     try {
-      const response = await departmentsAPI.getAll();
-      setDepartments(response.data || []);
+      const [deptRes, branchRes, locRes] = await Promise.all([
+        departmentsAPI.getAll(),
+        branchesAPI.getAll(),
+        locationsAPI.getAll(),
+      ]);
+      setDepartments(deptRes.data);
+      setBranches(branchRes.data);
+      setLocations(locRes.data);
     } catch (error) {
-      console.error('Failed to fetch departments:', error);
-    }
-  };
-
-  const fetchBranches = async () => {
-    try {
-      const response = await branchesAPI.getAll();
-      setBranches(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch branches:', error);
+      console.error('Failed to fetch filters:', error);
     }
   };
 
@@ -104,6 +102,9 @@ export const MonthlyReport = () => {
       }
       if (selectedBranch) {
         params.branchId = selectedBranch;
+      }
+      if (selectedLocation) {
+        params.locationId = selectedLocation;
       }
       const response = await attendanceAPI.getMonthlyReport(params);
       setReport(response.data);
@@ -124,6 +125,7 @@ export const MonthlyReport = () => {
       };
       if (selectedDepartment) params.departmentId = selectedDepartment;
       if (selectedBranch) params.branchId = selectedBranch;
+      if (selectedLocation) params.locationId = selectedLocation;
 
       let response;
       if (format === 'pdf') {
@@ -249,6 +251,19 @@ export const MonthlyReport = () => {
         <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
           {/* Branch & Dept Selects */}
           <div className="flex items-center space-x-3 flex-1 xl:flex-none">
+            <div className="relative flex-1 xl:w-48">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-600 appearance-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">All Locations</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="relative flex-1 xl:w-48">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <select

@@ -17,6 +17,8 @@ router.get('/', async (req, res) => {
       startDate,
       endDate,
       status,
+      locationId,
+      search,
       page = '1',
       limit = '50'
     } = req.query;
@@ -44,6 +46,15 @@ router.get('/', async (req, res) => {
     let employeeWhere: any = {};
     if (departmentId) employeeWhere.departmentId = departmentId as string;
     if (branchId) employeeWhere.branchId = branchId as string;
+    if (locationId) employeeWhere.locationId = locationId as string;
+
+    if (search) {
+      employeeWhere.OR = [
+        { firstName: { contains: search as string, mode: 'insensitive' } },
+        { lastName: { contains: search as string, mode: 'insensitive' } },
+        { employeeCode: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
 
     if (Object.keys(employeeWhere).length > 0) {
       where.employee = employeeWhere;

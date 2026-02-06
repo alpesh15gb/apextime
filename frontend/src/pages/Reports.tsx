@@ -285,6 +285,30 @@ export const Reports = () => {
             type="department_summary"
           />
           <ReportCard
+            icon={LayoutGrid}
+            title="Monthly Matrix"
+            description="Teal header monthly sheet (Late marked orange)"
+            colorClass="text-teal-600"
+            bgClass="bg-teal-50"
+            type="monthly_matrix"
+          />
+          <ReportCard
+            icon={Calendar}
+            title="Yearly Attendance"
+            description="Yearly summary of present days"
+            colorClass="text-orange-600"
+            bgClass="bg-orange-50"
+            type="yearly_attendance"
+          />
+          <ReportCard
+            icon={FileText}
+            title="Full Forms"
+            description="Combined employee attendance form"
+            colorClass="text-slate-600"
+            bgClass="bg-slate-50"
+            type="full_forms"
+          />
+          <ReportCard
             icon={PieChart}
             title="Payroll Summary"
             description="Earnings and deductions overview"

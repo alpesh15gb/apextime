@@ -473,7 +473,6 @@ router.get('/fee_report', async (req, res) => {
           include: { batch: { include: { course: true } } }
         }
       },
-      orderBy: { updatedAt: 'desc' }
     });
 
     if (format === 'excel') {
@@ -606,8 +605,105 @@ router.get('/:type/download/:format', async (req, res) => {
     return generateMatrixPDFReport(matrixRes, `Employee Attendance Sheet`, res);
   }
 
+  if (type === 'yearly_attendance') {
+    const { year } = req.query;
+    const y = parseInt(year as string) || new Date().getFullYear();
+    const yearlyRes = await fetchYearlyData(y, departmentId as string, branchId as string, (req as any).user.tenantId);
+    if (format === 'excel') return generateYearlyExcelReport(yearlyRes, `Yearly_Attendance_${y}`, res);
+    return generateYearlyPDFReport(yearlyRes, `Yearly Attendance Record - ${y}`, res);
+  }
+
+  if (type === 'full_forms') {
+    // Usually refers to a combined summary or all employees in a list
+    const logs = await getAttendanceData({ startDate: start, endDate: end, departmentId, branchId, locationId, employeeId });
+    if (format === 'excel') return generateExcelReport(logs, `Full_Form_Report`, res);
+    return generatePDFReport(logs, `Attendance Full Form`, res, { startDate: start, endDate: end });
+  }
+
   res.status(404).json({ error: 'Report type not supported' });
 });
+
+async function fetchYearlyData(year: number, departmentId: string, branchId: string, tenantId: string) {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
+
+  const employees = await prisma.employee.findMany({
+    where: { tenantId, isActive: true, ...(departmentId ? { departmentId } : {}), ...(branchId ? { branchId } : {}) },
+  });
+
+  const logs = await prisma.attendanceLog.findMany({
+    where: { tenantId, date: { gte: start, lte: end }, employeeId: { in: employees.map(e => e.id) } },
+    select: { employeeId: true, date: true, status: true }
+  });
+
+  return { year, employees, logs };
+}
+
+async function generateYearlyPDFReport(data: any, title: string, res: express.Response) {
+  const branding = await getBranding();
+  const doc = new PDFDocument({ margin: 30, layout: 'landscape' });
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  doc.fontSize(16).font('Helvetica-Bold').text(branding.name, { align: 'center' });
+  doc.fontSize(12).text(title, { align: 'center' });
+  doc.moveTo(30, 70).lineTo(760, 70).stroke();
+
+  let y = 90;
+  data.employees.forEach((emp: any) => {
+    if (y > 500) { doc.addPage({ layout: 'landscape' }); y = 50; }
+    doc.fontSize(10).font('Helvetica-Bold').text(`${emp.employeeCode} - ${emp.firstName} ${emp.lastName || ''}`, 30, y);
+    y += 15;
+
+    // Monthly summaries
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    doc.fontSize(8);
+    months.forEach((m, i) => {
+      const mLogs = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i);
+      const present = mLogs.filter((l: any) => l.status === 'present').length;
+      doc.text(`${m}: ${present}P`, 40 + (i * 60), y);
+    });
+    y += 20;
+    doc.moveTo(30, y - 5).lineTo(760, y - 5).dash(1, { space: 1 }).stroke().undash();
+    y += 10;
+  });
+
+  doc.end();
+}
+
+async function generateYearlyExcelReport(data: any, filename: string, res: express.Response) {
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('Yearly Attendance');
+  ws.columns = [
+    { header: 'Code', key: 'code', width: 10 },
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Jan', key: 'm0', width: 6 },
+    { header: 'Feb', key: 'm1', width: 6 },
+    { header: 'Mar', key: 'm2', width: 6 },
+    { header: 'Apr', key: 'm3', width: 6 },
+    { header: 'May', key: 'm4', width: 6 },
+    { header: 'Jun', key: 'm5', width: 6 },
+    { header: 'Jul', key: 'm6', width: 6 },
+    { header: 'Aug', key: 'm7', width: 6 },
+    { header: 'Sep', key: 'm8', width: 6 },
+    { header: 'Oct', key: 'm9', width: 6 },
+    { header: 'Nov', key: 'm10', width: 6 },
+    { header: 'Dec', key: 'm11', width: 6 }
+  ];
+
+  data.employees.forEach((emp: any) => {
+    const row: any = { code: emp.employeeCode, name: `${emp.firstName} ${emp.lastName || ''}` };
+    for (let i = 0; i < 12; i++) {
+      row[`m${i}`] = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i && l.status === 'present').length;
+    }
+    ws.addRow(row);
+  });
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
+}
 
 async function fetchMatrixData(month: number, year: number, departmentId: string, branchId: string, tenantId: string) {
   const start = new Date(year, month - 1, 1);
