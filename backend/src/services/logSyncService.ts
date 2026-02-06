@@ -1391,10 +1391,39 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
         }));
 
         const results = await processAttendanceLogs(formattedLogs);
+        if (results.length === 0) continue;
 
-        // Get tenantId for this specific employee
-        const empId = await findEmployeeId(uId);
-        const empForTenant = empId ? await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } }) : null;
+        // ROBUST LINKING LOGIC FOR REPROCESSING
+        // Instead of relying on a single findEmployeeId call which might fail on strictness,
+        // we use the cache we populated earlier with strict keys.
+        // But we ALSO try to find the employee by iterating known keys if direct lookup fails (manual fuzzy match).
+
+        let empId = employeeCache.get(uId);
+
+        // If not found, try number-based lookup from cache keys
+        if (!empId && /^\d+$/.test(uId)) {
+          const searchNum = parseInt(uId, 10);
+          // iterate cache
+          for (const [key, val] of employeeCache.entries()) {
+            // Key format: "SID:123", "CODE:123", "123"
+            let rawKey = key;
+            if (key.includes(':')) rawKey = key.split(':')[1];
+
+            if (/^\d+$/.test(rawKey) && parseInt(rawKey, 10) === searchNum) {
+              empId = val;
+              // Update cache for future speed
+              employeeCache.set(uId, val);
+              break;
+            }
+          }
+        }
+
+        if (!empId) {
+          console.log(`[REPAIR] Skipping user ${uId} - No linked employee found even after fuzzy scan.`);
+          continue;
+        }
+
+        const empForTenant = await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } });
         const rlTenantId = empForTenant?.tenantId || '';
         if (!rlTenantId) continue;
 
