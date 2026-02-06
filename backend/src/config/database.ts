@@ -71,8 +71,8 @@ const baseConfig = {
   connectionTimeout: 30000,
   requestTimeout: 30000,
   pool: {
-    max: 10,
-    min: 0,
+    max: 50, // Increased from 10 to handle high biometric traffic
+    min: 5,
     idleTimeoutMillis: 30000,
   },
 };

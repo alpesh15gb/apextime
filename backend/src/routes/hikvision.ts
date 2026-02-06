@@ -126,11 +126,14 @@ router.post('/event', upload.any(), async (req, res) => {
             return res.status(200).send('OK');
         }
 
-        // Update Device Status as Online
-        await prisma.device.update({
-            where: { id: device.id },
-            data: { status: 'online', lastSeen: new Date() }
-        });
+        // Update Device Status as Online (Throttled to once every 5 mins to save DB load)
+        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+        if (!device.lastSeen || device.lastSeen < fiveMinsAgo) {
+            await prisma.device.update({
+                where: { id: device.id },
+                data: { status: 'online', lastSeen: new Date() }
+            });
+        }
 
         // Hikvision Event Mapping (support all formats)
         const userId = eventData?.employeeNo || eventData?.EventNotification?.employeeNo || eventData?.AccessControllerEvent?.employeeNoString || eventData?.AccessControllerEvent?.employeeNo;
