@@ -43,21 +43,26 @@ export const Reports = () => {
   const [filters, setFilters] = useState({
     departmentId: '',
     branchId: '',
+    locationId: '',
     shiftId: '',
     status: '',
   });
 
+  const [locations, setLocations] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const [deptRes, branchRes, shiftRes] = await Promise.all([
+        const [deptRes, branchRes, shiftRes, locRes] = await Promise.all([
           departmentsAPI.getAll(),
           branchesAPI.getAll(),
-          shiftsAPI.getAll()
+          shiftsAPI.getAll(),
+          locationsAPI.getAll()
         ]);
         setDepartments(deptRes.data);
         setBranches(branchRes.data);
         setShifts(shiftRes.data);
+        setLocations(locRes.data);
       } catch (err) {
         console.error("Error loading filters", err);
       }
@@ -76,6 +81,7 @@ export const Reports = () => {
 
       if (filters.departmentId) params.departmentId = filters.departmentId;
       if (filters.branchId) params.branchId = filters.branchId;
+      if (filters.locationId) params.locationId = filters.locationId;
 
       let response;
       if (format === 'excel') {
@@ -93,7 +99,7 @@ export const Reports = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `report_${reportType}_${dateRange.start}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      link.download = `report_${brandingName}_${reportType}_${dateRange.start}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -106,18 +112,35 @@ export const Reports = () => {
     }
   };
 
-  const ReportCard = ({ icon: Icon, title, description, colorClass, bgClass, onClick }: any) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all flex items-center justify-between group cursor-pointer" onClick={onClick}>
-      <div className="flex items-center gap-4">
+  const brandingName = user?.tenant?.name || 'Apextime';
+
+  const ReportCard = ({ icon: Icon, title, description, colorClass, bgClass, type }: any) => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+      <div className="flex items-center justify-between mb-4">
         <div className={`p-4 rounded-xl ${bgClass} ${colorClass} group-hover:scale-110 transition-transform`}>
           <Icon className="w-6 h-6" />
         </div>
-        <div>
-          <h3 className="font-bold text-gray-800">{title}</h3>
-          <p className="text-xs text-gray-400 mt-1">{description || 'Generate detailed report'}</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleDownload('pdf', type)}
+            title="Download PDF"
+            className="p-2 hover:bg-gray-100 rounded-lg text-red-500 transition-colors"
+          >
+            <FilePdf className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => handleDownload('excel', type)}
+            title="Download Excel"
+            className="p-2 hover:bg-gray-100 rounded-lg text-green-600 transition-colors"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+          </button>
         </div>
       </div>
-      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-600 transition-colors" />
+      <div>
+        <h3 className="font-bold text-gray-800">{title}</h3>
+        <p className="text-xs text-gray-400 mt-1">{description || 'Generate detailed report'}</p>
+      </div>
     </div>
   );
 
@@ -153,6 +176,17 @@ export const Reports = () => {
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl text-sm p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Location</label>
+            <select
+              value={filters.locationId}
+              onChange={(e) => setFilters({ ...filters, locationId: e.target.value })}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl text-sm p-2.5"
+            >
+              <option value="">All Locations</option>
+              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Department</label>
@@ -191,7 +225,7 @@ export const Reports = () => {
               description="Daily and monthly student attendance records"
               colorClass="text-emerald-600"
               bgClass="bg-emerald-50"
-              onClick={() => handleDownload('excel', 'student_attendance')}
+              type="student_attendance"
             />
             <ReportCard
               icon={DollarSign}
@@ -199,7 +233,7 @@ export const Reports = () => {
               description="Fee receipts, dues, and payment history"
               colorClass="text-blue-600"
               bgClass="bg-blue-50"
-              onClick={() => handleDownload('excel', 'fee_report')}
+              type="fee_report"
             />
             <ReportCard
               icon={Bus}
@@ -207,7 +241,7 @@ export const Reports = () => {
               description="Student counts per route and vehicle info"
               colorClass="text-orange-600"
               bgClass="bg-orange-50"
-              onClick={() => handleDownload('excel', 'transport_report')}
+              type="transport_report"
             />
           </div>
         </section>
@@ -219,28 +253,36 @@ export const Reports = () => {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ReportCard
-            icon={LayoutGrid}
-            title="Monthly Matrix"
-            description="Complete attendance grid for all employees"
-            colorClass="text-blue-600"
-            bgClass="bg-blue-50"
-            onClick={() => navigate('/monthly-report')}
-          />
-          <ReportCard
             icon={Calendar}
             title="Daily Attendance"
-            description="Punch-in/out logs for a specific day"
+            description="Detailed punch logs (SNo, Time, OT, Status)"
             colorClass="text-cyan-600"
             bgClass="bg-cyan-50"
-            onClick={() => handleDownload('excel', 'daily')}
+            type="daily_detailed"
+          />
+          <ReportCard
+            icon={LayoutGrid}
+            title="Monthly Status"
+            description="Work duration and matrix status report"
+            colorClass="text-blue-600"
+            bgClass="bg-blue-50"
+            type="monthly_detailed"
           />
           <ReportCard
             icon={FileText}
-            title="Leave Report"
-            description="Summary of approved and pending leaves"
+            title="Leave Summary"
+            description="Allowed, Taken, and Balance for all"
             colorClass="text-purple-600"
             bgClass="bg-purple-50"
-            onClick={() => handleDownload('excel', 'daily')}
+            type="leave_summary"
+          />
+          <ReportCard
+            icon={Users}
+            title="Dept Summary"
+            description="Daily counts (P/A/H/WO) by department"
+            colorClass="text-emerald-600"
+            bgClass="bg-emerald-50"
+            type="department_summary"
           />
           <ReportCard
             icon={PieChart}
@@ -248,7 +290,7 @@ export const Reports = () => {
             description="Earnings and deductions overview"
             colorClass="text-amber-500"
             bgClass="bg-amber-50"
-            onClick={() => navigate('/payroll')}
+            type="payroll"
           />
         </div>
       </section>

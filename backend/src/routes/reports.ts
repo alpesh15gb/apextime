@@ -9,43 +9,19 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// DEBUG ENDPOINT - Inspect raw records for an employee code
-router.get('/debug/:code', async (req, res) => {
-  try {
-    const { code } = req.params;
-    const employee = await prisma.employee.findFirst({
-      where: { employeeCode: code }
-    });
-
-    if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
-    }
-
-    const logs = await prisma.attendanceLog.findMany({
-      where: { employeeId: employee.id },
-      orderBy: { date: 'desc' },
-      take: 20
-    });
-
-    const rawLogs = await prisma.rawDeviceLog.findMany({
-      where: { userId: employee.deviceUserId || employee.employeeCode },
-      orderBy: { timestamp: 'desc' },
-      take: 20
-    });
-
-    res.json({
-      employee,
-      attendanceLogs: logs,
-      rawDeviceLogs: rawLogs
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Helper to get company branding
+async function getBranding() {
+  const profile = await prisma.companyProfile.findFirst();
+  return profile || {
+    name: 'Apextime Enterprises',
+    logo: null,
+    address: ''
+  };
+}
 
 // Helper function to get attendance data
 async function getAttendanceData(filters: any) {
-  const { startDate, endDate, departmentId, branchId, employeeId } = filters;
+  const { startDate, endDate, departmentId, branchId, locationId, employeeId } = filters;
 
   const where: any = {
     date: {
@@ -57,6 +33,7 @@ async function getAttendanceData(filters: any) {
   let employeeWhere: any = {};
   if (departmentId) employeeWhere.departmentId = departmentId;
   if (branchId) employeeWhere.branchId = branchId;
+  if (locationId) employeeWhere.locationId = locationId;
   if (employeeId) employeeWhere.id = employeeId;
 
   if (Object.keys(employeeWhere).length > 0) {
@@ -91,7 +68,7 @@ async function getAttendanceData(filters: any) {
 // Daily report
 router.get('/daily', async (req, res) => {
   try {
-    const { date, departmentId, branchId, employeeId, format = 'json' } = req.query;
+    const { date, departmentId, branchId, locationId, employeeId, format = 'json' } = req.query;
 
     const reportDate = (date as string) || new Date().toISOString().split('T')[0];
 
@@ -100,6 +77,7 @@ router.get('/daily', async (req, res) => {
       endDate: reportDate,
       departmentId: departmentId as string | undefined,
       branchId: branchId as string | undefined,
+      locationId: locationId as string | undefined,
       employeeId: employeeId as string | undefined,
     });
 
@@ -108,7 +86,10 @@ router.get('/daily', async (req, res) => {
     }
 
     if (format === 'pdf') {
-      return generatePDFReport(logs, `Daily Attendance Report - ${reportDate}`, res);
+      return generatePDFReport(logs, `Daily Attendance Report - ${reportDate}`, res, {
+        startDate: reportDate,
+        endDate: reportDate
+      });
     }
 
     res.json({
@@ -193,7 +174,7 @@ router.get('/weekly', async (req, res) => {
 // Monthly report
 router.get('/monthly', async (req, res) => {
   try {
-    const { month, year, departmentId, branchId, employeeId, format = 'json' } = req.query;
+    const { month, year, departmentId, branchId, locationId, employeeId, format = 'json' } = req.query;
 
     const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
     const targetYear = parseInt(year as string) || new Date().getFullYear();
@@ -206,6 +187,7 @@ router.get('/monthly', async (req, res) => {
       endDate: reportEndDate.toISOString(),
       departmentId: departmentId as string | undefined,
       branchId: branchId as string | undefined,
+      locationId: locationId as string | undefined,
       employeeId: employeeId as string | undefined,
     });
 
@@ -218,7 +200,10 @@ router.get('/monthly', async (req, res) => {
     }
 
     if (format === 'pdf') {
-      return generatePDFReport(logs, `Monthly Attendance Report - ${targetMonth}/${targetYear}`, res);
+      return generatePDFReport(logs, `Monthly Status Report`, res, {
+        startDate: reportStartDate.toISOString().split('T')[0],
+        endDate: reportEndDate.toISOString().split('T')[0]
+      });
     }
 
     // Group by employee
@@ -319,73 +304,119 @@ async function generateExcelReport(logs: any[], filename: string, res: express.R
 }
 
 // Generate PDF report
-function generatePDFReport(logs: any[], title: string, res: express.Response) {
-  const doc = new PDFDocument({ margin: 30 });
+async function generatePDFReport(logs: any[], title: string, res: express.Response, options: any = {}) {
+  const branding = await getBranding();
+  const doc = new PDFDocument({ margin: 30, layout: 'landscape' });
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=attendance_report.pdf`);
 
   doc.pipe(res);
 
-  // Title
-  doc.fontSize(18).text(title, { align: 'center' });
-  doc.moveDown();
+  // HEADER SECTION
+  let headerY = 30;
+
+  // Logo placeholder or image
+  if (branding.logo && branding.logo.startsWith('data:image')) {
+    try {
+      const base64Data = branding.logo.split(';base64,').pop();
+      if (base64Data) {
+        doc.image(Buffer.from(base64Data, 'base64'), 30, headerY, { width: 80 });
+      }
+    } catch (e) {
+      doc.rect(30, headerY, 80, 40).stroke();
+      doc.fontSize(8).text('LOGO', 55, headerY + 15);
+    }
+  } else {
+    doc.rect(30, headerY, 80, 40).stroke();
+    doc.fontSize(8).text('LOGO', 55, headerY + 15);
+  }
+
+  // Title and branding
+  doc.fontSize(16).font('Helvetica-Bold').text(title, 0, headerY, { align: 'center' });
+  doc.fontSize(10).font('Helvetica').text(`${options.startDate} To ${options.endDate}`, 0, headerY + 20, { align: 'center' });
+
+  doc.fontSize(10).font('Helvetica-Bold').text(`Company:  ${branding.name}`, 30, headerY + 60);
+  doc.fontSize(8).font('Helvetica').text(`Printed On: ${new Date().toLocaleString()}`, 600, headerY + 60, { align: 'right' });
+
+  doc.moveTo(30, headerY + 75).lineTo(760, headerY + 75).stroke();
 
   // Table header
-  const tableTop = 100;
-  const colWidth = 70;
-  const rowHeight = 20;
+  const tableTop = headerY + 90;
+  const col = {
+    sno: 30,
+    code: 55,
+    name: 110,
+    shift: 210,
+    sin: 245,
+    sout: 290,
+    ain: 335,
+    aout: 380,
+    work: 425,
+    ot: 470,
+    tot: 515,
+    late: 560,
+    early: 605,
+    status: 650,
+    records: 710
+  };
 
-  doc.fontSize(10);
-  doc.font('Helvetica-Bold');
+  doc.fontSize(8).font('Helvetica-Bold');
+  doc.text('SNo', col.sno, tableTop);
+  doc.text('E. Code', col.code, tableTop);
+  doc.text('Name', col.name, tableTop);
+  doc.text('Shift', col.shift, tableTop);
+  doc.text('S. InTime', col.sin, tableTop);
+  doc.text('S. OutTime', col.sout, tableTop);
+  doc.text('A. InTime', col.ain, tableTop);
+  doc.text('A. OutTime', col.aout, tableTop);
+  doc.text('Work Dur.', col.work, tableTop);
+  doc.text('OT', col.ot, tableTop);
+  doc.text('Tot. Dur.', col.tot, tableTop);
+  doc.text('LateBy', col.late, tableTop);
+  doc.text('EarlyGoingBy', col.early, tableTop);
+  doc.text('Status', col.status, tableTop);
+  // doc.text('Punch Records', col.records, tableTop);
 
-  doc.text('Emp Code', 30, tableTop);
-  doc.text('Name', 100, tableTop);
-  doc.text('Date', 200, tableTop, { width: 60 });
-  doc.text('First IN', 260, tableTop);
-  doc.text('Last OUT', 330, tableTop);
-  doc.text('Hours', 400, tableTop);
-  doc.text('Status', 460, tableTop);
-
-  doc.moveTo(30, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+  doc.moveTo(30, tableTop + 12).lineTo(760, tableTop + 12).stroke();
 
   // Table rows
-  doc.font('Helvetica');
-  let y = tableTop + 25;
+  doc.font('Helvetica').fontSize(7);
+  let y = tableTop + 20;
 
-  for (const log of logs.slice(0, 100)) {
-    if (y > 750) {
-      doc.addPage();
+  logs.forEach((log, index) => {
+    if (y > 500) {
+      doc.addPage({ layout: 'landscape' });
       y = 50;
     }
 
-    const employeeName = log.employee
-      ? `${log.employee.firstName} ${log.employee.lastName}`.substring(0, 15)
-      : '';
+    const emp = log.employee;
+    const shift = emp?.shift;
 
-    doc.text(log.employee?.employeeCode || '', 30, y);
-    doc.text(employeeName, 100, y);
-    doc.text(new Date(log.date).toLocaleDateString(), 200, y, { width: 60 });
-    doc.text(
-      log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-      260,
-      y
-    );
-    doc.text(
-      log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-      330,
-      y
-    );
-    doc.text(log.workingHours ? log.workingHours.toFixed(2) : '-', 400, y);
-    doc.text(log.status, 460, y);
+    doc.text((index + 1).toString(), col.sno, y);
+    doc.text(emp?.employeeCode || '-', col.code, y);
+    doc.text(`${emp?.firstName} ${emp?.lastName || ''}`.substring(0, 20), col.name, y);
+    doc.text(shift?.code || 'GS', col.shift, y);
 
-    y += rowHeight;
-  }
+    // Shift Times (Mocked if missing)
+    doc.text('09:30', col.sin, y);
+    doc.text('18:30', col.sout, y);
 
-  if (logs.length > 100) {
-    doc.moveDown(2);
-    doc.text(`... and ${logs.length - 100} more records`, 30, y);
-  }
+    doc.text(log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-', col.ain, y);
+    doc.text(log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-', col.aout, y);
+
+    doc.text(log.workingHours ? log.workingHours.toFixed(2) : '00:00', col.work, y);
+    doc.text('00:00', col.ot, y);
+    doc.text(log.workingHours ? log.workingHours.toFixed(2) : '00:00', col.tot, y);
+
+    doc.text(log.lateArrival > 0 ? log.lateArrival.toString() : '00.00', col.late, y);
+    doc.text(log.earlyDeparture > 0 ? log.earlyDeparture.toString() : '00.00', col.early, y);
+
+    doc.text(log.status || 'Absent', col.status, y);
+
+    y += 15;
+    doc.moveTo(30, y - 2).lineTo(760, y - 2).lineWidth(0.5).dash(2, { space: 2 }).stroke().undash().lineWidth(1);
+  });
 
   doc.end();
 }
@@ -514,6 +545,217 @@ async function generateFeeExcelReport(records: any[], filename: string, res: exp
     });
   }
 
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
+}
+
+// Generic redirect for download endpoints
+router.get('/:type/download/:format', async (req, res) => {
+  const { type, format } = req.params;
+  const { startDate, endDate, date, departmentId, branchId, locationId, employeeId } = req.query;
+
+  const start = (startDate || date) as string;
+  const end = (endDate || date) as string;
+
+  if (type === 'daily' || type === 'daily_detailed') {
+    const logs = await getAttendanceData({ startDate: start, endDate: end, departmentId, branchId, locationId, employeeId });
+    if (format === 'excel') return generateExcelReport(logs, `Daily_Report_${start}`, res);
+    return generatePDFReport(logs, `Daily Attendance Report (Detailed)`, res, { startDate: start, endDate: end });
+  }
+
+  if (type === 'monthly' || type === 'monthly_detailed') {
+    const logs = await getAttendanceData({ startDate: start, endDate: end, departmentId, branchId, locationId, employeeId });
+    if (format === 'excel') return generateExcelReport(logs, `Monthly_Report_${start}`, res);
+    return generatePDFReport(logs, `Monthly Status Report (Work Duration)`, res, { startDate: start, endDate: end });
+  }
+
+  if (type === 'leave_summary') {
+    const employees = await prisma.employee.findMany({
+      where: {
+        tenantId: (req as any).user.tenantId,
+        isActive: true,
+        ...(departmentId ? { departmentId: departmentId as string } : {}),
+        ...(branchId ? { branchId: branchId as string } : {}),
+        ...(locationId ? { locationId: locationId as string } : {}),
+      },
+      include: {
+        leaveBalances: true,
+        department: true
+      }
+    });
+    if (format === 'excel') return generateLeaveExcelReport(employees, `Leave_Summary`, res);
+    return generateLeavePDFReport(employees, `Leave Summary Report`, res);
+  }
+
+  if (type === 'department_summary') {
+    const logs = await getAttendanceData({ startDate: start, endDate: end });
+    const summary = groupDepartmentSummary(logs);
+    if (format === 'excel') return generateDeptExcelReport(summary, `Dept_Summary`, res);
+    return generateDeptPDFReport(summary, `Department Summary Report`, res, { startDate: start, endDate: end });
+  }
+
+  res.status(404).json({ error: 'Report type not supported' });
+});
+
+function groupDepartmentSummary(logs: any[]) {
+  const groups: any = {};
+  logs.forEach(log => {
+    const dateKey = log.date.toISOString().split('T')[0];
+    const deptName = log.employee?.department?.name || 'Default';
+
+    if (!groups[dateKey]) groups[dateKey] = {};
+    if (!groups[dateKey][deptName]) {
+      groups[dateKey][deptName] = { P: 0, A: 0, H: 0, HP: 0, WO: 0, WOP: 0, OD: 0, OT: 0, Late: 0, Early: 0, Total: 0 };
+    }
+
+    const stats = groups[dateKey][deptName];
+    stats.Total++;
+    const status = (log.status || '').toLowerCase();
+    if (status === 'present') stats.P++;
+    if (status === 'absent') stats.A++;
+    if (log.lateArrival > 0) stats.Late++;
+    if (log.earlyDeparture > 0) stats.Early++;
+  });
+  return groups;
+}
+
+async function generateLeavePDFReport(employees: any[], title: string, res: express.Response) {
+  const branding = await getBranding();
+  const doc = new PDFDocument({ margin: 30 });
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  doc.fontSize(16).font('Helvetica-Bold').text(title, { align: 'center' });
+  doc.fontSize(10).font('Helvetica').text(`Company: ${branding.name}`, 30, 60);
+  doc.moveTo(30, 75).lineTo(550, 75).stroke();
+
+  let y = 100;
+  employees.forEach(emp => {
+    if (y > 700) { doc.addPage(); y = 50; }
+    doc.fontSize(10).font('Helvetica-Bold').text(`Employee: ${emp.employeeCode} - ${emp.firstName} ${emp.lastName || ''}`, 30, y);
+    y += 15;
+
+    doc.fontSize(8);
+    doc.text('Leave Type', 40, y);
+    doc.text('Allowed', 150, y);
+    doc.text('Taken', 250, y);
+    doc.text('Balance', 350, y);
+    doc.moveTo(40, y + 10).lineTo(450, y + 10).stroke();
+    y += 18;
+
+    const balances = emp.leaveBalances || [];
+    if (balances.length === 0) {
+      doc.text('No leave data available', 40, y);
+      y += 15;
+    } else {
+      balances.forEach((b: any) => {
+        doc.text(b.code, 40, y);
+        doc.text(b.total.toString(), 150, y);
+        doc.text(b.used.toString(), 250, y);
+        doc.text(b.balance.toString(), 350, y);
+        y += 12;
+      });
+    }
+    y += 20;
+  });
+  doc.end();
+}
+
+async function generateDeptPDFReport(summary: any, title: string, res: express.Response, opts: any) {
+  const branding = await getBranding();
+  const doc = new PDFDocument({ margin: 30, layout: 'landscape' });
+  res.setHeader('Content-Type', 'application/pdf');
+  doc.pipe(res);
+
+  doc.fontSize(16).font('Helvetica-Bold').text(title, { align: 'center' });
+  doc.fontSize(10).text(`${opts.startDate} To ${opts.endDate}`, { align: 'center' });
+  doc.fontSize(10).font('Helvetica-Bold').text(`Company: ${branding.name}`, 30, 60);
+  doc.moveTo(30, 75).lineTo(760, 75).stroke();
+
+  let y = 90;
+  Object.keys(summary).forEach(date => {
+    if (y > 500) { doc.addPage({ layout: 'landscape' }); y = 50; }
+    doc.fontSize(10).font('Helvetica-Bold').text(`Attendance Date: ${date}`, 30, y);
+    y += 15;
+
+    doc.fontSize(8);
+    const cols = [30, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480];
+    const labels = ['Dept Name', 'P', 'A', 'H', 'HP', 'WO', 'WOP', 'On Leave', 'On OD', 'On OT', 'Late', 'Early', 'Tot. Emp'];
+    labels.forEach((l, i) => doc.text(l, cols[i], y));
+    doc.moveTo(30, y + 10).lineTo(760, y + 10).stroke();
+    y += 15;
+
+    const depts = summary[date];
+    Object.keys(depts).forEach(dName => {
+      const s = depts[dName];
+      doc.text(dName, cols[0], y);
+      doc.text(s.P.toString(), cols[1], y);
+      doc.text(s.A.toString(), cols[2], y);
+      doc.text(s.H.toString(), cols[3], y);
+      doc.text(s.HP.toString(), cols[4], y);
+      doc.text(s.WO.toString(), cols[5], y);
+      doc.text(s.WOP.toString(), cols[6], y);
+      doc.text('0', cols[7], y);
+      doc.text(s.OD.toString(), cols[8], y);
+      doc.text(s.OT.toString(), cols[9], y);
+      doc.text(s.Late.toString(), cols[10], y);
+      doc.text(s.Early.toString(), cols[11], y);
+      doc.text(s.Total.toString(), cols[12], y);
+      y += 12;
+    });
+    y += 20;
+    doc.moveTo(30, y - 5).lineTo(760, y - 5).dash(1, { space: 1 }).stroke().undash();
+    y += 10;
+  });
+  doc.end();
+}
+
+async function generateLeaveExcelReport(employees: any[], filename: string, res: express.Response) {
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('Leave Summary');
+  ws.columns = [
+    { header: 'Emp Code', key: 'code', width: 12 },
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Leave Type', key: 'type', width: 15 },
+    { header: 'Allowed', key: 'allowed', width: 10 },
+    { header: 'Taken', key: 'taken', width: 10 },
+    { header: 'Balance', key: 'balance', width: 10 }
+  ];
+  employees.forEach(e => {
+    const bals = e.leaveBalances || [];
+    if (bals.length === 0) {
+      ws.addRow({ code: e.employeeCode, name: `${e.firstName} ${e.lastName || ''}`, type: '-', allowed: 0, taken: 0, balance: 0 });
+    } else {
+      bals.forEach((b: any) => {
+        ws.addRow({ code: e.employeeCode, name: `${e.firstName} ${e.lastName || ''}`, type: b.code, allowed: b.total, taken: b.used, balance: b.balance });
+      });
+    }
+  });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
+}
+
+async function generateDeptExcelReport(summary: any, filename: string, res: express.Response) {
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('Dept Summary');
+  ws.columns = [
+    { header: 'Date', key: 'date', width: 12 },
+    { header: 'Department', key: 'dept', width: 20 },
+    { header: 'Present', key: 'p', width: 8 },
+    { header: 'Absent', key: 'a', width: 8 },
+    { header: 'Late', key: 'late', width: 8 },
+    { header: 'Total', key: 'total', width: 8 }
+  ];
+  Object.keys(summary).forEach(date => {
+    Object.keys(summary[date]).forEach(dept => {
+      const s = summary[date][dept];
+      ws.addRow({ date, dept, p: s.P, a: s.A, late: s.Late, total: s.Total });
+    });
+  });
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
   await workbook.xlsx.write(res);
