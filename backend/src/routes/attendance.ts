@@ -35,14 +35,14 @@ router.get('/', async (req, res) => {
     if (status) where.status = status as string;
 
     if (startDate && endDate) {
-      // Inclusive range: Covers D-1 18:30Z (Local midnight) to D 23:59:59Z (UTC end of day)
+      // Standardize to UTC range: D-1 18:00Z to D 23:59Z catches both IST midnights and UTC midnights
       where.date = {
-        gte: new Date(startDate as string + 'T00:00:00'),
+        gte: new Date(new Date(startDate as string + 'T00:00:00Z').getTime() - (6 * 60 * 60 * 1000)),
         lte: new Date(endDate as string + 'T23:59:59Z'),
       };
     } else if (startDate) {
       where.date = {
-        gte: new Date(startDate as string + 'T00:00:00'),
+        gte: new Date(new Date(startDate as string + 'T00:00:00Z').getTime() - (6 * 60 * 60 * 1000)),
       };
     }
 
@@ -105,9 +105,8 @@ router.get('/summary/:employeeId', async (req, res) => {
     const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
     const targetYear = parseInt(year as string) || new Date().getFullYear();
 
-    // Use an inclusive range to find logs stored as UTC midnight OR Local midnight
-    const startOfMonth = new Date(targetYear, targetMonth - 1, 1); // IST midnight (T-1 18:30Z)
-    const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59); // End of month UTC
+    const startOfMonth = new Date(Date.UTC(targetYear, targetMonth - 1, 1));
+    const endOfMonth = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59));
 
     const logs = await prisma.attendanceLog.findMany({
       where: {

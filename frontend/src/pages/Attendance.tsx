@@ -292,27 +292,13 @@ export const Attendance = () => {
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                          {(() => {
-                            if (!log.date) return '--';
+                          {log.date ? (() => {
                             const d = new Date(log.date);
-                            // If it's 18:30Z, it belongs to the next day in local (IST)
-                            const day = d.getUTCHours() > 12 ? d.getUTCDate() + 1 : d.getUTCDate();
-                            const month = d.getUTCHours() > 12 && d.getUTCDate() === new Date(d.getUTCFullYear(), d.getUTCMonth() + 1, 0).getUTCDate() ? d.getUTCMonth() + 2 : d.getUTCMonth() + 1;
-                            // Simplify: just use the local date parts if we can assume IST
-                            const dateObj = new Date(log.date);
-                            if (dateObj.getHours() > 20 || dateObj.getHours() < 4) {
-                              // It's likely a midnight-ish log. 
-                              // Let's use the standard "YYYY-MM-DD" from the start of the string which is safest
-                            }
-                            const dStr = String(log.date).split('T')[0];
-                            const [y, m, dayPart] = dStr.split('-');
-                            // If it's T18:30:00.000Z, the date part is actually D-1.
-                            if (String(log.date).includes('18:30:00')) {
-                              const nextDay = new Date(new Date(log.date).getTime() + 6 * 60 * 60 * 1000);
-                              return nextDay.getUTCDate().toString().padStart(2, '0') + '/' + (nextDay.getUTCMonth() + 1).toString().padStart(2, '0') + '/' + nextDay.getUTCFullYear();
-                            }
-                            return dayPart.padStart(2, '0') + '/' + m.padStart(2, '0') + '/' + y;
-                          })()}
+                            // Detect if stored as IST midnight (ends in 18:30:00.000Z)
+                            const isShifted = d.getUTCHours() === 18 && d.getUTCMinutes() === 30;
+                            const dDisplay = isShifted ? new Date(d.getTime() + 6 * 60 * 60 * 1000) : d;
+                            return `${String(dDisplay.getUTCDate()).padStart(2, '0')}/${String(dDisplay.getUTCMonth() + 1).padStart(2, '0')}/${dDisplay.getUTCFullYear()}`;
+                          })() : '--'}
                         </span>
                       </td>
                       <td className="px-6 py-5">

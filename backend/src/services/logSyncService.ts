@@ -1022,24 +1022,24 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       sessions.get(dateKey)!.push(log);
     }
 
-    // 3. Process each session - SIMPLIFIED CALENDAR DAY LOGIC
-    // Server runs IST — use local date getters directly, no Intl needed
+    // 3. Process each session - ABSOLUTE IST CALENDAR DAY LOGIC
     const simpleSessions = new Map<string, RawLog[]>();
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
     for (const log of userLogs) {
-      const logYear = log.LogDate.getFullYear();
-      const logMonth = String(log.LogDate.getMonth() + 1).padStart(2, '0');
-      const logDay = String(log.LogDate.getDate()).padStart(2, '0');
-      let dateKey = `${logYear}-${logMonth}-${logDay}`;
+      // Create a date object that represents the time in IST
+      const istTime = new Date(log.LogDate.getTime() + IST_OFFSET);
+      const y = istTime.getUTCFullYear();
+      const m = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(istTime.getUTCDate()).padStart(2, '0');
+      const hour = istTime.getUTCHours();
 
-      const hour = log.LogDate.getHours();
+      let dateKey = `${y}-${m}-${d}`;
 
-      // SHIFT RULE: Punches between 12:00 AM and 05:00 AM belong to PREVIOUS calendar day
+      // SHIFT RULE: Punches between 12:00 AM and 05:00 AM IST belong to PREVIOUS calendar day
       if (hour < 5) {
-        const prev = new Date(log.LogDate);
-        prev.setHours(0, 0, 0, 0);
-        prev.setDate(prev.getDate() - 1);
-        dateKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
+        const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000); // Shift back safely
+        dateKey = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}-${String(prev.getUTCDate()).padStart(2, '0')}`;
       }
 
       if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
@@ -1099,23 +1099,26 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
  */
 export async function triggerRealtimeAttendanceSync(tenantId: string, userId: string, punchTime: Date): Promise<void> {
   try {
-    // 1. Determine Logical Date for the punch
-    const hours = punchTime.getHours();
-    let logicalDate = new Date(punchTime);
-    logicalDate.setHours(0, 0, 0, 0);
-    if (hours < 5) {
-      logicalDate.setDate(logicalDate.getDate() - 1);
+    // 1. Determine Logical Date for the punch in IST
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(punchTime.getTime() + IST_OFFSET);
+    const hour = istTime.getUTCHours();
+
+    let logicalYear = istTime.getUTCFullYear();
+    let logicalMonth = istTime.getUTCMonth();
+    let logicalDay = istTime.getUTCDate();
+
+    if (hour < 5) {
+      const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000);
+      logicalYear = prev.getUTCFullYear();
+      logicalMonth = prev.getUTCMonth();
+      logicalDay = prev.getUTCDate();
     }
 
-    const y = logicalDate.getFullYear();
-    const m = String(logicalDate.getMonth() + 1).padStart(2, '0');
-    const d = String(logicalDate.getDate()).padStart(2, '0');
-    const dStr = `${y}-${m}-${d}`;
-
-    logger.debug(`Real-time sync triggered for ${userId} on ${dStr}`);
-
-    // 2. Fetch all logs in the window for this user
+    const dStr = `${logicalYear}-${String(logicalMonth + 1).padStart(2, '0')}-${String(logicalDay).padStart(2, '0')}`;
     const targetDate = new Date(dStr + 'T00:00:00Z');
+
+    logger.debug(`Real-time sync triggered for ${userId} on ${dStr} (calculated from ${punchTime.toISOString()})`);
     const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
     const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
 
@@ -1360,11 +1363,24 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     console.log(`Found ${logs.length} raw logs to analyze.`);
 
     const affectedPairs = new Set<string>();
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+
     for (const log of logs) {
-      const y = log.punchTime.getFullYear();
-      const m = String(log.punchTime.getMonth() + 1).padStart(2, '0');
-      const d = String(log.punchTime.getDate()).padStart(2, '0');
-      affectedPairs.add(`${log.userId}|${y}-${m}-${d}`);
+      const istTime = new Date(log.punchTime.getTime() + IST_OFFSET);
+      const hour = istTime.getUTCHours();
+      let y = istTime.getUTCFullYear();
+      let m = istTime.getUTCMonth();
+      let d = istTime.getUTCDate();
+
+      if (hour < 5) {
+        const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000);
+        y = prev.getUTCFullYear();
+        m = prev.getUTCMonth();
+        d = prev.getUTCDate();
+      }
+
+      const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      affectedPairs.add(`${log.userId}|${dStr}`);
     }
 
     console.log(`Identified ${affectedPairs.size} employee-day sessions requiring recalculation.`);
