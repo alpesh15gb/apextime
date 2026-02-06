@@ -46,7 +46,11 @@ async function checkUserUpdates() {
     });
     console.log(`\n🕵️ Entries for YLR668: ${duplicates.length}`);
     duplicates.forEach(d => {
-        console.log(` - ID: ${d.id} | Code: ${d.employeeCode} | Name: ${d.firstName} ${d.lastName || ''} | DevID: ${d.deviceUserId}`);
+        console.log(` - ID: ${d.id}`);
+        console.log(` - Name: ${d.firstName} ${d.lastName || ''}`);
+        console.log(` - Dept ID: ${d.departmentId || 'NULL'} (If NULL, report might hide him)`);
+        console.log(` - Branch ID: ${d.branchId || 'NULL'}`);
+        // Shift is usually in EmployeeShift table, not Employee table directly in some schemas, let's check
     });
 }
 
