@@ -155,8 +155,15 @@ router.post('/event', upload.any(), async (req, res) => {
             eventData?.AccessControllerEvent?.name;
 
         if (userId && eventTime) {
-            // Strict IST Parsing
-            const punchTime = new Date(eventTime.toString().replace('Z', ''));
+            // Hikvision MinMoe/K1T devices send local time (IST) with a 'Z' suffix.
+            // This is a known Hikvision firmware quirk — the Z does NOT mean UTC.
+            // We strip it so JS parses the timestamp as local IST (which it actually is).
+            const rawTime = eventTime.toString();
+            const punchTime = new Date(rawTime.replace('Z', ''));
+            if (isNaN(punchTime.getTime())) {
+                logger.warn(`Hikvision: Invalid event time received: ${rawTime}`);
+                return res.status(200).send('OK');
+            }
             const userIdStr = userId.toString();
             const uniqueId = `HIK_DIRECT_${SN}_${userIdStr}_${punchTime.getTime()}`;
 

@@ -144,6 +144,10 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
                                     where: { tenantId: device.tenantId, code: 'GS' }
                                 });
 
+                                // Use punch date (not current date) as joining date
+                                const joinDate = new Date(punchTime);
+                                joinDate.setHours(0, 0, 0, 0);
+
                                 employee = await prisma.employee.create({
                                     data: {
                                         tenantId: device.tenantId,
@@ -154,8 +158,7 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
                                         designationId: null,
                                         departmentId: null,
                                         gender: 'Male',
-                                        // type: 'FullTime', // Removed as it doesn't exist in schema
-                                        dateOfJoining: new Date(), // Set joining date to today (First Seen)
+                                        dateOfJoining: joinDate,
                                         shiftId: defaultShift?.id
                                     }
                                 });
@@ -264,7 +267,7 @@ router.post(['/cdata*', '/cdata.aspx*', '/:sn/cdata'], async (req, res) => {
                                     cardNumber: card,
                                     shiftId: defaultShift?.id,
                                     gender: 'Male',
-                                    dateOfJoining: new Date()
+                                    dateOfJoining: new Date() // USERINFO sync — no punch date available
                                 }
                             });
                             logger.info(`ADMS User Sync: Created New User ${userId} (${name})`);

@@ -499,15 +499,18 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       // 1. Identify all (UserId, Date) pairs affected by these new logs
       const affectedPairs = new Set<string>();
       for (const log of uniqueLogs.values()) {
+        // Server is IST — use local getters directly
         const hours = log.LogDate.getHours();
         let logicalDate = new Date(log.LogDate);
-        if (hours < 8) {
+        logicalDate.setHours(0, 0, 0, 0);
+        // Punches before 5 AM belong to previous calendar day (night shift)
+        if (hours < 5) {
           logicalDate.setDate(logicalDate.getDate() - 1);
         }
-        // Strict IST: Normalize to 00:00:00 local time
-        logicalDate.setHours(0, 0, 0, 0);
-        const dateStr = logicalDate.toLocaleDateString('en-CA');
-        affectedPairs.add(`${log.UserId}|${dateStr}`);
+        const y = logicalDate.getFullYear();
+        const m = String(logicalDate.getMonth() + 1).padStart(2, '0');
+        const d = String(logicalDate.getDate()).padStart(2, '0');
+        affectedPairs.add(`${log.UserId}|${y}-${m}-${d}`);
       }
 
       logger.info(`Processing attendance for ${affectedPairs.size} employee-day pairs...`);
@@ -1012,30 +1015,23 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
     }
 
     // 3. Process each session - SIMPLIFIED CALENDAR DAY LOGIC
-    // We group strictly by calendar date to avoid "missing" days due to shift logic confusion
+    // Server runs IST — use local date getters directly, no Intl needed
     const simpleSessions = new Map<string, RawLog[]>();
 
     for (const log of userLogs) {
-      // 1. Get IST Date Key straight from locale
-      const istDatePart = log.LogDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const logYear = log.LogDate.getFullYear();
+      const logMonth = String(log.LogDate.getMonth() + 1).padStart(2, '0');
+      const logDay = String(log.LogDate.getDate()).padStart(2, '0');
+      let dateKey = `${logYear}-${logMonth}-${logDay}`;
 
-      // 2. Get IST Hour safely using Intl
-      const istHourStr = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Kolkata',
-        hour: 'numeric',
-        hour12: false
-      }).format(log.LogDate);
+      const hour = log.LogDate.getHours();
 
-      // Format might return "24" for midnight or "0", handle cleanly
-      const istHour = parseInt(istHourStr.replace(/\D/g, ''));
-
-      let dateKey = istDatePart;
-
-      // 3. SHIFT RULE: If punch is between 12:00 AM and 05:00 AM, it belongs to PREVIOUS DAY.
-      if (istHour >= 0 && istHour < 5) {
-        const d = new Date(dateKey);
-        d.setDate(d.getDate() - 1);
-        dateKey = d.toISOString().split('T')[0];
+      // SHIFT RULE: Punches between 12:00 AM and 05:00 AM belong to PREVIOUS calendar day
+      if (hour < 5) {
+        const prev = new Date(log.LogDate);
+        prev.setHours(0, 0, 0, 0);
+        prev.setDate(prev.getDate() - 1);
+        dateKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
       }
 
       if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
@@ -1052,23 +1048,24 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       if (firstIn && lastOut) {
         workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
       }
+      // Guard against negative working hours (bad data / out-of-order punches)
+      if (workingHours < 0) workingHours = 0;
 
-      // Determine Status based strictly on presence
-      let status = 'Absent';
-      if (workingHours > 4) status = 'Present';
-      else if (workingHours > 0) status = 'Half Day';
-      else status = 'Present'; // Even a single punch counts as Present (adjustment needed for payroll later)
-
-      // Correction for single punch
-      if (!lastOut) {
-        status = 'Present'; // Operator can fix later, but show it as Present!
+      // Determine Status based on working hours
+      let status = 'Present'; // Default: any punch counts as Present
+      if (dateLogs.length > 1 && lastOut) {
+        // Multiple punches — determine based on hours worked
+        if (workingHours >= 4.5) status = 'Present';
+        else if (workingHours > 0) status = 'Half Day';
+        else status = 'Absent';
       }
+      // Single punch (no lastOut): remains 'Present', operator can correct later
 
       processedResults.push({
         employeeId: employeeId,
-        // FORCE UTC MIDNIGHT: Append 'Z' to ensure 2026-01-08 becomes 2026-01-08T00:00:00Z
-        // Otherwise, local midnight (IST) becomes UTC previous day (18:30), causing the shift.
-        date: new Date(dateKey + 'T00:00:00Z'),
+        // Store as LOCAL midnight (server=IST). Do NOT append 'Z' — that would
+        // create UTC midnight which is 5:30 AM IST, causing date mismatch in queries.
+        date: new Date(dateKey + 'T00:00:00'),
         firstIn: firstIn,
         lastOut: lastOut || null,
         workingHours: Number(workingHours.toFixed(2)),
@@ -1258,8 +1255,10 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
     const affectedPairs = new Set<string>();
     for (const log of logs) {
-      const dStr = log.punchTime.toLocaleDateString('en-CA');
-      affectedPairs.add(`${log.userId}|${dStr}`);
+      const y = log.punchTime.getFullYear();
+      const m = String(log.punchTime.getMonth() + 1).padStart(2, '0');
+      const d = String(log.punchTime.getDate()).padStart(2, '0');
+      affectedPairs.add(`${log.userId}|${y}-${m}-${d}`);
     }
 
     console.log(`Identified ${affectedPairs.size} employee-day sessions requiring recalculation.`);
@@ -1270,11 +1269,10 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     for (const pair of affectedPairs) {
       try {
         const [uId, dStr] = pair.split('|');
-        // Create a 40-hour window around the target date to catch any potentially relevant logs (night shifts)
-        const windowStart = new Date(dStr + 'T00:00:00');
-        windowStart.setHours(windowStart.getHours() - 8); // Go back 8 hours (into previous day)
-        const windowEnd = new Date(dStr + 'T23:59:59');
-        windowEnd.setHours(windowEnd.getHours() + 12); // Go forward 12 hours (into next day)
+        // Create a window around the target date to catch night shift logs
+        const targetDate = new Date(dStr + 'T00:00:00'); // Local midnight
+        const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000); // 8 hours before
+        const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);  // 32 hours after
 
         const dayLogs = await prisma.rawDeviceLog.findMany({
           where: {

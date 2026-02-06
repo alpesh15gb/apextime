@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
     } = req.query;
 
     const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    const limitNum = Math.min(parseInt(limit as string) || 50, 500); // Cap at 500 to prevent OOM
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
@@ -105,8 +105,9 @@ router.get('/summary/:employeeId', async (req, res) => {
     });
 
     const summary = {
-      present: logs.filter(l => l.status === 'present').length,
-      absent: logs.filter(l => l.status === 'absent').length,
+      present: logs.filter(l => (l.status || '').toLowerCase() === 'present').length,
+      absent: logs.filter(l => (l.status || '').toLowerCase() === 'absent').length,
+      halfDay: logs.filter(l => (l.status || '').toLowerCase() === 'half day').length,
       late: logs.filter(l => l.lateArrival > 0).length,
       earlyDeparture: logs.filter(l => l.earlyDeparture > 0).length,
       totalWorkingHours: logs.reduce((acc, l) => acc + (l.workingHours || 0), 0),
@@ -267,27 +268,29 @@ router.get('/monthly-report', async (req, res) => {
     const holidayDays = new Set<number>();
     const holidayNames = new Map<number, string>();
 
+    // Holiday.date is @db.Date — Prisma returns UTC midnight. Use UTC getters.
     holidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
-        holidayDays.add(d.getDate());
-        holidayNames.set(d.getDate(), h.name);
+      if (d.getUTCMonth() + 1 === targetMonth && d.getUTCFullYear() === targetYear) {
+        holidayDays.add(d.getUTCDate());
+        holidayNames.set(d.getUTCDate(), h.name);
       }
     });
 
     // Add recurring holidays
     recurringHolidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getMonth() + 1 === targetMonth) {
-        holidayDays.add(d.getDate());
-        holidayNames.set(d.getDate(), h.name + (h.isRecurring ? ' (R)' : ''));
+      if (d.getUTCMonth() + 1 === targetMonth) {
+        holidayDays.add(d.getUTCDate());
+        holidayNames.set(d.getUTCDate(), h.name + (h.isRecurring ? ' (R)' : ''));
       }
     });
 
     // Group logs by employee and date
+    // AttendanceLog.date is @db.Date — use UTC getters
     const logsByEmployee = new Map();
     for (const log of logs) {
-      const dateKey = log.date.getDate();
+      const dateKey = new Date(log.date).getUTCDate();
       if (!logsByEmployee.has(log.employeeId)) {
         logsByEmployee.set(log.employeeId, new Map());
       }
@@ -313,7 +316,7 @@ router.get('/monthly-report', async (req, res) => {
 
         if (log) {
           totalWorkingHours += log.workingHours || 0;
-          if (log.status === 'present') presentDays++;
+          if ((log.status || '').toLowerCase() === 'present') presentDays++;
           if (log.lateArrival > 0) lateDays++;
           if (isOffDay) workedOnOffDay++;
 
@@ -373,9 +376,9 @@ router.get('/monthly-report', async (req, res) => {
 
     holidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
+      if (d.getUTCMonth() + 1 === targetMonth && d.getUTCFullYear() === targetYear) {
         formattedHolidays.push({
-          day: d.getDate(),
+          day: d.getUTCDate(),
           name: h.name,
           isRecurring: h.isRecurring,
         });
@@ -384,9 +387,9 @@ router.get('/monthly-report', async (req, res) => {
 
     recurringHolidays.forEach(h => {
       const d = new Date(h.date);
-      if (d.getMonth() + 1 === targetMonth) {
+      if (d.getUTCMonth() + 1 === targetMonth) {
         formattedHolidays.push({
-          day: d.getDate(),
+          day: d.getUTCDate(),
           name: h.name,
           isRecurring: h.isRecurring,
         });

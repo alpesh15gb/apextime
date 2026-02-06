@@ -2,6 +2,7 @@ import { prisma } from '../config/database';
 import { Loan, Employee, Payroll, AttendanceLog, LeaveEntry } from '@prisma/client';
 import { PTCalculator } from './ptCalculator';
 import { TDSCalculator } from './tdsCalculator';
+import logger from '../config/logger';
 
 export interface PayrollResult {
     success: boolean;
@@ -25,14 +26,18 @@ export class PayrollEngine {
         payrollRunId: string
     ): Promise<PayrollResult> {
         try {
+            // Use exclusive upper bound for date ranges to avoid boundary issues
+            const monthStart = new Date(year, month - 1, 1);
+            const monthEnd = new Date(year, month, 1); // Start of NEXT month (exclusive)
+
             const employee = await prisma.employee.findUnique({
                 where: { id: employeeId },
                 include: {
                     attendanceLogs: {
                         where: {
                             date: {
-                                gte: new Date(year, month - 1, 1),
-                                lte: new Date(year, month, 0, 23, 59, 59) // Last day of month
+                                gte: monthStart,
+                                lt: monthEnd
                             }
                         }
                     },
@@ -51,38 +56,16 @@ export class PayrollEngine {
 
             if (!employee) return { success: false, error: 'Employee not found' };
 
-            // FUZZY SCAN: Check for anyone else with the same name or partial code
-            const similar = await prisma.employee.findMany({
-                where: {
-                    OR: [
-                        { employeeCode: { contains: employee.employeeCode.trim() } },
-                        { AND: [{ firstName: employee.firstName }, { lastName: employee.lastName }] }
-                    ]
-                },
-                include: { _count: { select: { attendanceLogs: true } } }
-            });
-
-            if (similar.length > 1) {
-                console.log(`[PAYROLL_DIAG] !!! POTENTIAL DUPLICATES DETECTED (${similar.length} records found)`);
-                similar.forEach(s => {
-                    console.log(`   - RECORD: [ID=${s.id}] [CODE=${s.employeeCode}] [NAME=${s.firstName} ${s.lastName}] [LOGS=${s._count.attendanceLogs}]`);
-                });
-            }
-
             const CTC = employee.monthlyCtc || 0;
-            console.log(`[PAYROLL_ENGINE] Processing Employee: ${employee.firstName} (CTC: ${CTC}, Active: ${employee.isActive})`);
+            logger.info(`[PAYROLL] Processing: ${employee.firstName} ${employee.lastName} (Code: ${employee.employeeCode}, CTC: ${CTC})`);
 
-            // 1. Calculate Days (Improved: Handle Working Days strictly)
+            // 1. Calculate Days
             const daysInMonth = new Date(year, month, 0).getDate();
-            const startOfMonth = new Date(year, month - 1, 1);
-            const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
-            // SYNC WITH MATRIX: Query AttendanceLog table directly
-            // We build the OR condition dynamically to avoid matching nulls to the whole DB
+            // Query AttendanceLog — match by employee ID and all known identifiers
             const orConditions: any[] = [
                 { employeeId: employee.id }
             ];
-
             if (employee.employeeCode) orConditions.push({ employee: { employeeCode: employee.employeeCode } });
             if (employee.deviceUserId) orConditions.push({ employee: { deviceUserId: employee.deviceUserId } });
             if (employee.sourceEmployeeId) orConditions.push({ employee: { sourceEmployeeId: employee.sourceEmployeeId } });
@@ -90,49 +73,35 @@ export class PayrollEngine {
             const logs = await prisma.attendanceLog.findMany({
                 where: {
                     OR: orConditions,
-                    date: { gte: startOfMonth, lte: endOfMonth }
+                    date: { gte: monthStart, lt: monthEnd }
                 }
             });
 
             if (logs.length === 0) {
-                console.log(`[PAYROLL_SEARCH] !!! NO LOGS FOUND FOR YLR480. SCANNING ENTIRE DATABASE FOR JAN...`);
-                const globalLogs = await prisma.attendanceLog.findMany({
-                    where: {
-                        date: { gte: startOfMonth, lte: endOfMonth },
-                        status: { in: ['Present', 'present', 'Late', 'late', 'Half Day', 'half_day'] }
-                    },
-                    include: { employee: true },
-                    take: 200 // Limit to avoid spam, but enough to find the employee
-                });
-
-                const logStats: Record<string, number> = {};
-                globalLogs.forEach(gl => {
-                    const key = `${gl.employee?.employeeCode} (${gl.employee?.firstName})`;
-                    logStats[key] = (logStats[key] || 0) + 1;
-                });
-
-                console.log(`[PAYROLL_SEARCH] Employees found with logs in Jan:`);
-                Object.entries(logStats).forEach(([emp, count]) => {
-                    if (count > 0) console.log(`   - ${emp}: ${count} days`);
-                });
+                logger.warn(`[PAYROLL] No attendance logs found for ${employee.employeeCode} (${employee.firstName}) in ${month}/${year}`);
             }
 
             // Get Holidays for calculations
             const holidays = await prisma.holiday.findMany({
                 where: {
                     OR: [
-                        { date: { gte: startOfMonth, lte: endOfMonth } },
+                        { date: { gte: monthStart, lt: monthEnd } },
                         { isRecurring: true }
                     ],
                     tenantId: employee.tenantId
                 }
             });
 
+            // Holiday dates use @db.Date which Prisma returns as UTC midnight.
+            // Use UTC getters to extract the correct day number.
             const holidayDays = new Set<number>();
             holidays.forEach(h => {
                 const d = new Date(h.date);
-                if (h.isRecurring || (d.getMonth() + 1 === month && d.getFullYear() === year)) {
-                    holidayDays.add(d.getDate());
+                const hDay = d.getUTCDate();
+                const hMonth = d.getUTCMonth() + 1;
+                const hYear = d.getUTCFullYear();
+                if (h.isRecurring || (hMonth === month && hYear === year)) {
+                    holidayDays.add(hDay);
                 }
             });
 
@@ -143,13 +112,17 @@ export class PayrollEngine {
             let matrixSundays = 0;
             let daysAfterJoining = 0;
 
-            const joiningDate = employee.dateOfJoining ? new Date(employee.dateOfJoining) : null;
+            // Normalize joining date to midnight for clean day comparison
+            const rawJoinDate = employee.dateOfJoining ? new Date(employee.dateOfJoining) : null;
+            const joiningDay = rawJoinDate
+                ? new Date(rawJoinDate.getFullYear(), rawJoinDate.getMonth(), rawJoinDate.getDate())
+                : null;
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month - 1, d);
 
-                // Only count days AFTER joining
-                if (joiningDate && date < joiningDate) continue;
+                // Only count days on or after joining
+                if (joiningDay && date < joiningDay) continue;
                 daysAfterJoining++;
 
                 const isSunday = date.getDay() === 0;
@@ -158,76 +131,65 @@ export class PayrollEngine {
                 if (isSunday) matrixSundays++;
                 else if (isHoliday) matrixHolidayCount++;
 
+                // AttendanceLog.date is @db.Date — Prisma returns UTC midnight.
+                // Use UTC getters for comparison.
                 const dayLog = logs.find(l => {
                     const lDate = new Date(l.date);
-                    return lDate.getDate() === d && lDate.getMonth() + 1 === month;
+                    return lDate.getUTCDate() === d && lDate.getUTCMonth() + 1 === month;
                 });
 
                 if (dayLog) {
-                    const status = (dayLog.status || '').toLowerCase().trim();
+                    // Normalize status: logSyncService stores 'Present', 'Half Day', 'Absent'
+                    const status = (dayLog.status || '').toLowerCase().replace(/\s+/g, '_').trim();
                     if (status === 'present' || status === 'late') matrixPresent++;
                     else if (status === 'half_day') matrixHalfDay++;
                     else if (status === 'leave_paid') matrixPaidLeave++;
                 }
             }
 
-            // ROBUST CALCULATION:
-            // Standard Working Days for this employee = All days in month - (Days before joining) - (Sundays after joining)
+            // Standard Working Days = days after joining minus Sundays
             const standardWorkingDays = daysAfterJoining - matrixSundays;
 
-            // Effective Days = Days they actually worked + Paid benefits
+            // Effective Days = actual worked + paid benefits
             const effectivePresentDays = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
 
             const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
             const paidDays = Math.max(0, standardWorkingDays - lopDays);
 
-            // Salary is calculated on working days ratio
             const attendRatio = standardWorkingDays > 0 ? (paidDays / standardWorkingDays) : 0;
 
-            console.log(`[PAYROLL_ROBUST] Emp: ${employee.firstName}, TotalMonth: ${daysInMonth}, AfterJoin: ${daysAfterJoining}, Sundays: ${matrixSundays}, WorkingTotal: ${standardWorkingDays}`);
-            console.log(`[PAYROLL_ROBUST] Present: ${matrixPresent}, Half: ${matrixHalfDay}, Holidays: ${matrixHolidayCount}, Effective: ${effectivePresentDays}, Ratio: ${attendRatio}`);
+            logger.info(`[PAYROLL] ${employee.employeeCode}: Days=${daysInMonth}, AfterJoin=${daysAfterJoining}, Sundays=${matrixSundays}, Working=${standardWorkingDays}, Present=${matrixPresent}, Half=${matrixHalfDay}, Holidays=${matrixHolidayCount}, LOP=${lopDays}, Ratio=${attendRatio.toFixed(2)}`);
 
-            // 2. REVERSE CTC LOGIC (Match Excel Image Structure)
+            // 2. CTC-based salary calculation
             let totalEarnings = 0;
             const components: Record<string, number> = {};
 
             if (CTC > 0) {
-                // Fixed PF as per image
-                const monthlyEmpPF = 1800; // Fixed 1800 for both ER and EE
+                const monthlyEmpPF = 1800;
 
-                // A. Base Components (Standard Ratios from Image)
-                const monthlyBasic = CTC * 0.50;  // 50% Basic
-                const monthlyHRA = CTC * 0.20;    // 20% HRA
-
-                // B. Fixed Allowances (Standard from Image)
+                const monthlyBasic = CTC * 0.50;
+                const monthlyHRA = CTC * 0.20;
                 const monthlyConveyance = 1600;
                 const monthlyMedical = 1250;
                 const monthlyEdu = 200;
 
-                // C. Gross Salary (Payout Gross) = CTC - Employer PF
                 const monthlyGrossSalary = CTC - monthlyEmpPF;
 
-                // D. Balancing Figure: Other Allowance
-                // Total earnings sum up to CTC, but the Net is calculated from Gross Salary
                 const calculatedEarnings = monthlyBasic + monthlyHRA + monthlyConveyance + monthlyMedical + monthlyEdu;
                 const monthlyOtherAllow = Math.max(0, CTC - calculatedEarnings);
 
-                // --- PRO-RATA APPLICATION (Attendance Based) ---
+                // Pro-rata based on attendance
                 components['BASIC'] = monthlyBasic * attendRatio;
                 components['HRA'] = monthlyHRA * attendRatio;
                 components['CONVEYANCE'] = monthlyConveyance * attendRatio;
                 components['MEDICAL'] = monthlyMedical * attendRatio;
                 components['EDU_ALL'] = monthlyEdu * attendRatio;
                 components['OTHER_ALLOW'] = monthlyOtherAllow * attendRatio;
-
-                // Employer Share (Pro-rated)
                 components['PF_ER'] = monthlyEmpPF * attendRatio;
 
-                // Total Earned Salary (Pro-rated CTC)
                 totalEarnings = (monthlyBasic + monthlyHRA + monthlyConveyance + monthlyMedical + monthlyEdu + monthlyOtherAllow) * attendRatio;
 
-                // The actual "Gross" for deduction calculation is CTC - ER PF
-                const proRatedGross = (monthlyGrossSalary) * attendRatio;
+                const proRatedGross = monthlyGrossSalary * attendRatio;
                 components['GROSS_FOR_PAYOUT'] = proRatedGross;
             } else {
                 // Fallback to manual components if CTC is not set
@@ -246,7 +208,7 @@ export class PayrollEngine {
                 let totalOtHours = 0;
                 employee.attendanceLogs.forEach(log => {
                     if (log.workingHours && log.shiftStart && log.shiftEnd) {
-                        const shiftDuration = 8; // Standard 8hr shift
+                        const shiftDuration = 8;
                         totalOtHours += Math.max(0, log.workingHours - shiftDuration);
                     }
                 });
@@ -258,7 +220,7 @@ export class PayrollEngine {
                 }
             }
 
-            // 4. DEDUCTIONS (Match Excel Image Structure)
+            // 4. DEDUCTIONS
             let totalDeductions = 0;
 
             // PF Employee (Fixed 1800 pro-rated)
@@ -268,24 +230,51 @@ export class PayrollEngine {
                 totalDeductions += pfEmp;
             }
 
-            // PT (Fixed 200 pro-rated)
+            // PT — use state-based slab calculator
             if (employee.isPTEnabled) {
-                const pt = Math.round(200 * attendRatio);
+                const monthlyGross = components['GROSS_FOR_PAYOUT'] || totalEarnings;
+                const pt = PTCalculator.calculatePT(employee.state || null, monthlyGross);
                 components['PT'] = pt;
                 totalDeductions += pt;
             }
 
-            // TDS (Standard 10% of CTC for this structure)
-            const tds = Math.round(totalEarnings * 0.10);
-            components['TDS'] = tds;
-            totalDeductions += tds;
+            // TDS — use proper slab-based calculator
+            if (CTC > 0) {
+                const annualBasic = (CTC * 0.50) * 12;
+                const annualHRA = (CTC * 0.20) * 12;
+                const annualAllowances = (1600 + 1250 + 200) * 12;
+                const annualOther = Math.max(0, CTC - (CTC * 0.50 + CTC * 0.20 + 1600 + 1250 + 200)) * 12;
+
+                const salaryBreakup = {
+                    basicAnnual: annualBasic,
+                    hraAnnual: annualHRA,
+                    allowancesAnnual: annualAllowances,
+                    otherEarnings: annualOther
+                };
+
+                // Default to new regime with no declarations for auto-calc
+                const declaration = {
+                    ppf: 0, elss: 0, lifeInsurance: 0, homeLoanPrincipal: 0,
+                    tuitionFees: 0, nsc: 0, section80D: 0, section80E: 0,
+                    section80G: 0, section24: 0, rentPaid: 0,
+                    taxRegime: 'NEW' as const
+                };
+
+                const monthlyTDS = TDSCalculator.calculateMonthlyTDS(salaryBreakup, declaration, month);
+                const proRatedTDS = Math.round(monthlyTDS * attendRatio);
+                components['TDS'] = proRatedTDS;
+                totalDeductions += proRatedTDS;
+            } else {
+                // Fallback: no TDS if no CTC
+                components['TDS'] = 0;
+            }
 
             // Staff Welfare (Fixed 250)
             const welfare = 250;
             components['STAFF_WELFARE'] = welfare;
             totalDeductions += welfare;
 
-            // ESI Employee (Removed as per image - not shown)
+            // ESI Employee
             if (employee.isESIEnabled) {
                 const esiBasis = (totalEarnings + (components['PF_ER'] || 0));
                 const esiEmp = Math.ceil(esiBasis * 0.0075);
@@ -307,73 +296,49 @@ export class PayrollEngine {
 
             // 6. NET SALARY & RETENTION
             const netSalary = Math.round(totalEarnings - totalDeductions);
-
-            // Retention Logic
             const retentionRequested = employee.retentionAmount || 0;
-            // Pro-rate retention if they were absent? Usually yes.
             const actualRetention = retentionRequested * attendRatio;
             const finalTakeHome = netSalary - actualRetention;
 
             // 7. SYNC TO DATABASE
+            const payrollData = {
+                totalWorkingDays: standardWorkingDays,
+                actualPresentDays: effectivePresentDays,
+                lopDays, paidDays,
+                grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
+                totalDeductions: Math.round(totalDeductions),
+                netSalary: netSalary,
+                retentionDeduction: actualRetention,
+                finalTakeHome: finalTakeHome,
+                status: 'generated',
+                basicPaid: components['BASIC'] || 0,
+                hraPaid: components['HRA'] || 0,
+                allowancesPaid: (components['CONVEYANCE'] || 0) + (components['MEDICAL'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
+                otPay: otAmount,
+                pfDeduction: components['PF_EMP'] || 0,
+                esiDeduction: components['ESI_EMP'] || 0,
+                ptDeduction: components['PT'] || 0,
+                loanDeduction: totalLoanDeduction,
+                employerPF: components['PF_ER'] || 0,
+                employerESI: components['ESI_ER'] || 0,
+                gratuityAccrual: components['GRATUITY'] || 0,
+                bonus: components['BONUS'] || 0,
+                payrollRunId: payrollRunId,
+                details: JSON.stringify(components),
+                processedAt: new Date()
+            };
+
             const payroll = await prisma.payroll.upsert({
                 where: {
                     employeeId_month_year_tenantId: {
                         employeeId, month, year, tenantId: employee.tenantId
                     }
                 },
-                update: {
-                    totalWorkingDays: standardWorkingDays,
-                    actualPresentDays: effectivePresentDays,
-                    lopDays, paidDays,
-                    grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
-                    totalDeductions: Math.round(totalDeductions),
-                    netSalary: netSalary,
-                    retentionDeduction: actualRetention,
-                    finalTakeHome: finalTakeHome,
-                    status: 'generated',
-                    basicPaid: components['BASIC'] || 0,
-                    hraPaid: components['HRA'] || 0,
-                    allowancesPaid: (components['CONVEYANCE'] || 0) + (components['MEDICAL'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
-                    otPay: otAmount,
-                    pfDeduction: components['PF_EMP'] || 0,
-                    esiDeduction: components['ESI_EMP'] || 0,
-                    ptDeduction: components['PT'] || 0,
-                    loanDeduction: totalLoanDeduction,
-                    employerPF: components['PF_ER'] || 0,
-                    employerESI: components['ESI_ER'] || 0,
-                    gratuityAccrual: components['GRATUITY'] || 0,
-                    bonus: components['BONUS'] || 0,
-                    payrollRunId: payrollRunId,
-                    details: JSON.stringify(components),
-                    processedAt: new Date()
-                },
+                update: payrollData,
                 create: {
                     tenantId: employee.tenantId,
                     employeeId, month, year,
-                    totalWorkingDays: standardWorkingDays,
-                    actualPresentDays: effectivePresentDays,
-                    lopDays, paidDays,
-                    grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
-                    totalDeductions: Math.round(totalDeductions),
-                    netSalary: netSalary,
-                    retentionDeduction: actualRetention,
-                    finalTakeHome: finalTakeHome,
-                    status: 'generated',
-                    basicPaid: components['BASIC'] || 0,
-                    hraPaid: components['HRA'] || 0,
-                    allowancesPaid: (components['CONVEYANCE'] || 0) + (components['MEDICAL'] || 0) + (components['EDU_ALL'] || 0) + (components['OTHER_ALLOW'] || 0),
-                    otPay: otAmount,
-                    pfDeduction: components['PF_EMP'] || 0,
-                    esiDeduction: components['ESI_EMP'] || 0,
-                    ptDeduction: components['PT'] || 0,
-                    loanDeduction: totalLoanDeduction,
-                    employerPF: components['PF_ER'] || 0,
-                    employerESI: components['ESI_ER'] || 0,
-                    gratuityAccrual: components['GRATUITY'] || 0,
-                    bonus: components['BONUS'] || 0,
-                    payrollRunId: payrollRunId,
-                    details: JSON.stringify(components),
-                    processedAt: new Date()
+                    ...payrollData
                 }
             });
 
@@ -392,7 +357,7 @@ export class PayrollEngine {
             };
 
         } catch (error: any) {
-            console.error('Payroll Calculation Error:', error);
+            logger.error(`Payroll Calculation Error for ${employeeId}:`, error);
             return { success: false, error: error.message };
         }
     }
