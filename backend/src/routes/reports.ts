@@ -26,7 +26,7 @@ async function getAttendanceData(filters: any) {
   const where: any = {
     tenantId,
     date: {
-      gte: new Date(startDate + 'T00:00:00Z'),
+      gte: new Date(new Date(startDate + 'T00:00:00Z').getTime() - (6 * 60 * 60 * 1000)),
       lte: new Date(endDate + 'T23:59:59Z'),
     },
   };
