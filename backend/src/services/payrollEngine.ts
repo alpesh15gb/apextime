@@ -147,18 +147,41 @@ export class PayrollEngine {
                 }
             }
 
-            // Standard Working Days = days after joining minus Sundays
-            const standardWorkingDays = daysAfterJoining - matrixSundays;
+            // Calendar Day Basis Calculation
+            // Standard Days = Calendar Days in Month (e.g. 30 or 31)
+            const totalMonthDays = daysInMonth;
 
-            // Effective Days = actual worked + paid benefits
-            const effectivePresentDays = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
+            // Effective Paid Days = (Present + Holidays + Paid Leaves) + WeekOffs (Sundays)
+            // Note: We currently assume Sundays are always paid (WeekOff) unless we have explicit LOP marking logic for them.
+            // If an employee is absent on Sat and Mon, usually Sun is LOP. But for now, we treat Sun as Paid.
+            const daysWorkedOrPaid = matrixPresent + (matrixHalfDay * 0.5) + matrixPaidLeave + matrixHolidayCount;
 
-            const lopDays = Math.max(0, standardWorkingDays - effectivePresentDays);
-            const paidDays = Math.max(0, standardWorkingDays - lopDays);
+            // Paid Days = Days Worked + Sundays (WeekOffs)
+            // Capped at totalMonthDays to handle potential data anomalies
+            let paidDays = daysWorkedOrPaid + matrixSundays;
 
-            const attendRatio = standardWorkingDays > 0 ? (paidDays / standardWorkingDays) : 0;
+            // Adjust for joining date mid-month
+            if (joiningDay) {
+                // If joined mid-month, they can't be paid for days before joining
+                // So PaidDays should only account for days >= joiningDay
+                // Our loop only counted matrix stats for d >= joiningDay
+                // So 'paidDays' is already correct relative to "Days since joining"
+                // But the Denominator for pro-ration should ideally be DaysInMonth? 
+                // SHEET LOGIC: sheet shows "Days in Jan: 31", "Paid Days: 24". 
+                // Earning = Fixed * (24/31).
+                // So denominator is ALWAYS daysInMonth.
+            }
 
-            logger.info(`[PAYROLL] ${employee.employeeCode}: Days=${daysInMonth}, AfterJoin=${daysAfterJoining}, Sundays=${matrixSundays}, Working=${standardWorkingDays}, Present=${matrixPresent}, Half=${matrixHalfDay}, Holidays=${matrixHolidayCount}, LOP=${lopDays}, Ratio=${attendRatio.toFixed(2)}`);
+            // Correction: If PaidDays > DaysAfterJoining (impossible by logic, but safe guard)
+            paidDays = Math.min(paidDays, daysAfterJoining);
+
+            const lopDays = daysAfterJoining - paidDays;
+
+            // Ratio = PaidDays / DaysInMonth
+            // Example: 24 / 31 = 0.774
+            const attendRatio = totalMonthDays > 0 ? (paidDays / totalMonthDays) : 0;
+
+            logger.info(`[PAYROLL] ${employee.employeeCode}: DaysInMonth=${totalMonthDays}, PaidDays=${paidDays}, Sundays=${matrixSundays}, Worked/Holiday=${daysWorkedOrPaid}, Ratio=${attendRatio.toFixed(4)}`);
 
             // 2. CTC-based salary calculation
             let totalEarnings = 0;
@@ -312,9 +335,9 @@ export class PayrollEngine {
 
             // 7. SYNC TO DATABASE
             const payrollData = {
-                totalWorkingDays: standardWorkingDays,
-                actualPresentDays: effectivePresentDays,
-                lopDays, paidDays,
+                totalWorkingDays: totalMonthDays,
+                actualPresentDays: daysWorkedOrPaid,
+                lopDays: daysInMonth - paidDays, paidDays,
                 grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
                 totalDeductions: Math.round(totalDeductions),
                 netSalary: netSalary,
