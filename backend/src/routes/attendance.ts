@@ -263,12 +263,13 @@ router.get('/monthly-report', async (req, res) => {
     const logs = await prisma.attendanceLog.findMany({
       where: {
         date: {
-          gte: startOfMonth,
-          lte: endOfMonth,
+          gte: start,
+          lte: end,
         },
         employeeId: {
           in: employees.map(e => e.id),
         },
+        tenantId: (req as any).user.tenantId,
       },
     });
 
@@ -276,9 +277,10 @@ router.get('/monthly-report', async (req, res) => {
     const holidays = await prisma.holiday.findMany({
       where: {
         date: {
-          gte: startOfMonth,
-          lte: endOfMonth,
+          gte: start,
+          lte: end,
         },
+        tenantId: (req as any).user.tenantId,
       },
     });
 
@@ -296,10 +298,11 @@ router.get('/monthly-report', async (req, res) => {
     // Holiday.date is @db.Date — Prisma returns UTC midnight. Use UTC getters.
     holidays.forEach(h => {
       const d = new Date(h.date);
-      // Use local date for matching
-      if (d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear) {
-        holidayDays.add(d.getDate());
-        holidayNames.set(d.getDate(), h.name);
+      // Use getUTC getters for @db.Date matching
+      if (d.getUTCMonth() + 1 === targetMonth && d.getUTCFullYear() === targetYear) {
+        const dayNum = d.getUTCDate();
+        holidayDays.add(dayNum);
+        holidayNames.set(dayNum, h.name);
       }
     });
 
