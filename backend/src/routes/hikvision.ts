@@ -197,22 +197,24 @@ router.post('/event', upload.any(), async (req, res) => {
                     });
                 }
 
-                // 3. Mark processed if it's for today (Real-time update)
+                // 3. Mark processed if it's for today (Real-time update) - NON-BLOCKING
                 const isToday = new Date().toDateString() === punchTime.toDateString();
                 if (isToday) {
-                    // Trigger attendance calculation for this employee/day
-                    // This makes the Dashboard update instantly
-                    await processAttendanceLogs([{
+                    // Start processing in background, do NOT await it here.
+                    // This prevents 502 Bad Gateway by responding to the device immediately.
+                    processAttendanceLogs([{
                         DeviceLogId: Date.now(),
                         DeviceId: SN.toString(),
                         UserId: userIdStr,
                         LogDate: punchTime,
                         TableName: 'HIK_DIRECT'
-                    }]);
-
-                    await prisma.rawDeviceLog.update({
-                        where: { id: uniqueId },
-                        data: { isProcessed: true }
+                    }]).then(async () => {
+                        await prisma.rawDeviceLog.update({
+                            where: { id: uniqueId },
+                            data: { isProcessed: true }
+                        });
+                    }).catch(err => {
+                        logger.error(`Background attendance processing failed for ${userIdStr}:`, err);
                     });
                 }
             } catch (procErr) {
