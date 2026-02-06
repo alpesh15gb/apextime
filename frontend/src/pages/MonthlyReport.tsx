@@ -206,7 +206,7 @@ export const MonthlyReport = () => {
     if (data.isOffDay) {
       if (data.firstIn || data.lastOut) {
         return (
-          <div className="text-[7px] font-black leading-tight text-gray-700">
+          <div className="text-[9px] font-black leading-tight text-gray-700">
             <div>{formatTime(data.firstIn)}</div>
             <div>{formatTime(data.lastOut)}</div>
           </div>
