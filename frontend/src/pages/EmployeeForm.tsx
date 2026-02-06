@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, DollarSign, Building2, User, Phone, Mail, Fingerprint, Calendar, ShieldCheck, Briefcase, CreditCard } from 'lucide-react';
-import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI } from '../services/api';
+import { employeesAPI, departmentsAPI, branchesAPI, shiftsAPI, locationsAPI } from '../services/api';
 import { EmployeeDocuments } from '../components/EmployeeDocuments';
 import { EmployeeLoans } from '../components/EmployeeLoans';
 
@@ -17,6 +17,7 @@ export const EmployeeForm = () => {
     email: '',
     phone: '',
     branchId: '',
+    locationId: '',
     departmentId: '',
     designationId: '',
     categoryId: '',
@@ -41,6 +42,7 @@ export const EmployeeForm = () => {
 
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,14 +56,16 @@ export const EmployeeForm = () => {
 
   const fetchOptions = async () => {
     try {
-      const [deptsRes, branchesRes, shiftsRes] = await Promise.all([
+      const [deptsRes, branchesRes, shiftsRes, locationsRes] = await Promise.all([
         departmentsAPI.getAll(),
         branchesAPI.getAll(),
         shiftsAPI.getAll(),
+        locationsAPI.getAll(),
       ]);
       setDepartments(deptsRes.data);
       setBranches(branchesRes.data);
       setShifts(shiftsRes.data);
+      setLocations(locationsRes.data);
     } catch (error) {
       console.error('Failed to fetch options:', error);
     }
@@ -79,6 +83,7 @@ export const EmployeeForm = () => {
         email: employee.email || '',
         phone: employee.phone || '',
         branchId: employee.branchId || '',
+        locationId: employee.locationId || '',
         departmentId: employee.departmentId || '',
         designationId: employee.designationId || '',
         categoryId: employee.categoryId || '',
@@ -276,6 +281,13 @@ export const EmployeeForm = () => {
                 <select name="branchId" value={formData.branchId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
                   <option value="">Select Branch</option>
                   {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Location / Site</label>
+                <select name="locationId" value={formData.locationId} onChange={handleChange} className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-gray-700 text-sm appearance-none">
+                  <option value="">Select Location</option>
+                  {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
               <div className="space-y-3">
