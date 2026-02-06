@@ -94,13 +94,6 @@ export const Attendance = () => {
     } catch (error) { console.error(error); }
   };
 
-  const fetchDepartments = async () => {
-    try {
-      const response = await departmentsAPI.getAll();
-      setDepartments(response.data);
-    } catch (error) { console.error(error); }
-  };
-
   const fetchLocations = async () => {
     try {
       const response = await locationsAPI.getAll();
