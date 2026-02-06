@@ -43,24 +43,55 @@ export default function Devices() {
 
     const [recoveryLoading, setRecoveryLoading] = useState<string | null>(null);
 
+    const [showEmployeePicker, setShowEmployeePicker] = useState(false);
+    const [allEmployees, setAllEmployees] = useState<any[]>([]);
+    const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([]);
+    const [empSearch, setEmpSearch] = useState('');
+    const [selectedDeviceForPush, setSelectedDeviceForPush] = useState<string | null>(null);
+
     useEffect(() => {
         fetchDevices();
+        fetchEmployees();
     }, []);
+
+    const fetchEmployees = async () => {
+        try {
+            const res = await api.get('/employees?limit=1000');
+            setAllEmployees(res.data.employees || []);
+        } catch (e) {
+            console.error('Failed to fetch employees for picker');
+        }
+    };
 
     const fetchDevices = async () => {
         try {
             setLoading(true);
             const response = await devicesAPI.getAll();
-            console.log('Devices API response:', response);
             setDevices(response.data || []);
         } catch (error) {
             console.error('Failed to fetch devices:', error);
             setDevices([]);
-            alert('Failed to load devices. Please refresh the page.');
         } finally {
             setLoading(false);
         }
     };
+
+    const handleSelectivePush = async () => {
+        if (!selectedDeviceForPush || selectedEmpIds.length === 0) return;
+        try {
+            await devicesAPI.uploadEmployees(selectedDeviceForPush, selectedEmpIds);
+            alert(`Queued ${selectedEmpIds.length} employees for upload!`);
+            setShowEmployeePicker(false);
+            setSelectedEmpIds([]);
+        } catch (e) {
+            alert('Failed to queue selective upload');
+        }
+    };
+
+    const filteredEmployees = allEmployees.filter(emp =>
+        `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(empSearch.toLowerCase()) ||
+        emp.employeeCode.toLowerCase().includes(empSearch.toLowerCase())
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -178,8 +209,8 @@ export default function Devices() {
                                     {['ESSL_ADMS', 'HIKVISION_DIRECT'].includes(device.protocol) ? <CloudRain className="w-6 h-6" /> : (device.protocol === 'SQL_MIRROR' || device.protocol === 'SQL_LOGS') ? <Database className="w-6 h-6" /> : <Wifi className="w-6 h-6" />}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => handleEdit(device)} className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
-                                    <button onClick={() => handleDelete(device.id)} className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
+                                    <button onClick={() => handleEdit(device)} className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit settings"><Edit3 className="w-4 h-4" /></button>
+                                    <button onClick={() => handleDelete(device.id)} className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all" title="Delete device"><Trash2 className="w-4 h-4" /></button>
                                     {['ESSL_ADMS', 'MATRIX_DIRECT', 'REALTIME_DIRECT'].includes(device.protocol) && (
                                         <>
                                             <button
@@ -189,6 +220,16 @@ export default function Devices() {
                                                 title="Force Historical Log Recovery"
                                             >
                                                 <RotateCcw className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedDeviceForPush(device.id);
+                                                    setShowEmployeePicker(true);
+                                                }}
+                                                className="p-2 text-gray-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all"
+                                                title="Push Selected Staff"
+                                            >
+                                                <Users className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={async () => {
@@ -202,24 +243,8 @@ export default function Devices() {
                                                 className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                                                 title="Push all Staff to Node"
                                             >
-                                                <Users className="w-4 h-4" />
+                                                <Activity className="w-4 h-4" />
                                             </button>
-                                            {user?.tenantType === 'SCHOOL' && (
-                                                <button
-                                                    onClick={async () => {
-                                                        if (confirm('Push all Students to this device?')) {
-                                                            try {
-                                                                await devicesAPI.uploadAllStudents(device.id);
-                                                                alert('Student upload commands queued!');
-                                                            } catch (e) { alert('Failed to queue student upload'); }
-                                                        }
-                                                    }}
-                                                    className="p-2 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                                                    title="Push all Students to Node"
-                                                >
-                                                    <GraduationCap className="w-4 h-4" />
-                                                </button>
-                                            )}
                                         </>
                                     )}
                                 </div>
@@ -267,171 +292,305 @@ export default function Devices() {
                 )}
             </div>
 
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
-                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
-                        <div className="p-10 border-b border-gray-50 bg-gray-50/30">
-                            <div className="flex items-center gap-4 mb-2">
-                                <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-200">
-                                    <Settings className="w-6 h-6" />
+            {/* Employee Picker Modal */}
+            {showEmployeePicker && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-gray-100 bg-gray-50/50">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 className="text-2xl font-bold tracking-tight text-gray-900">Push Staff to Machine</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">Select specific members to synchronize with hardware</p>
                                 </div>
-                                <h3 className="text-2xl font-bold tracking-tight text-gray-900">{editingDevice ? 'Recalibrate Node' : 'Initialize Hardware Node'}</h3>
+                                <div className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                                    {selectedEmpIds.length} Selected
+                                </div>
                             </div>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic ml-14">Configure ingestion parameters for biometric interface</p>
+
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={empSearch}
+                                    onChange={(e) => setEmpSearch(e.target.value)}
+                                    placeholder="Search by name, ID or department..."
+                                    className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none"
+                                />
+                            </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-10 space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="col-span-2">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Friendly Node Name</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="app-input"
-                                        placeholder="e.g. Main Lobby ESSL"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Protocol Matrix</label>
-                                    <select
-                                        value={formData.protocol}
-                                        onChange={(e) => setFormData({ ...formData, protocol: e.target.value })}
-                                        className="app-input appearance-none"
-                                    >
-                                        <option value="ESSL_ADMS">1. ESSL Direct Machine (ADMS)</option>
-                                        <option value="MATRIX_DIRECT">2. Matrix Direct Machine</option>
-                                        <option value="REALTIME_DIRECT">3. Realtime Direct Machine</option>
-                                        <option value="HIKVISION_DIRECT">4. Hikvision Direct Machine</option>
-                                        <option value="SQL_LOGS">5. SQL LOGS (eTimeTrackLite)</option>
-                                        <option value="HIKCENTRAL_SQL">6. HikCentral SQL Server</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Sector / Location</label>
-                                    <input
-                                        type="text"
-                                        value={formData.location}
-                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                        className="app-input"
-                                        placeholder="e.g. Gurugram Branch"
-                                    />
-                                </div>
-
-                                {['ESSL_ADMS', 'MATRIX_DIRECT', 'REALTIME_DIRECT', 'HIKVISION_DIRECT'].includes(formData.protocol) ? (
-                                    <div className="col-span-2">
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block text-blue-600 flex items-center gap-2">
-                                            <Hash className="w-3 h-3" /> Machine Serial Number (REQUIRED)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.serialNumber}
-                                            onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                                            className="app-input border-blue-100 focus:border-blue-500"
-                                            placeholder="e.g. BZ8G202160012"
-                                        />
-                                        <p className="text-[9px] font-bold text-blue-400 mt-2 italic px-1">
-                                            {formData.protocol === 'HIKVISION_DIRECT'
-                                                ? `Machine must push to: ${window.location.origin}/api/hikvision/event`
-                                                : `Node will push to: ${window.location.origin}/api/iclock using this SN`
-                                            }
-                                        </p>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {filteredEmployees.map(emp => (
+                                <div
+                                    key={emp.id}
+                                    onClick={() => {
+                                        setSelectedEmpIds(prev =>
+                                            prev.includes(emp.id) ? prev.filter(id => id !== emp.id) : [...prev, emp.id]
+                                        );
+                                    }}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${selectedEmpIds.includes(emp.id) ? 'bg-blue-50/50 border-blue-200 shadow-sm' : 'bg-white border-gray-50 hover:bg-gray-50'}`}
+                                >
+                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${selectedEmpIds.includes(emp.id) ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'}`}>
+                                        {selectedEmpIds.includes(emp.id) && <Plus className="w-3 h-3 text-white rotate-45" />}
                                     </div>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Host / IP</label>
-                                            <input
-                                                type="text"
-                                                value={formData.ipAddress}
-                                                onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
-                                                className="app-input"
-                                                placeholder="192.168.1.50"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Port</label>
-                                            <input
-                                                type="number"
-                                                value={formData.port}
-                                                onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
-                                                className="app-input"
-                                                placeholder="1433"
-                                            />
-                                        </div>
-                                        {(formData.protocol === 'SQL_LOGS' || formData.protocol === 'SQL_MIRROR') && (
-                                            <>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Username</label>
-                                                    <input
-                                                        type="text"
-                                                        value={formData.username}
-                                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                                        className="app-input"
-                                                        placeholder="sa"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Password</label>
-                                                    <input
-                                                        type="password"
-                                                        value={formData.password}
-                                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                                        className="app-input"
-                                                        placeholder="******"
-                                                    />
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Database Name</label>
-                                                    <input
-                                                        type="text"
-                                                        value={formData.databaseName}
-                                                        onChange={(e) => setFormData({ ...formData, databaseName: e.target.value })}
-                                                        className="app-input"
-                                                        placeholder="eTimeTrackLite1"
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-
-                                <div className="col-span-2">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Hardware ID (Machine Index)</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.deviceId}
-                                        onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
-                                        className="app-input"
-                                        placeholder="e.g. 1"
-                                    />
+                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-400 text-sm">
+                                        {emp.firstName?.[0]}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900 text-sm">{emp.firstName} {emp.lastName}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{emp.employeeCode} • {emp.department?.name || 'General'}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
+                        </div>
 
-                            <div className="flex justify-end gap-4 mt-10">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="px-6 py-3 text-gray-400 font-bold text-[10px] uppercase tracking-widest hover:text-gray-600 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100"
-                                >
-                                    Confirm Configuration
-                                </button>
-                            </div>
-                        </form>
+                        <div className="p-8 border-t border-gray-50 flex justify-end gap-4 bg-gray-50/30">
+                            <button
+                                onClick={() => { setShowEmployeePicker(false); setSelectedEmpIds([]); }}
+                                className="px-6 py-3 text-gray-400 font-bold text-[10px] uppercase tracking-widest hover:text-gray-600 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSelectivePush}
+                                disabled={selectedEmpIds.length === 0}
+                                className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100 disabled:opacity-50"
+                            >
+                                Queue Upload ({selectedEmpIds.length})
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
+            {user?.tenantType === 'SCHOOL' && (
+                <button
+                    onClick={async () => {
+                        if (confirm('Push all Students to this device?')) {
+                            try {
+                                await devicesAPI.uploadAllStudents(device.id);
+                                alert('Student upload commands queued!');
+                            } catch (e) { alert('Failed to queue student upload'); }
+                        }
+                    }}
+                    className="p-2 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                    title="Push all Students to Node"
+                >
+                    <GraduationCap className="w-4 h-4" />
+                </button>
+            )}
+        </>
+    )
+}
+                                </div >
+                            </div >
+
+                            <div className="relative z-10">
+                                <h3 className="text-xl font-bold text-gray-900 tracking-tighter">{device.name}</h3>
+                                <div className="mt-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        {device.location || 'Unassigned Sector'} • <span className={device.status === 'online' ? 'text-emerald-500' : 'text-gray-300'}>{device.status.toUpperCase()}</span>
+                                    </p>
+                                    {device.lastSeen && (
+                                        <p className="text-[9px] font-semibold text-gray-400 mt-0.5">
+                                            {new Date(device.lastSeen).toLocaleString('en-IN', {
+                                                day: 'numeric', month: 'short', year: 'numeric',
+                                                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-50 relative z-10">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Protocol</p>
+                                    <p className="text-xs font-bold text-gray-700">{device.protocol}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Identifier</p>
+                                    <p className="text-xs font-bold text-gray-700">{device.serialNumber || device.deviceId}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 relative z-10">
+                                <div className="flex items-center gap-1.5">
+                                    <Activity className="w-3.5 h-3.5 text-blue-500" />
+                                    <span className="text-[9px] font-bold text-gray-500 uppercase">Live Stream</span>
+                                </div>
+                                <div className="px-3 py-1 bg-gray-100 rounded-lg text-[9px] font-bold text-gray-500 italic">
+                                    {device.lastConnected ? new Date(device.lastConnected).toLocaleTimeString() : 'Never Linked'}
+                                </div>
+                            </div>
+                        </div >
+                    ))
+                )}
+            </div >
+
+    { showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
+            <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
+                <div className="p-10 border-b border-gray-50 bg-gray-50/30">
+                    <div className="flex items-center gap-4 mb-2">
+                        <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-200">
+                            <Settings className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-2xl font-bold tracking-tight text-gray-900">{editingDevice ? 'Recalibrate Node' : 'Initialize Hardware Node'}</h3>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic ml-14">Configure ingestion parameters for biometric interface</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-10 space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Friendly Node Name</label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                className="app-input"
+                                placeholder="e.g. Main Lobby ESSL"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Protocol Matrix</label>
+                            <select
+                                value={formData.protocol}
+                                onChange={(e) => setFormData({ ...formData, protocol: e.target.value })}
+                                className="app-input appearance-none"
+                            >
+                                <option value="ESSL_ADMS">1. ESSL Direct Machine (ADMS)</option>
+                                <option value="MATRIX_DIRECT">2. Matrix Direct Machine</option>
+                                <option value="REALTIME_DIRECT">3. Realtime Direct Machine</option>
+                                <option value="HIKVISION_DIRECT">4. Hikvision Direct Machine</option>
+                                <option value="SQL_LOGS">5. SQL LOGS (eTimeTrackLite)</option>
+                                <option value="HIKCENTRAL_SQL">6. HikCentral SQL Server</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Sector / Location</label>
+                            <input
+                                type="text"
+                                value={formData.location}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                className="app-input"
+                                placeholder="e.g. Gurugram Branch"
+                            />
+                        </div>
+
+                        {['ESSL_ADMS', 'MATRIX_DIRECT', 'REALTIME_DIRECT', 'HIKVISION_DIRECT'].includes(formData.protocol) ? (
+                            <div className="col-span-2">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block text-blue-600 flex items-center gap-2">
+                                    <Hash className="w-3 h-3" /> Machine Serial Number (REQUIRED)
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formData.serialNumber}
+                                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                                    className="app-input border-blue-100 focus:border-blue-500"
+                                    placeholder="e.g. BZ8G202160012"
+                                />
+                                <p className="text-[9px] font-bold text-blue-400 mt-2 italic px-1">
+                                    {formData.protocol === 'HIKVISION_DIRECT'
+                                        ? `Machine must push to: ${window.location.origin}/api/hikvision/event`
+                                        : `Node will push to: ${window.location.origin}/api/iclock using this SN`
+                                    }
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Host / IP</label>
+                                    <input
+                                        type="text"
+                                        value={formData.ipAddress}
+                                        onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
+                                        className="app-input"
+                                        placeholder="192.168.1.50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Port</label>
+                                    <input
+                                        type="number"
+                                        value={formData.port}
+                                        onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
+                                        className="app-input"
+                                        placeholder="1433"
+                                    />
+                                </div>
+                                {(formData.protocol === 'SQL_LOGS' || formData.protocol === 'SQL_MIRROR') && (
+                                    <>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Username</label>
+                                            <input
+                                                type="text"
+                                                value={formData.username}
+                                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                                className="app-input"
+                                                placeholder="sa"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">SQL Password</label>
+                                            <input
+                                                type="password"
+                                                value={formData.password}
+                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                                className="app-input"
+                                                placeholder="******"
+                                            />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Database Name</label>
+                                            <input
+                                                type="text"
+                                                value={formData.databaseName}
+                                                onChange={(e) => setFormData({ ...formData, databaseName: e.target.value })}
+                                                className="app-input"
+                                                placeholder="eTimeTrackLite1"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        )}
+
+                        <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Hardware ID (Machine Index)</label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.deviceId}
+                                onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
+                                className="app-input"
+                                placeholder="e.g. 1"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-4 mt-10">
+                        <button
+                            type="button"
+                            onClick={() => setShowModal(false)}
+                            className="px-6 py-3 text-gray-400 font-bold text-[10px] uppercase tracking-widest hover:text-gray-600 transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100"
+                        >
+                            Confirm Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
+    )}
+        </div >
     );
 }

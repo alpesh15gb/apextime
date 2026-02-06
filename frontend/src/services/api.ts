@@ -133,6 +133,8 @@ export const devicesAPI = {
     api.post(`/devices/${id}/fetch-logs`, { startTime: startDate + ' 00:00:00' }),
   uploadAllEmployees: (id: string) =>
     api.post(`/devices/${id}/upload-all-employees`),
+  uploadEmployees: (id: string, employeeIds: string[]) =>
+    api.post(`/devices/${id}/upload-employees`, { employeeIds }),
   uploadAllStudents: (id: string) =>
     api.post(`/devices/${id}/upload-all-students`),
 };
