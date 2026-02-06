@@ -269,10 +269,20 @@ export class PayrollEngine {
                 components['TDS'] = 0;
             }
 
-            // Staff Welfare (Fixed 250)
-            const welfare = 250;
+            // Staff Welfare (Fixed 200 as per sheet)
+            const welfare = 200;
             components['STAFF_WELFARE'] = welfare;
             totalDeductions += welfare;
+
+            // Insurance (Fixed 200 as per sheet)
+            const insurance = 200;
+            components['INSURANCE'] = insurance;
+            totalDeductions += insurance;
+
+            // Uniform (Fixed 0 defaults, can be enabled later)
+            const uniform = 0;
+            components['UNIFORM'] = uniform;
+            totalDeductions += uniform;
 
             // ESI Employee
             if (employee.isESIEnabled) {
