@@ -105,40 +105,54 @@ router.post('/event', upload.any(), async (req, res) => {
             eventData?.EventNotification?.serialNo ||
             eventData?.AccessControllerEvent?.serialNo;
 
+        // 1. EXTRACT SUB-EVENT TYPE FIRST
+        const subType = eventData?.AccessControllerEvent?.subEventType ||
+            eventData?.EventNotification?.subEventType ||
+            eventData?.subEventType;
+
+        // ONLY process '75' (Verification Success). Ignore door sensors 21, 22, etc.
+        if (subType && subType !== 75 && subType !== '75') {
+            return res.status(200).send('OK');
+        }
+
+
+
         if (!SN) {
-            logger.warn('Hikvision event received without Serial Number');
             return res.status(200).send('OK');
         }
 
         const snStr = SN.toString();
 
+        // 2. FETCH DEVICE (Cached ideally, but findFirst is okay if filtered)
         const device = await prisma.device.findFirst({
-            where: {
-                deviceId: {
-                    equals: snStr,
-                    mode: 'insensitive'
-                }
-            }
+            where: { deviceId: { equals: snStr, mode: 'insensitive' } }
         });
 
-        if (!device) {
-            logger.warn(`Unknown Hikvision SN: ${SN}`);
-            return res.status(200).send('OK');
-        }
+        if (!device) return res.status(200).send('OK');
 
-        // Update Device Status as Online (Throttled to once every 5 mins to save DB load)
+        // Throttled LastSeen update
         const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
         if (!device.lastSeen || device.lastSeen < fiveMinsAgo) {
-            await prisma.device.update({
+            prisma.device.update({
                 where: { id: device.id },
                 data: { status: 'online', lastSeen: new Date() }
-            });
+            }).catch(() => { }); // Fire and forget
         }
 
-        // Hikvision Event Mapping (support all formats)
-        const userId = eventData?.employeeNo || eventData?.EventNotification?.employeeNo || eventData?.AccessControllerEvent?.employeeNoString || eventData?.AccessControllerEvent?.employeeNo;
-        const eventTime = eventData?.time || eventData?.EventNotification?.time || eventData?.AccessControllerEvent?.dateTime || eventData?.dateTime;
-        const userName = eventData?.name || eventData?.EventNotification?.name || eventData?.AccessControllerEvent?.name;
+        // 3. EXTRACT USER DATA
+        const userId = eventData?.employeeNo ||
+            eventData?.EventNotification?.employeeNo ||
+            eventData?.AccessControllerEvent?.employeeNoString ||
+            eventData?.AccessControllerEvent?.employeeNo;
+
+        const eventTime = eventData?.time ||
+            eventData?.EventNotification?.time ||
+            eventData?.AccessControllerEvent?.dateTime ||
+            eventData?.dateTime;
+
+        const userName = eventData?.name ||
+            eventData?.EventNotification?.name ||
+            eventData?.AccessControllerEvent?.name;
 
         if (userId && eventTime) {
             // Strict IST Parsing
