@@ -36,7 +36,7 @@ async function queueUserInfoPull() {
                 command: 'DATA QUERY USERINFO', // The ADMS command to upload user data
                 status: 'PENDING',
                 issuedAt: new Date(),
-                payload: {} // No arguments needed
+                payload: '{}' // No arguments needed
             }
         });
 
