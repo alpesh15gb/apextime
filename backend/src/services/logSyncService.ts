@@ -30,6 +30,43 @@ interface ProcessedAttendance {
 // Cache for created employees to avoid repeated lookups
 const employeeCache = new Map<string, string>(); // deviceUserId -> employeeId
 
+/**
+ * Universal helper to find an employee ID from a punch UserId (deviceUserId).
+ * It checks deviceUserId, employeeCode, and sourceEmployeeId with potential prefixes.
+ */
+async function findEmployeeId(uId: string, tenantId?: string): Promise<string | null> {
+  if (!uId) return null;
+  const sId = uId.toString().trim();
+
+  // 1. Check direct cache
+  if (employeeCache.has(sId)) return employeeCache.get(sId)!;
+  if (employeeCache.has(`SID:${sId}`)) return employeeCache.get(`SID:${sId}`)!;
+  if (employeeCache.has(`CODE:${sId}`)) return employeeCache.get(`CODE:${sId}`)!;
+
+  // 2. Database Lookup
+  const emp = await prisma.employee.findFirst({
+    where: {
+      tenantId: tenantId,
+      OR: [
+        { deviceUserId: sId },
+        { employeeCode: sId },
+        { sourceEmployeeId: sId },
+        // Try with HO prefix if numeric
+        { employeeCode: sId.length <= 4 && /^\d+$/.test(sId) ? `HO${sId.padStart(3, '0')}` : undefined },
+        { deviceUserId: sId.length <= 4 && /^\d+$/.test(sId) ? `HO${sId.padStart(3, '0')}` : undefined }
+      ].filter(condition => condition !== undefined) as any
+    },
+    select: { id: true }
+  });
+
+  if (emp) {
+    employeeCache.set(sId, emp.id);
+    return emp.id;
+  }
+
+  return null;
+}
+
 export async function startLogSync(fullSync: boolean = false): Promise<void> {
   const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
 
@@ -943,18 +980,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
   const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
-    // HYDRATE CACHE IF MISSING
-    if (!employeeCache.has(deviceUserId)) {
-      const emp = await prisma.employee.findFirst({
-        where: { deviceUserId: deviceUserId },
-        select: { id: true, tenantId: true }
-      });
-      if (emp) {
-        employeeCache.set(deviceUserId, emp.id);
-      }
-    }
-
-    const employeeId = employeeCache.get(deviceUserId);
+    const employeeId = await findEmployeeId(deviceUserId);
     if (!employeeId) continue;
 
     // 1. Group punches by IST calendar day
@@ -1353,8 +1379,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
 
         const results = await processAttendanceLogs(formattedLogs);
 
-        // Get tenantId for this specific employee - STRICT MATCHING ONLY
-        const empId = employeeCache.get(uId);
+        // Get tenantId for this specific employee
+        const empId = await findEmployeeId(uId);
         const empForTenant = empId ? await prisma.employee.findUnique({ where: { id: empId }, select: { tenantId: true } }) : null;
         const rlTenantId = empForTenant?.tenantId || '';
         if (!rlTenantId) continue;
