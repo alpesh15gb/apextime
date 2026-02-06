@@ -90,12 +90,13 @@ router.get('/summary/:employeeId', async (req, res) => {
     const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
     const targetYear = parseInt(year as string) || new Date().getFullYear();
 
-    const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
-    const endOfMonth = new Date(targetYear, targetMonth, 0);
+    // Use UTC midnights for @db.Date columns
+    const startOfMonth = new Date(Date.UTC(targetYear, targetMonth - 1, 1));
+    const endOfMonth = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59));
 
     const logs = await prisma.attendanceLog.findMany({
       where: {
-        employeeId,
+        tenantId: (req as any).user.tenantId,
         date: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -124,12 +125,14 @@ router.get('/summary/:employeeId', async (req, res) => {
 router.get('/today/all', async (req, res) => {
   try {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC start for @db.Date matching
+    const startOfToday = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
     const logs = await prisma.attendanceLog.findMany({
       where: {
+        tenantId: (req as any).user.tenantId,
         date: {
-          gte: today,
+          gte: startOfToday,
         },
       },
       include: {
@@ -214,12 +217,21 @@ router.get('/monthly-report', async (req, res) => {
     const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
     const targetYear = parseInt(year as string) || new Date().getFullYear();
 
-    const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
-    const endOfMonth = new Date(targetYear, targetMonth, 0);
-    const daysInMonth = endOfMonth.getDate();
+    // Date range for @db.Date matching
+    const start = new Date(Date.UTC(targetYear, targetMonth - 1, 1));
+    const end = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59));
+    const daysInMonth = new Date(targetYear, targetMonth, 0).getDate(); // Calculate daysInMonth from local date for correct count
+
+    const where: any = {
+      tenantId: (req as any).user.tenantId,
+      date: {
+        gte: start,
+        lte: end,
+      },
+    };
 
     // Build employee filter
-    const employeeWhere: any = { status: 'active' };
+    const employeeWhere: any = { status: 'active', tenantId: (req as any).user.tenantId };
     if (departmentId) employeeWhere.departmentId = departmentId as string;
     if (branchId) employeeWhere.branchId = branchId as string;
 

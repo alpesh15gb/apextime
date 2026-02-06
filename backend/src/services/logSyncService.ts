@@ -1071,9 +1071,8 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
       processedResults.push({
         employeeId: employeeId,
-        // Store as LOCAL midnight (server=IST). Do NOT append 'Z' — that would
-        // create UTC midnight which is 5:30 AM IST, causing date mismatch in queries.
-        date: new Date(dateKey + 'T00:00:00'),
+        // Store as UTC midnight for @db.Date column
+        date: new Date(dateKey + 'T00:00:00Z'),
         firstIn: firstIn,
         lastOut: lastOut || null,
         workingHours: Number(workingHours.toFixed(2)),
@@ -1116,7 +1115,7 @@ export async function triggerRealtimeAttendanceSync(tenantId: string, userId: st
     logger.debug(`Real-time sync triggered for ${userId} on ${dStr}`);
 
     // 2. Fetch all logs in the window for this user
-    const targetDate = new Date(dStr);
+    const targetDate = new Date(dStr + 'T00:00:00Z');
     const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
     const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
 
@@ -1377,7 +1376,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
       try {
         const [uId, dStr] = pair.split('|');
         // Create a window around the target date to catch night shift logs
-        const targetDate = new Date(dStr + 'T00:00:00'); // Local midnight
+        const targetDate = new Date(dStr + 'T00:00:00Z'); // UTC midnight for @db.Date
         const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000); // 8 hours before
         const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);  // 32 hours after
 
