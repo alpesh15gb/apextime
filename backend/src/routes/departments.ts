@@ -11,7 +11,9 @@ router.get('/', async (req, res) => {
   try {
     const { branchId, isActive } = req.query;
 
-    const where: any = {};
+    const where: any = {
+      tenantId: (req as any).user.tenantId
+    };
     if (branchId) where.branchId = branchId as string;
     if (isActive !== undefined) where.isActive = isActive === 'true';
 

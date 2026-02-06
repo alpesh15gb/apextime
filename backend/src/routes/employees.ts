@@ -538,8 +538,30 @@ router.post('/bulk-import', async (req, res) => {
         let branchId = undefined;
 
         if (departmentName) {
-          const dept = departments.find(d => d.name.toLowerCase() === departmentName.toLowerCase());
-          if (dept) departmentId = dept.id;
+          const lowerName = departmentName.toLowerCase();
+          const dept = departments.find(d => d.name.toLowerCase() === lowerName);
+          if (dept) {
+            departmentId = dept.id;
+          } else {
+            // Auto-create department
+            try {
+              // Generate a simple code if not provided
+              const newCode = departmentName.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 10) + Math.floor(Math.random() * 1000);
+              const newDept = await prisma.department.create({
+                data: {
+                  tenantId,
+                  name: departmentName,
+                  code: newCode,
+                  isActive: true
+                }
+              });
+              departments.push(newDept); // Add to local cache so next iteration finds it
+              departmentId = newDept.id;
+              results.errors.push(`Auto-created new department: ${departmentName}`); // Log as info/warning
+            } catch (deptErr: any) {
+              results.errors.push(`Failed to auto-create department '${departmentName}': ${deptErr.message}`);
+            }
+          }
         }
 
         if (branchName) {
