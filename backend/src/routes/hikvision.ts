@@ -182,7 +182,7 @@ router.post('/event', upload.any(), async (req, res) => {
                         data: {
                             tenantId: device.tenantId,
                             deviceUserId: userIdStr,
-                            employeeCode: `HIK_${userIdStr}`,
+                            employeeCode: userIdStr,
                             firstName: userName || userIdStr,
                             lastName: '',
                             status: 'ACTIVE'
