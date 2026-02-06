@@ -337,7 +337,7 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
         titleRow.style = titleStyle as any;
 
         // Row 2: Group Headers
-        // Emp Detail (A-F) | Attendance (G-I) | Fixed Salary (J-K) | Earned Salary (L-Q) | Deductions (R-Y) | Net Salary (Z-AA) | Other (AB-AC)
+        // Emp Detail (A-F) | Attendance (G-I) | Fixed Salary (J-O) | Earned Salary (P-V) | Deductions (W-AD) | Net Salary (AE-AH)
 
         const setHeader = (cell: string, val: string) => {
             const c = worksheet.getCell(cell);
@@ -345,7 +345,6 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
             c.style = headerStyle as any;
         };
 
-        // Emulating the merged header structure
         // A2:F2 -> Employee Detail
         worksheet.mergeCells('A2:F2');
         setHeader('A2', 'Employee Detail');
@@ -354,34 +353,38 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
         worksheet.mergeCells('G2:I2');
         setHeader('G2', 'Attendance');
 
-        // J2:L2 -> Fixed Salary
-        worksheet.mergeCells('J2:L2');
+        // J2:O2 -> Fixed Salary (6 Cols)
+        worksheet.mergeCells('J2:O2');
         setHeader('J2', 'Fixed Salary');
 
-        // M2:Q2 -> Earned Salary
-        worksheet.mergeCells('M2:Q2');
-        setHeader('M2', 'Earned Salary');
+        // P2:V2 -> Earned Salary (7 Cols)
+        worksheet.mergeCells('P2:V2');
+        setHeader('P2', 'Earned Salary');
 
-        // R2:Y2 -> Deductions
-        worksheet.mergeCells('R2:Y2');
-        setHeader('R2', 'Deductions');
+        // W2:AD2 -> Deductions (8 Cols)
+        worksheet.mergeCells('W2:AD2');
+        setHeader('W2', 'Deductions');
 
-        // Z2:AA2 -> Final Salary / Net
-        worksheet.mergeCells('Z2:AA2');
-        setHeader('Z2', 'Net Salary');
-
-        // AB2:AC2 -> Actions/Notes
-        worksheet.mergeCells('AB2:AC2');
-        setHeader('AB2', 'Final Payable');
+        // AE2:AH2 -> Net Salary (4 Cols)
+        worksheet.mergeCells('AE2:AH2');
+        setHeader('AE2', 'Net Salary');
 
         // Row 3: Column Headers
         const columns = [
             'SNo', 'Emp Name', 'DESIGNATION', 'DEPT', 'D.O.J.', 'PAN', // Emp Detail
             'Total Days', 'Paid Days', 'LOP Days', // Attendance
-            'CTC (Monthly)', 'Employer PF', 'Fixed Gross', // Fixed
-            'Basic', 'HRA', 'Conveyance', 'Medical', 'Other Allow', // Earned
-            'TDS', 'Emp PF', 'PT', 'ESI', 'Welfare', 'Insurance', 'Uniform', 'Total Ded', // Deductions
-            'Net Salary', 'Retention', 'Final Pay' // Final
+
+            // Fixed Salary
+            'Basic', 'HRA', 'Conveyance', 'Education', 'Medical', 'Other Allow',
+
+            // Earned Salary
+            'Basic', 'HRA', 'Conveyance', 'Education', 'Medical', 'Other Allow', 'Total Earned',
+
+            // Deductions
+            'TDS', 'PF', 'PT', 'ESI', 'Staff Welfare', 'Insurance', 'Uniform', 'Total Ded',
+
+            // Net
+            'Net Salary', 'Advances', 'LOP Amount', 'Net Payable'
         ];
 
         const r3 = worksheet.getRow(3);
@@ -398,6 +401,24 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
             // Format dates
             const doj = e.dateOfJoining ? new Date(e.dateOfJoining).toLocaleDateString() : '-';
 
+            // Calculate Fixed Components
+            const CTC = e.monthlyCtc || 0;
+            let fixedBasic = 0, fixedHRA = 0, fixedConv = 0, fixedEdu = 0, fixedMed = 0, fixedOther = 0;
+
+            if (CTC > 0) {
+                const fixedPF_ER = 1800;
+                const earningsBudget = CTC - fixedPF_ER;
+
+                fixedBasic = CTC * 0.50;
+                fixedHRA = CTC * 0.20;
+                fixedConv = 1600;
+                fixedEdu = 200;
+                fixedMed = 1250;
+
+                const used = fixedBasic + fixedHRA + fixedConv + fixedEdu + fixedMed;
+                fixedOther = Math.max(0, earningsBudget - used);
+            }
+
             const row = [
                 index + 1,
                 `${e.firstName} ${e.lastName}`,
@@ -407,21 +428,26 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
                 e.panNumber || '-',
 
                 // Attendance
-                p.totalWorkingDays, // Should be Month Days now
+                p.totalWorkingDays,
                 p.paidDays,
                 p.lopDays,
 
                 // Fixed Salary columns
-                e.monthlyCtc || 0,
-                p.employerPF || 0,
-                p.grossSalary || 0,
+                fixedBasic,
+                fixedHRA,
+                fixedConv,
+                fixedEdu,
+                fixedMed,
+                fixedOther,
 
                 // Earned Salary Breakdown
                 p.basicPaid,
                 p.hraPaid,
                 details['CONVEYANCE'] || 0,
+                details['EDU_ALL'] || 0,
                 details['MEDICAL'] || 0,
-                (details['OTHER_ALLOW'] || 0) + (details['EDU_ALL'] || 0), // Bundle Edu into Other or separate if needed
+                details['OTHER_ALLOW'] || 0,
+                p.grossSalary, // Total Earned
 
                 // Deductions
                 details['TDS'] || 0,
@@ -436,10 +462,12 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
                 // Net
                 p.netSalary,
                 p.retentionDeduction,
+                0, // LOP Amount
                 p.finalTakeHome
             ];
 
             worksheet.addRow(row);
+
         });
 
         // Column Widths
