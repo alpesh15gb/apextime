@@ -35,13 +35,14 @@ router.get('/', async (req, res) => {
     if (status) where.status = status as string;
 
     if (startDate && endDate) {
+      // Inclusive range: Covers D-1 18:30Z (Local midnight) to D 23:59:59Z (UTC end of day)
       where.date = {
-        gte: new Date(startDate as string + 'T00:00:00Z'),
+        gte: new Date(startDate as string + 'T00:00:00'),
         lte: new Date(endDate as string + 'T23:59:59Z'),
       };
     } else if (startDate) {
       where.date = {
-        gte: new Date(startDate as string + 'T00:00:00Z'),
+        gte: new Date(startDate as string + 'T00:00:00'),
       };
     }
 
@@ -104,9 +105,9 @@ router.get('/summary/:employeeId', async (req, res) => {
     const targetMonth = parseInt(month as string) || new Date().getMonth() + 1;
     const targetYear = parseInt(year as string) || new Date().getFullYear();
 
-    // Use UTC midnights for @db.Date columns
-    const startOfMonth = new Date(Date.UTC(targetYear, targetMonth - 1, 1));
-    const endOfMonth = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59));
+    // Use an inclusive range to find logs stored as UTC midnight OR Local midnight
+    const startOfMonth = new Date(targetYear, targetMonth - 1, 1); // IST midnight (T-1 18:30Z)
+    const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59); // End of month UTC
 
     const logs = await prisma.attendanceLog.findMany({
       where: {
@@ -315,16 +316,17 @@ router.get('/monthly-report', async (req, res) => {
       }
     });
 
-    // Group logs by employee and date
-    // AttendanceLog.date is @db.Date — use UTC getters
+    // AttendanceLog.date is @db.Date — could be 00:00Z or D-1 18:30Z
     const logsByEmployee = new Map();
     for (const log of logs) {
-      // Use getUTCDate() because Prisma @db.Date stores date at 00:00:00 UTC
-      const dateKey = new Date(log.date).getUTCDate();
+      const d = new Date(log.date);
+      // Dual-midnight mapping: if it's late evening UTC, it belongs to the NEXT day locally (IST)
+      const day = d.getUTCHours() > 12 ? d.getUTCDate() + 1 : d.getUTCDate();
+
       if (!logsByEmployee.has(log.employeeId)) {
         logsByEmployee.set(log.employeeId, new Map());
       }
-      logsByEmployee.get(log.employeeId).set(dateKey, log);
+      logsByEmployee.get(log.employeeId).set(day, log);
     }
 
     // Build report data

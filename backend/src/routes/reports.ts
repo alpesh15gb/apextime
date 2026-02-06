@@ -26,8 +26,8 @@ async function getAttendanceData(filters: any) {
   const where: any = {
     tenantId,
     date: {
-      gte: new Date(startDate + 'T00:00:00Z'),
-      lte: new Date(endDate + 'T23:59:59Z'),
+      gte: new Date(startDate + 'T00:00:00'), // Local midnight
+      lte: new Date(endDate + 'T23:59:59Z'),  // UTC end of day
     },
   };
 
@@ -788,7 +788,11 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
     let pCount = 0, aCount = 0, lCount = 0;
 
     for (let d = 1; d <= data.daysInMonth; d++) {
-      const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getUTCDate() === d);
+      const log = data.logs.find((l: any) => {
+        const ld = new Date(l.date);
+        const lDay = ld.getUTCHours() > 12 ? ld.getUTCDate() + 1 : ld.getUTCDate();
+        return l.employeeId === emp.id && lDay === d;
+      });
       const dayDate = new Date(Date.UTC(data.year, data.month - 1, d));
       const isSun = dayDate.getUTCDay() === 0;
 
@@ -886,7 +890,11 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
     let p = 0, a = 0, l = 0;
 
     for (let d = 1; d <= data.daysInMonth; d++) {
-      const log = data.logs.find((log: any) => log.employeeId === emp.id && new Date(log.date).getUTCDate() === d);
+      const log = data.logs.find((l: any) => {
+        const ld = new Date(l.date);
+        const lDay = ld.getUTCHours() > 12 ? ld.getUTCDate() + 1 : ld.getUTCDate();
+        return l.employeeId === emp.id && lDay === d;
+      });
       const dayDate = new Date(Date.UTC(data.year, data.month - 1, d));
       const isSun = dayDate.getUTCDay() === 0;
 
