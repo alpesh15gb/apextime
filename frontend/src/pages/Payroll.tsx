@@ -669,7 +669,7 @@ export const Payroll = () => {
                                                 )}
                                                 {(payslipDetails['SPECIAL_ALLOWANCE'] > 0 || payslipDetails['OTHER_ALLOWANCE'] > 0 || payslipDetails['OTHER_ALLOW'] > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Special Allowance</span>
+                                                        <span>Other Allowance</span>
                                                         <span>{(Number(payslipDetails['SPECIAL_ALLOWANCE']) || Number(payslipDetails['OTHER_ALLOWANCE']) || Number(payslipDetails['OTHER_ALLOW'])).toFixed(2)}</span>
                                                     </div>
                                                 )}

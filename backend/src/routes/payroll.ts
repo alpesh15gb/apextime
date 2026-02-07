@@ -406,13 +406,13 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
             let fixedBasic = 0, fixedHRA = 0, fixedConv = 0, fixedEdu = 0, fixedMed = 0, fixedLTA = 0, fixedOther = 0;
 
             if (CTC > 0) {
-                fixedBasic = CTC * 0.50;
-                fixedHRA = fixedBasic * 0.50;
-                fixedConv = 0;
-                fixedEdu = 0;
-                fixedMed = 0;
-                fixedLTA = 0;
-                fixedOther = 0;
+                fixedBasic = CTC * 0.40;
+                fixedHRA = CTC * 0.20;
+                fixedConv = CTC * 0.05;
+                fixedEdu = CTC * 0.05;
+                fixedMed = CTC * 0.10;
+                fixedLTA = CTC * 0.10;
+                fixedOther = CTC * 0.10;
             }
 
             const row = [
