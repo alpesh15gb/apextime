@@ -56,6 +56,30 @@ export class PayrollEngine {
 
             if (!employee) return { success: false, error: 'Employee not found' };
 
+            // Load Tenant Settings
+            const settings = await prisma.payrollSetting.findMany({
+                where: { tenantId: employee.tenantId }
+            });
+
+            const config: Record<string, any> = {};
+            settings.forEach(s => {
+                try { config[s.key] = JSON.parse(s.value); } catch (e) { config[s.key] = s.value; }
+            });
+
+            const statConfig = config['STATUTORY_CONFIG'] || {};
+            const paySchedule = config['PAY_SCHEDULE'] || {};
+
+            // Constants from config with fallbacks
+            const PF_ER_RATE = (statConfig.pfEmployerRate !== undefined ? statConfig.pfEmployerRate : 13) / 100;
+            const PF_EE_RATE = (statConfig.pfEmployeeRate !== undefined ? statConfig.pfEmployeeRate : 12) / 100;
+            const PF_LIMIT = statConfig.pfLimit || 15000;
+            const BONUS_RATE = (statConfig.bonusRate !== undefined ? statConfig.bonusRate : 8.33) / 100;
+            const GRATUITY_RATE = (statConfig.gratuityRate !== undefined ? statConfig.gratuityRate : 4.81) / 100;
+            const ESI_ER_RATE = (statConfig.esiEmployerRate !== undefined ? statConfig.esiEmployerRate : 3.25) / 100;
+            const ESI_EE_RATE = (statConfig.esiEmployeeRate !== undefined ? statConfig.esiEmployeeRate : 0.75) / 100;
+            const ESI_LIMIT = statConfig.esiLimit || 21000;
+            const ESI_MAX_CTC = statConfig.esiMaxCtc || 25000; // CTC threshold to check ESI eligibility
+
             const CTC = employee.monthlyCtc || 0;
             logger.info(`[PAYROLL] Processing: ${employee.firstName} ${employee.lastName} (Code: ${employee.employeeCode}, CTC: ${CTC})`);
 
@@ -148,8 +172,12 @@ export class PayrollEngine {
             }
 
             // Calendar Day Basis Calculation
-            // Standard Days = Calendar Days in Month (e.g. 30 or 31)
-            const totalMonthDays = daysInMonth;
+            // Standard Days = Calendar Days in Month (e.g. 30 or 31) or Fixed Days from config
+            let denominatorDays = daysInMonth;
+            if (paySchedule.calculateBasis === 'fixed' && paySchedule.fixedDays) {
+                denominatorDays = parseInt(paySchedule.fixedDays) || 30;
+            }
+            const totalMonthDays = denominatorDays;
 
             // Effective Paid Days = (Present + Holidays + Paid Leaves) + WeekOffs (Sundays)
             // Note: We currently assume Sundays are always paid (WeekOff) unless we have explicit LOP marking logic for them.
@@ -160,28 +188,22 @@ export class PayrollEngine {
             // Capped at totalMonthDays to handle potential data anomalies
             let paidDays = daysWorkedOrPaid + matrixSundays;
 
+            // If denominator is fixed (e.g. 30), and it's a 31 day month, and they were present all days,
+            // we should cap paidDays at denominatorDays.
+            paidDays = Math.min(paidDays, denominatorDays);
+
             // Adjust for joining date mid-month
-            if (joiningDay) {
-                // If joined mid-month, they can't be paid for days before joining
-                // So PaidDays should only account for days >= joiningDay
-                // Our loop only counted matrix stats for d >= joiningDay
-                // So 'paidDays' is already correct relative to "Days since joining"
-                // But the Denominator for pro-ration should ideally be DaysInMonth? 
-                // SHEET LOGIC: sheet shows "Days in Jan: 31", "Paid Days: 24". 
-                // Earning = Fixed * (24/31).
-                // So denominator is ALWAYS daysInMonth.
+            if (joiningDay && paySchedule.calculateBasis === 'actual') {
+                // If using actual basis, we should align paid days with joining
+                paidDays = Math.min(paidDays, daysAfterJoining);
             }
 
-            // Correction: If PaidDays > DaysAfterJoining (impossible by logic, but safe guard)
-            paidDays = Math.min(paidDays, daysAfterJoining);
+            const lopDays = Math.max(0, denominatorDays - paidDays);
 
-            const lopDays = daysAfterJoining - paidDays;
+            // Ratio = PaidDays / Denominator
+            const attendRatio = denominatorDays > 0 ? (paidDays / denominatorDays) : 0;
 
-            // Ratio = PaidDays / DaysInMonth
-            // Example: 24 / 31 = 0.774
-            const attendRatio = totalMonthDays > 0 ? (paidDays / totalMonthDays) : 0;
-
-            logger.info(`[PAYROLL] ${employee.employeeCode}: DaysInMonth=${totalMonthDays}, PaidDays=${paidDays}, Sundays=${matrixSundays}, Worked/Holiday=${daysWorkedOrPaid}, Ratio=${attendRatio.toFixed(4)}`);
+            logger.info(`[PAYROLL] ${employee.employeeCode}: Denominator=${denominatorDays}, PaidDays=${paidDays}, Ratio=${attendRatio.toFixed(4)}`);
 
             // 2. DYNAMIC Salary Calculation
             let totalEarnings = 0;
@@ -236,25 +258,25 @@ export class PayrollEngine {
                     const knownMonthlyEarnings = Object.entries(monthlyValues)
                         .reduce((sum, [code, val]) => sum + val, 0);
 
-                    // 1. Employer PF (13% of Basic, capped at 15k basis)
+                    // 1. Employer PF (PF_ER_RATE of Basic, capped at PF_LIMIT basis)
                     let erPF = 0;
                     if (employee.isPFEnabled) {
-                        erPF = Math.round(Math.min(monthlyValues['BASIC'] || 0, 15000) * 0.13);
+                        erPF = Math.round(Math.min(monthlyValues['BASIC'] || 0, PF_LIMIT) * PF_ER_RATE);
                     }
 
                     // 2. Bonus & Gratuity (Usually part of CTC in India)
-                    // Bonus: 8.33% of Basic or 7000 (usually 8.33% of Basic for CTC purpose)
-                    // Gratuity: 4.81% of Basic
-                    const bonus = Math.round((monthlyValues['BASIC'] || 0) * 0.0833);
-                    const gratuity = Math.round((monthlyValues['BASIC'] || 0) * 0.0481);
+                    // Bonus: BONUS_RATE of Basic
+                    // Gratuity: GRATUITY_RATE of Basic
+                    const bonus = Math.round((monthlyValues['BASIC'] || 0) * BONUS_RATE);
+                    const gratuity = Math.round((monthlyValues['BASIC'] || 0) * GRATUITY_RATE);
 
                     let balancerValue = Math.max(0, CTC - knownMonthlyEarnings - erPF - bonus - gratuity);
 
-                    // 3. ESI Check (Employer 3.25%)
-                    if (employee.isESIEnabled && CTC <= 25000) {
+                    // 3. ESI Check (Employer ESI_ER_RATE)
+                    if (employee.isESIEnabled && CTC <= ESI_MAX_CTC) {
                         const totalContributionBasis = CTC - erPF - bonus - gratuity;
-                        const likelyGross = totalContributionBasis / 1.0325;
-                        if (likelyGross <= 21000) {
+                        const likelyGross = totalContributionBasis / (1 + ESI_ER_RATE);
+                        if (likelyGross <= ESI_LIMIT) {
                             balancerValue = Math.max(0, likelyGross - knownMonthlyEarnings);
                         }
                     }
@@ -280,15 +302,15 @@ export class PayrollEngine {
                 });
 
                 // Re-calculate Employer ESI on pro-rated Gross
-                if (employee.isESIEnabled && totalEarnings <= 21000) {
-                    components['ESI_ER'] = Math.round(totalEarnings * 0.0325);
+                if (employee.isESIEnabled && totalEarnings <= ESI_LIMIT) {
+                    components['ESI_ER'] = Math.round(totalEarnings * ESI_ER_RATE);
                 }
 
             } else {
                 // Legacy / Manual Entry Mode
                 employee.salaryComponents.forEach(esc => {
                     if (esc.component.type === 'EARNING') {
-                        const amount = Math.round((esc.monthlyAmount / daysInMonth) * paidDays);
+                        const amount = Math.round((esc.monthlyAmount / denominatorDays) * paidDays);
                         components[esc.component.code] = amount;
                         totalEarnings += amount;
                         if (esc.component.isEPFApplicable) pfBasis += amount;
@@ -319,17 +341,18 @@ export class PayrollEngine {
             // 4. DEDUCTIONS (Statutory & Custom)
             let totalDeductions = 0;
 
-            // Employee PF (12% of pfBasis, capped at 1800)
+            // Employee PF (PF_EE_RATE of pfBasis, capped)
             if (employee.isPFEnabled) {
-                let pfAmount = Math.round(pfBasis * 0.12);
-                if (pfAmount > 1800) pfAmount = 1800;
+                let pfAmount = Math.round(pfBasis * PF_EE_RATE);
+                const pfMax = Math.round(PF_LIMIT * PF_EE_RATE);
+                if (pfAmount > pfMax) pfAmount = pfMax;
                 components['PF_EMP'] = pfAmount;
                 totalDeductions += pfAmount;
             }
 
-            // Employee ESI (0.75% of esiBasis)
-            if (employee.isESIEnabled && esiBasis <= 21000) {
-                const esiAmount = Math.ceil(esiBasis * 0.0075);
+            // Employee ESI (ESI_EE_RATE of esiBasis)
+            if (employee.isESIEnabled && esiBasis <= ESI_LIMIT) {
+                const esiAmount = Math.ceil(esiBasis * ESI_EE_RATE);
                 components['ESI_EMP'] = esiAmount;
                 totalDeductions += esiAmount;
             }

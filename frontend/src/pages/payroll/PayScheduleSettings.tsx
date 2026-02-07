@@ -4,6 +4,7 @@ import { payrollSettingsAPI } from '../../services/api';
 const PayScheduleSettings = () => {
     const [workWeek, setWorkWeek] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
     const [calculateBasis, setCalculateBasis] = useState('actual');
+    const [fixedDays, setFixedDays] = useState(30);
     const [cycleStartDay, setCycleStartDay] = useState(5);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState(''); // 'saved' | ''
@@ -24,6 +25,7 @@ const PayScheduleSettings = () => {
                 const schedule = config.PAY_SCHEDULE;
                 setWorkWeek(schedule.workWeek || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
                 setCalculateBasis(schedule.calculateBasis || 'actual');
+                setFixedDays(schedule.fixedDays || 30);
                 setCycleStartDay(schedule.cycleStartDay || 5);
             }
         } catch (error) {
@@ -50,6 +52,7 @@ const PayScheduleSettings = () => {
                 PAY_SCHEDULE: {
                     workWeek,
                     calculateBasis,
+                    fixedDays,
                     cycleStartDay
                 }
             };
@@ -80,8 +83,8 @@ const PayScheduleSettings = () => {
                             key={day}
                             onClick={() => toggleDay(day)}
                             className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${workWeek.includes(day)
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             {day}
@@ -105,17 +108,32 @@ const PayScheduleSettings = () => {
                         />
                         <span className="ml-2 text-sm text-gray-700">Actual days in a month</span>
                     </label>
-                    <label className="flex items-center">
-                        <input
-                            type="radio"
-                            name="calcBasis"
-                            value="fixed"
-                            checked={calculateBasis === 'fixed'}
-                            onChange={() => setCalculateBasis('fixed')}
-                            className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">Organization working days - <span className="text-gray-400 italic">Select days</span> per month</span>
-                    </label>
+                    <div className="space-y-2">
+                        <label className="flex items-center">
+                            <input
+                                type="radio"
+                                name="calcBasis"
+                                value="fixed"
+                                checked={calculateBasis === 'fixed'}
+                                onChange={() => setCalculateBasis('fixed')}
+                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">Organization working days (Fixed)</span>
+                        </label>
+                        {calculateBasis === 'fixed' && (
+                            <div className="ml-6 flex items-center space-x-3 anim-fade-in">
+                                <span className="text-xs text-gray-500 font-medium uppercase">Days per Month:</span>
+                                <input
+                                    type="number"
+                                    value={fixedDays}
+                                    onChange={(e) => setFixedDays(parseInt(e.target.value))}
+                                    className="w-16 border rounded-lg px-2 py-1 text-sm font-bold text-blue-600 shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                                    min="1"
+                                    max="31"
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -141,8 +159,8 @@ const PayScheduleSettings = () => {
                 onClick={handleSave}
                 disabled={saving}
                 className={`px-6 py-2 rounded-md font-medium transition-colors flex items-center shadow-sm ${saveStatus === 'saved'
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
                     } ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
                 {saving ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save'}

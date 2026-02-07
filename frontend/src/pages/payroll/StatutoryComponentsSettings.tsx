@@ -5,10 +5,19 @@ const StatutoryComponentsSettings = () => {
     const [config, setConfig] = useState<any>({
         epfEnabled: true,
         pfNumber: '',
+        pfEmployerRate: 13,
+        pfEmployeeRate: 12,
+        pfLimit: 15000,
         esiEnabled: true,
         esiNumber: '',
+        esiEmployerRate: 3.25,
+        esiEmployeeRate: 0.75,
+        esiLimit: 21000,
+        esiMaxCtc: 25000,
         ptEnabled: true,
-        ptNumber: ''
+        ptNumber: '',
+        bonusRate: 8.33,
+        gratuityRate: 4.81
     });
 
     // Derived state for easier binding
@@ -30,10 +39,19 @@ const StatutoryComponentsSettings = () => {
             setConfig({
                 epfEnabled: serverConfig.epfEnabled !== undefined ? serverConfig.epfEnabled : true,
                 pfNumber: serverConfig.pfNumber || '',
+                pfEmployerRate: serverConfig.pfEmployerRate || 13,
+                pfEmployeeRate: serverConfig.pfEmployeeRate || 12,
+                pfLimit: serverConfig.pfLimit || 15000,
                 esiEnabled: serverConfig.esiEnabled !== undefined ? serverConfig.esiEnabled : true,
                 esiNumber: serverConfig.esiNumber || '',
+                esiEmployerRate: serverConfig.esiEmployerRate || 3.25,
+                esiEmployeeRate: serverConfig.esiEmployeeRate || 0.75,
+                esiLimit: serverConfig.esiLimit || 21000,
+                esiMaxCtc: serverConfig.esiMaxCtc || 25000,
                 ptEnabled: serverConfig.ptEnabled !== undefined ? serverConfig.ptEnabled : true,
-                ptNumber: serverConfig.ptNumber || ''
+                ptNumber: serverConfig.ptNumber || '',
+                bonusRate: serverConfig.bonusRate || 8.33,
+                gratuityRate: serverConfig.gratuityRate || 4.81
             });
 
         } catch (error) {
@@ -60,12 +78,12 @@ const StatutoryComponentsSettings = () => {
     };
 
     const openModal = (type: string, key: string) => {
-        setModal({ type, value: config[key] || '', key });
+        setModal({ type, value: config[key].toString() || '', key });
     };
 
     const handleUpdate = async () => {
         if (!modal) return;
-        const newConfig = { ...config, [modal.key]: modal.value };
+        const newConfig = { ...config, [modal.key]: isNaN(Number(modal.value)) ? modal.value : Number(modal.value) };
         await saveConfig(newConfig);
         setModal(null);
     };
@@ -86,13 +104,25 @@ const StatutoryComponentsSettings = () => {
                     </label>
                 </div>
                 <p className="text-gray-500 text-sm mb-4">
-                    EPF is a retirement benefit scheme for salaried employees. The employee and employer contribute 12% of the basic salary + DA each month.
+                    EPF is a retirement benefit scheme for salaried employees. The employee and employer contribute a percentage of the basic salary each month.
                 </p>
                 <div className="w-full bg-gray-50 p-4 border rounded text-xs text-gray-600">
-                    <span className="block font-bold mb-1">Current Configuration:</span>
-                    PF Number: <span onClick={() => openModal('PF Number', 'pfNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.pfNumber || 'Update PF Number'}</span>
-                    <br />
-                    Deduction Cycle: Monthly
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <span className="block font-bold mb-1 uppercase text-[10px] text-gray-400">Registration Details</span>
+                            PF Number: <span onClick={() => openModal('PF Number', 'pfNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.pfNumber || 'Update PF Number'}</span>
+                            <br />
+                            Deduction Cycle: Monthly
+                        </div>
+                        <div>
+                            <span className="block font-bold mb-1 uppercase text-[10px] text-gray-400">Contribution Rates</span>
+                            Employer: <span onClick={() => openModal('Employer PF Rate (%)', 'pfEmployerRate')} className="text-blue-600 cursor-pointer hover:underline">{config.pfEmployerRate}%</span>
+                            <br />
+                            Employee: <span onClick={() => openModal('Employee PF Rate (%)', 'pfEmployeeRate')} className="text-blue-600 cursor-pointer hover:underline">{config.pfEmployeeRate}%</span>
+                            <br />
+                            Statutory Limit: <span onClick={() => openModal('PF Wage Limit (₹)', 'pfLimit')} className="text-blue-600 cursor-pointer hover:underline">₹{config.pfLimit}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -109,10 +139,46 @@ const StatutoryComponentsSettings = () => {
                     ESI is a self-financing social security and health insurance scheme for Indian workers.
                 </p>
                 <div className="w-full bg-gray-50 p-4 border rounded text-xs text-gray-600">
-                    <span className="block font-bold mb-1">Current Configuration:</span>
-                    ESI Number: <span onClick={() => openModal('ESI Number', 'esiNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.esiNumber || 'Update ESI Number'}</span>
-                    <br />
-                    Deduction Cycle: Monthly
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <span className="block font-bold mb-1 uppercase text-[10px] text-gray-400">Registration Details</span>
+                            ESI Number: <span onClick={() => openModal('ESI Number', 'esiNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.esiNumber || 'Update ESI Number'}</span>
+                            <br />
+                            Deduction Cycle: Monthly
+                        </div>
+                        <div>
+                            <span className="block font-bold mb-1 uppercase text-[10px] text-gray-400">Contribution Rates</span>
+                            Employer: <span onClick={() => openModal('Employer ESI Rate (%)', 'esiEmployerRate')} className="text-blue-600 cursor-pointer hover:underline">{config.esiEmployerRate}%</span>
+                            <br />
+                            Employee: <span onClick={() => openModal('Employee ESI Rate (%)', 'esiEmployeeRate')} className="text-blue-600 cursor-pointer hover:underline">{config.esiEmployeeRate}%</span>
+                            <br />
+                            Gross Limit: <span onClick={() => openModal('ESI Gross Limit (₹)', 'esiLimit')} className="text-blue-600 cursor-pointer hover:underline">₹{config.esiLimit}</span> (Eligible if Gross &le; this)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* OTHER ACCRUALS SECTION */}
+            <div className="bg-white border rounded-lg shadow-sm mb-6 p-6">
+                <h3 className="text-md font-bold text-gray-900 mb-4">Bonus & Gratuity Accruals (CTC Breakdown)</h3>
+                <p className="text-gray-500 text-sm mb-4">
+                    Define the percentages used to calculate monthly accruals for Bonus and Gratuity within the CTC package.
+                </p>
+                <div className="w-full bg-gray-50 p-4 border rounded text-xs text-gray-600">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <span className="block font-bold mb-1 uppercase text-[10px] text-gray-400">Accrual Rates</span>
+                            Statutory Bonus: <span onClick={() => openModal('Bonus Rate (%)', 'bonusRate')} className="text-blue-600 cursor-pointer hover:underline">{config.bonusRate}%</span>
+                            <br />
+                            Gratuity Provision: <span onClick={() => openModal('Gratuity Rate (%)', 'gratuityRate')} className="text-blue-600 cursor-pointer hover:underline">{config.gratuityRate}%</span>
+                        </div>
+                        <div>
+                            <span className="block font-bold mb-1 uppercase text-[10px] text-gray-400">Policy Info</span>
+                            Typically calculated on Basic Salary.
+                            <br />
+                            Standard: 8.33% Bonus, 4.81% Gratuity.
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -132,13 +198,13 @@ const StatutoryComponentsSettings = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <span className="block font-bold text-gray-700">Head Office</span>
-                            <span className="block mt-1">State: <span className="text-gray-900 font-medium">Telangana</span></span>
+                            <span className="block mt-1">State: <span className="text-gray-900 font-medium">Auto-detected (Emp State)</span></span>
                             <span className="block mt-1">PT Number: <span onClick={() => openModal('PT Number', 'ptNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.ptNumber || 'Update PT Number'}</span></span>
                         </div>
                         <div>
                             <span className="block font-bold text-gray-700">Deduction Cycle</span>
                             <span className="block mt-1">Monthly</span>
-                            <span onClick={() => setShowTaxSlabs(true)} className="block mt-1 text-blue-600 cursor-pointer hover:underline">View Tax Slabs</span>
+                            <span onClick={() => setShowTaxSlabs(true)} className="block mt-1 text-blue-600 cursor-pointer hover:underline">View Standard Slabs</span>
                         </div>
                     </div>
                 </div>
