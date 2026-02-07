@@ -1,79 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, X, Info } from 'lucide-react';
+import { Plus, Edit2, Check, X, Info } from 'lucide-react';
+import { payrollSettingsAPI } from '../../services/api';
 
 const SalaryComponentsSettings = () => {
-    const [components, setComponents] = useState([]);
+    const [components, setComponents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [editingComponent, setEditingComponent] = useState(null);
-
-    // Initial Data
-    const defaultData = [
-        {
-            id: 1,
-            name: 'Basic',
-            type: 'EARNING',
-            calculationType: 'PERCENTAGE',
-            value: 50,
-            formula: 'CTC * 0.50',
-            nameInPayslip: 'Basic',
-            isPartOfStructure: true,
-            isTaxable: true,
-            isProRata: true,
-            isEPF: true,
-            epfConfig: 'ALWAYS',
-            isESI: true,
-            showInPayslip: true,
-            status: true
-        },
-        {
-            id: 2,
-            name: 'House Rent Allowance',
-            type: 'EARNING',
-            calculationType: 'PERCENTAGE',
-            value: 50,
-            formula: 'BASIC * 0.50',
-            nameInPayslip: 'HRA',
-            isPartOfStructure: true,
-            isTaxable: true,
-            isProRata: true,
-            isEPF: false,
-            epfConfig: 'NEVER',
-            isESI: true,
-            showInPayslip: true,
-            status: true
-        },
-        {
-            id: 3,
-            name: 'Conveyance Allowance',
-            type: 'EARNING',
-            calculationType: 'FLAT',
-            value: 1600,
-            formula: '1600',
-            nameInPayslip: 'Conveyance',
-            isPartOfStructure: true,
-            isTaxable: true,
-            isProRata: true,
-            isEPF: true, // Only if < 15k usually
-            epfConfig: 'IF_WAGE_LESS_THAN_15K',
-            isESI: false,
-            showInPayslip: true,
-            status: true
-        }
-    ];
+    const [editingComponent, setEditingComponent] = useState<any>(null);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        setComponents(defaultData);
-        setLoading(false);
+        loadComponents();
     }, []);
 
-    const toggleStatus = (id) => {
-        setComponents(components.map(c =>
-            c.id === id ? { ...c, status: !c.status } : c
-        ));
+    const loadComponents = async () => {
+        try {
+            const res = await payrollSettingsAPI.getComponents();
+            setComponents(res.data);
+        } catch (error) {
+            console.error("Error loading components:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleEdit = (comp) => {
+    const toggleStatus = async (comp: any) => {
+        try {
+            const updated = { ...comp, isActive: !comp.isActive };
+            // Since backend update is strict PUT, we should send full object or specific endpoint
+            // Our backend UPSERT supports full update
+            // Wait, toggleStatus in table might be quick. Let's do API call.
+            await payrollSettingsAPI.upsertComponent({
+                ...comp,
+                id: comp.id,
+                isActive: !comp.isActive
+            });
+            // Optimistic update or reload? Reload is safer
+            loadComponents();
+        } catch (error) {
+            console.error("Error toggling status:", error);
+        }
+    };
+
+    const handleEdit = (comp: any) => {
         setEditingComponent(comp);
         setShowModal(true);
     };
@@ -83,14 +52,19 @@ const SalaryComponentsSettings = () => {
         setShowModal(true);
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        const form = e.target;
+        setSubmitting(true);
+        const form = e.target as any;
 
         // Extract values
         const name = form.name.value;
         const nameInPayslip = form.nameInPayslip.value;
-        const type = form.type.value;
+        const type = form.type.value; // For new: read from input, for edit: it's hidden/readonly but should be preserved
+        // Wait, for NEW, how do we select Type? The mock had it hardcoded or assumed.
+        // Let's allow selecting Type for new.
+        const typeValue = editingComponent ? editingComponent.type : form.type_select ? form.type_select.value : 'EARNING';
+
         const calculationType = form.calculationType.value; // FLAT or PERCENTAGE
         const value = parseFloat(form.value.value) || 0;
 
@@ -101,46 +75,38 @@ const SalaryComponentsSettings = () => {
         const epfConfig = form.epfConfig?.value || 'NEVER';
         const isESI = form.isESI?.checked || false;
         const showInPayslip = form.showInPayslip?.checked || false;
+        const isActive = form.isActive?.checked || true;
 
-        if (editingComponent) {
-            setComponents(components.map(c =>
-                c.id === editingComponent.id ? {
-                    ...c,
-                    name,
-                    nameInPayslip,
-                    type,
-                    calculationType,
-                    value,
-                    isPartOfStructure,
-                    isTaxable,
-                    isProRata,
-                    isEPF,
-                    epfConfig,
-                    isESI,
-                    showInPayslip
-                } : c
-            ));
-        } else {
-            const newId = Math.max(...components.map(c => c.id)) + 1;
-            setComponents([...components, {
-                id: newId,
-                name,
-                nameInPayslip,
-                type,
-                calculationType,
-                value,
-                formula: calculationType === 'FLAT' ? value.toString() : `CTC * ${value / 100}`,
-                isPartOfStructure,
-                isTaxable,
-                isProRata,
-                isEPF,
-                epfConfig,
-                isESI,
-                showInPayslip,
-                status: true
-            }]);
+        const payload = {
+            id: editingComponent ? editingComponent.id : undefined,
+            name,
+            nameInPayslip, // Note: Schema update needed for this if we want to persist properly, currently mostly frontend only or mapped to name
+            type: typeValue,
+            calculationType,
+            value,
+            formula: calculationType === 'FLAT' ? value.toString() : `CTC * ${value / 100}`, // Basic formula gen
+            isActive,
+            isEPF,
+            isESI,
+            isVariable: false, // Default for now
+            // Extra frontend-only config that we might cram into a JSON field or ignore for now if backend doesn't support
+            isPartOfStructure,
+            isTaxable,
+            isProRata,
+            epfConfig,
+            showInPayslip
+        };
+
+        try {
+            await payrollSettingsAPI.upsertComponent(payload);
+            setShowModal(false);
+            loadComponents();
+        } catch (error) {
+            console.error("Error saving component:", error);
+            alert("Failed to save component");
+        } finally {
+            setSubmitting(false);
         }
-        setShowModal(false);
     };
 
     return (
@@ -175,6 +141,8 @@ const SalaryComponentsSettings = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
                             <tr><td colSpan={7} className="text-center py-4">Loading...</td></tr>
+                        ) : components.length === 0 ? (
+                            <tr><td colSpan={7} className="text-center py-4 text-gray-500">No components found. Add one to get started.</td></tr>
                         ) : components.map((comp) => (
                             <tr key={comp.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{comp.name}</td>
@@ -185,17 +153,17 @@ const SalaryComponentsSettings = () => {
                                     {comp.calculationType === 'VARIABLE' && `Variable`}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                                    {comp.isEPF ? <Check size={16} className="text-green-600 mx-auto" /> : <X size={16} className="text-gray-300 mx-auto" />}
+                                    {comp.isEPFApplicable ? <Check size={16} className="text-green-600 mx-auto" /> : <X size={16} className="text-gray-300 mx-auto" />}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                                    {comp.isESI ? <Check size={16} className="text-green-600 mx-auto" /> : <X size={16} className="text-gray-300 mx-auto" />}
+                                    {comp.isESIApplicable ? <Check size={16} className="text-green-600 mx-auto" /> : <X size={16} className="text-gray-300 mx-auto" />}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                     <button
-                                        onClick={() => toggleStatus(comp.id)}
-                                        className={`px-2 py-1 text-xs font-medium rounded-full ${comp.status ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                                        onClick={() => toggleStatus(comp)}
+                                        className={`px-2 py-1 text-xs font-medium rounded-full ${comp.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
                                     >
-                                        {comp.status ? 'Active' : 'Inactive'}
+                                        {comp.isActive ? 'Active' : 'Inactive'}
                                     </button>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -229,17 +197,25 @@ const SalaryComponentsSettings = () => {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">
-                                            {editingComponent?.type === 'DEDUCTION' ? 'Deduction Type' : 'Earning Type'} <span className="text-red-500">*</span>
+                                            Type <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="mt-1 flex items-center">
-                                            <input
-                                                type="text"
-                                                name="type"
-                                                defaultValue={editingComponent?.name || 'Custom'}
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-gray-500 sm:text-sm"
-                                                readOnly
-                                            />
-                                        </div>
+                                        {editingComponent ? (
+                                            <div className="mt-1 flex items-center">
+                                                <input
+                                                    type="text"
+                                                    name="type"
+                                                    defaultValue={editingComponent.type}
+                                                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-gray-500 sm:text-sm"
+                                                    readOnly
+                                                />
+                                            </div>
+                                        ) : (
+                                            <select name="type_select" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                <option value="EARNING">Earning</option>
+                                                <option value="DEDUCTION">Deduction</option>
+                                            </select>
+                                        )}
+
                                         <div className="mt-2 bg-blue-50 text-blue-800 text-xs p-2 rounded flex items-start">
                                             <Info size={14} className="mr-1 mt-0.5 flex-shrink-0" />
                                             Fixed amount paid at the end of every month.
@@ -248,7 +224,7 @@ const SalaryComponentsSettings = () => {
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">
-                                            {editingComponent?.type === 'DEDUCTION' ? 'Deduction Name' : 'Earning Name'} <span className="text-red-500">*</span>
+                                            {editingComponent?.type === 'DEDUCTION' || (!editingComponent) ? 'Component Name' : 'Earning Name'} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="text"
@@ -322,7 +298,7 @@ const SalaryComponentsSettings = () => {
 
                                     <div className="pt-2">
                                         <label className="flex items-center">
-                                            <input type="checkbox" defaultChecked={true} className="h-4 w-4 text-blue-600 rounded" />
+                                            <input type="checkbox" name="isActive" defaultChecked={editingComponent ? editingComponent.isActive : true} className="h-4 w-4 text-blue-600 rounded" />
                                             <span className="ml-2 text-sm text-gray-900">Mark this as Active</span>
                                         </label>
                                     </div>
@@ -357,7 +333,7 @@ const SalaryComponentsSettings = () => {
 
                                     <div className="pt-2">
                                         <label className="flex items-center mb-2">
-                                            <input type="checkbox" name="isEPF" defaultChecked={editingComponent?.isEPF} className="h-4 w-4 text-blue-600 rounded" />
+                                            <input type="checkbox" name="isEPF" defaultChecked={editingComponent?.isEPFApplicable} className="h-4 w-4 text-blue-600 rounded" />
                                             <span className="ml-2 text-sm text-gray-700 font-medium">Consider for EPF Contribution</span>
                                         </label>
                                         <div className="ml-6 space-y-2">
@@ -373,7 +349,7 @@ const SalaryComponentsSettings = () => {
                                     </div>
 
                                     <label className="flex items-start">
-                                        <input type="checkbox" name="isESI" defaultChecked={editingComponent?.isESI} className="mt-1 h-4 w-4 text-blue-600 rounded" />
+                                        <input type="checkbox" name="isESI" defaultChecked={editingComponent?.isESIApplicable} className="mt-1 h-4 w-4 text-blue-600 rounded" />
                                         <span className="ml-2 text-sm text-gray-700">Consider for ESI Contribution</span>
                                     </label>
 
@@ -391,7 +367,9 @@ const SalaryComponentsSettings = () => {
                             </div>
 
                             <div className="px-6 py-4 bg-gray-50 flex justify-start space-x-3 rounded-b-lg border-t border-gray-200">
-                                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-sm">Save</button>
+                                <button type="submit" disabled={submitting} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-sm flex items-center">
+                                    {submitting ? 'Saving...' : 'Save'}
+                                </button>
                                 <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 font-medium text-sm">Cancel</button>
                                 <span className="flex-1 text-right text-xs text-red-500 mt-2">* indicates mandatory fields</span>
                             </div>

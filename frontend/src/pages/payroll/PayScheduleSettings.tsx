@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { payrollSettingsAPI } from '../../services/api';
 
 const PayScheduleSettings = () => {
     const [workWeek, setWorkWeek] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -6,9 +7,31 @@ const PayScheduleSettings = () => {
     const [cycleStartDay, setCycleStartDay] = useState(5);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState(''); // 'saved' | ''
+    const [loading, setLoading] = useState(true);
 
     // Mock days
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    useEffect(() => {
+        loadConfig();
+    }, []);
+
+    const loadConfig = async () => {
+        try {
+            const res = await payrollSettingsAPI.getConfig();
+            const config = res.data;
+            if (config.PAY_SCHEDULE) {
+                const schedule = config.PAY_SCHEDULE;
+                setWorkWeek(schedule.workWeek || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+                setCalculateBasis(schedule.calculateBasis || 'actual');
+                setCycleStartDay(schedule.cycleStartDay || 5);
+            }
+        } catch (error) {
+            console.error("Error loading payroll config:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const toggleDay = (day) => {
         if (workWeek.includes(day)) {
@@ -22,18 +45,28 @@ const PayScheduleSettings = () => {
         setSaving(true);
         setSaveStatus('');
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Saved:', { workWeek, calculateBasis, cycleStartDay });
-
-        setSaving(false);
-        setSaveStatus('saved');
-
-        // Clear success message after 2 seconds
-        setTimeout(() => {
-            setSaveStatus('');
-        }, 2000);
+        try {
+            const payload = {
+                PAY_SCHEDULE: {
+                    workWeek,
+                    calculateBasis,
+                    cycleStartDay
+                }
+            };
+            await payrollSettingsAPI.saveConfig(payload);
+            setSaveStatus('saved');
+        } catch (error) {
+            console.error("Error saving config:", error);
+        } finally {
+            setSaving(false);
+            // Clear success message after 2 seconds
+            setTimeout(() => {
+                setSaveStatus('');
+            }, 2000);
+        }
     };
+
+    if (loading) return <div className="p-4 text-gray-500">Loading settings...</div>;
 
     return (
         <div className="max-w-3xl">

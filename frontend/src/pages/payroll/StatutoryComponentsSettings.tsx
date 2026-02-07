@@ -1,22 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { payrollSettingsAPI } from '../../services/api';
 
 const StatutoryComponentsSettings = () => {
-    const [epfEnabled, setEpfEnabled] = useState(true);
-    const [esiEnabled, setEsiEnabled] = useState(true);
-    const [ptEnabled, setPtEnabled] = useState(true);
+    const [config, setConfig] = useState<any>({
+        epfEnabled: true,
+        pfNumber: '',
+        esiEnabled: true,
+        esiNumber: '',
+        ptEnabled: true,
+        ptNumber: ''
+    });
 
-    const [modal, setModal] = useState<{ type: string; value: string } | null>(null);
+    // Derived state for easier binding
+    const [loading, setLoading] = useState(true);
+
+    const [modal, setModal] = useState<{ type: string; value: string; key: string } | null>(null);
     const [showTaxSlabs, setShowTaxSlabs] = useState(false);
 
-    const openModal = (type: string) => {
-        setModal({ type, value: '' });
+    useEffect(() => {
+        loadConfig();
+    }, []);
+
+    const loadConfig = async () => {
+        try {
+            const res = await payrollSettingsAPI.getConfig();
+            const serverConfig = res.data.STATUTORY_CONFIG || {};
+
+            // Merge with defaults
+            setConfig({
+                epfEnabled: serverConfig.epfEnabled !== undefined ? serverConfig.epfEnabled : true,
+                pfNumber: serverConfig.pfNumber || '',
+                esiEnabled: serverConfig.esiEnabled !== undefined ? serverConfig.esiEnabled : true,
+                esiNumber: serverConfig.esiNumber || '',
+                ptEnabled: serverConfig.ptEnabled !== undefined ? serverConfig.ptEnabled : true,
+                ptNumber: serverConfig.ptNumber || ''
+            });
+
+        } catch (error) {
+            console.error("Error loading stat config:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleUpdate = () => {
+    const saveConfig = async (newConfig: any) => {
+        try {
+            await payrollSettingsAPI.saveConfig({
+                STATUTORY_CONFIG: newConfig
+            });
+            setConfig(newConfig);
+        } catch (error) {
+            console.error("Error saving stat config:", error);
+        }
+    };
+
+    const toggle = (key: string) => {
+        const newConfig = { ...config, [key]: !config[key] };
+        saveConfig(newConfig);
+    };
+
+    const openModal = (type: string, key: string) => {
+        setModal({ type, value: config[key] || '', key });
+    };
+
+    const handleUpdate = async () => {
         if (!modal) return;
-        console.log(`Updated ${modal.type}: ${modal.value}`);
+        const newConfig = { ...config, [modal.key]: modal.value };
+        await saveConfig(newConfig);
         setModal(null);
     };
+
+    if (loading) return <div>Loading...</div>;
 
     return (
         <div className="max-w-4xl">
@@ -27,7 +81,7 @@ const StatutoryComponentsSettings = () => {
                 <div className="flex justify-between items-start mb-4">
                     <h3 className="text-md font-bold text-gray-900">Employees' Provident Fund (EPF)</h3>
                     <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={epfEnabled} onChange={() => setEpfEnabled(!epfEnabled)} className="sr-only peer" />
+                        <input type="checkbox" checked={config.epfEnabled} onChange={() => toggle('epfEnabled')} className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                     </label>
                 </div>
@@ -36,7 +90,7 @@ const StatutoryComponentsSettings = () => {
                 </p>
                 <div className="w-full bg-gray-50 p-4 border rounded text-xs text-gray-600">
                     <span className="block font-bold mb-1">Current Configuration:</span>
-                    PF Number: <span onClick={() => openModal('PF Number')} className="text-blue-600 cursor-pointer hover:underline">Update PF Number</span>
+                    PF Number: <span onClick={() => openModal('PF Number', 'pfNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.pfNumber || 'Update PF Number'}</span>
                     <br />
                     Deduction Cycle: Monthly
                 </div>
@@ -47,7 +101,7 @@ const StatutoryComponentsSettings = () => {
                 <div className="flex justify-between items-start mb-4">
                     <h3 className="text-md font-bold text-gray-900">Employees' State Insurance (ESI)</h3>
                     <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={esiEnabled} onChange={() => setEsiEnabled(!esiEnabled)} className="sr-only peer" />
+                        <input type="checkbox" checked={config.esiEnabled} onChange={() => toggle('esiEnabled')} className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                     </label>
                 </div>
@@ -56,7 +110,7 @@ const StatutoryComponentsSettings = () => {
                 </p>
                 <div className="w-full bg-gray-50 p-4 border rounded text-xs text-gray-600">
                     <span className="block font-bold mb-1">Current Configuration:</span>
-                    ESI Number: <span onClick={() => openModal('ESI Number')} className="text-blue-600 cursor-pointer hover:underline">Update ESI Number</span>
+                    ESI Number: <span onClick={() => openModal('ESI Number', 'esiNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.esiNumber || 'Update ESI Number'}</span>
                     <br />
                     Deduction Cycle: Monthly
                 </div>
@@ -67,7 +121,7 @@ const StatutoryComponentsSettings = () => {
                 <div className="flex justify-between items-start mb-4">
                     <h3 className="text-md font-bold text-gray-900">Professional Tax (PT)</h3>
                     <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={ptEnabled} onChange={() => setPtEnabled(!ptEnabled)} className="sr-only peer" />
+                        <input type="checkbox" checked={config.ptEnabled} onChange={() => toggle('ptEnabled')} className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                     </label>
                 </div>
@@ -79,7 +133,7 @@ const StatutoryComponentsSettings = () => {
                         <div>
                             <span className="block font-bold text-gray-700">Head Office</span>
                             <span className="block mt-1">State: <span className="text-gray-900 font-medium">Telangana</span></span>
-                            <span className="block mt-1">PT Number: <span onClick={() => openModal('PT Number')} className="text-blue-600 cursor-pointer hover:underline">Update PT Number</span></span>
+                            <span className="block mt-1">PT Number: <span onClick={() => openModal('PT Number', 'ptNumber')} className="text-blue-600 cursor-pointer hover:underline">{config.ptNumber || 'Update PT Number'}</span></span>
                         </div>
                         <div>
                             <span className="block font-bold text-gray-700">Deduction Cycle</span>

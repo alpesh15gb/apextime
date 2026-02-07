@@ -209,10 +209,19 @@ export const fieldLogsAPI = {
     api.post('/field-logs/approve', data),
 };
 
+
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data: any) => api.post('/settings', data),
 };
+
+export const payrollSettingsAPI = {
+  getComponents: () => api.get('/payroll-settings/components'),
+  upsertComponent: (data: any) => api.post('/payroll-settings/components', data),
+  getConfig: () => api.get('/payroll-settings/config'),
+  saveConfig: (settings: any) => api.post('/payroll-settings/config', { settings }),
+};
+
 
 // Tenants API (Superadmin only)
 export const tenantsAPI = {
