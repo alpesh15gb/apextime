@@ -28,7 +28,7 @@ router.post('/punch', async (req, res) => {
                 image, // Base64 image
                 remarks,
                 status: 'pending',
-                timestamp: new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000) // Force IST digits into the timestamp
+                timestamp: new Date() // Store as UTC, let frontend handle display
             }
         });
 
