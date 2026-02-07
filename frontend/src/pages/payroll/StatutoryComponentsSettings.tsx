@@ -6,6 +6,7 @@ const StatutoryComponentsSettings = () => {
     const [ptEnabled, setPtEnabled] = useState(true);
 
     const [modal, setModal] = useState<{ type: string; value: string } | null>(null);
+    const [showTaxSlabs, setShowTaxSlabs] = useState(false);
 
     const openModal = (type: string) => {
         setModal({ type, value: '' });
@@ -83,7 +84,7 @@ const StatutoryComponentsSettings = () => {
                         <div>
                             <span className="block font-bold text-gray-700">Deduction Cycle</span>
                             <span className="block mt-1">Monthly</span>
-                            <span className="block mt-1 text-blue-600 cursor-pointer hover:underline">View Tax Slabs</span>
+                            <span onClick={() => setShowTaxSlabs(true)} className="block mt-1 text-blue-600 cursor-pointer hover:underline">View Tax Slabs</span>
                         </div>
                     </div>
                 </div>
@@ -110,6 +111,35 @@ const StatutoryComponentsSettings = () => {
                             </button>
                             <button onClick={handleUpdate} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                                 Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAX SLABS MODAL */}
+            {showTaxSlabs && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white w-full max-w-lg p-6 rounded-lg shadow-xl">
+                        <h3 className="text-lg font-bold mb-4">Professional Tax Slabs (Telangana)</h3>
+                        <div className="border rounded overflow-hidden">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left">Monthly Gross Salary</th>
+                                        <th className="px-4 py-2 text-right">Tax Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    <tr><td className="px-4 py-2">Up to ₹15,000</td><td className="px-4 py-2 text-right">₹0</td></tr>
+                                    <tr><td className="px-4 py-2">₹15,001 - ₹20,000</td><td className="px-4 py-2 text-right">₹150</td></tr>
+                                    <tr><td className="px-4 py-2">₹20,001 Above</td><td className="px-4 py-2 text-right">₹200</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                            <button onClick={() => setShowTaxSlabs(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                                Close
                             </button>
                         </div>
                     </div>

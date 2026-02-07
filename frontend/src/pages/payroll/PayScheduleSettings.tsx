@@ -4,6 +4,7 @@ const PayScheduleSettings = () => {
     const [workWeek, setWorkWeek] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
     const [calculateBasis, setCalculateBasis] = useState('actual');
     const [cycleStartDay, setCycleStartDay] = useState(1);
+    const [saving, setSaving] = useState(false);
 
     // Mock days
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -14,6 +15,26 @@ const PayScheduleSettings = () => {
         } else {
             setWorkWeek([...workWeek, day]);
         }
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 800));
+        console.log('Saved:', { workWeek, calculateBasis, cycleStartDay });
+
+        // Show temporary success feedback
+        const btn = document.getElementById('save-schedule-btn');
+        if (btn) {
+            const originalText = btn.innerText;
+            btn.innerText = 'Saved!';
+            btn.classList.add('bg-green-600');
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('bg-green-600');
+            }, 2000);
+        }
+        setSaving(false);
     };
 
     return (
@@ -85,8 +106,13 @@ const PayScheduleSettings = () => {
                 <p className="mt-2 text-xs text-gray-500">Note: When payday falls on a non-working day or a holiday, employees will get paid on the previous working day.</p>
             </div>
 
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium">
-                Save
+            <button
+                id="save-schedule-btn"
+                onClick={handleSave}
+                disabled={saving}
+                className={`bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium transition-colors flex items-center ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+                {saving ? 'Saving...' : 'Save'}
             </button>
         </div>
     );
