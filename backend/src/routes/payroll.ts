@@ -375,10 +375,10 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
             'Total Days', 'Paid Days', 'LOP Days', // Attendance
 
             // Fixed Salary
-            'Basic', 'HRA', 'Conveyance', 'Education', 'Medical', 'Other Allow',
+            'Fixed Basic', 'Fixed HRA', 'Fixed Conv', 'Fixed Edu', 'Fixed Medical', 'Fixed LTA', 'Fixed Special',
 
             // Earned Salary
-            'Basic', 'HRA', 'Conveyance', 'Education', 'Medical', 'Other Allow', 'Total Earned',
+            'Basic', 'HRA', 'Conveyance', 'Education', 'Medical', 'LTA', 'Special Allow', 'Total Earned',
 
             // Deductions
             'TDS', 'PF', 'PT', 'ESI', 'Staff Welfare', 'Insurance', 'Uniform', 'Total Ded',
@@ -403,20 +403,16 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
 
             // Calculate Fixed Components
             const CTC = e.monthlyCtc || 0;
-            let fixedBasic = 0, fixedHRA = 0, fixedConv = 0, fixedEdu = 0, fixedMed = 0, fixedOther = 0;
+            let fixedBasic = 0, fixedHRA = 0, fixedConv = 0, fixedEdu = 0, fixedMed = 0, fixedLTA = 0, fixedOther = 0;
 
             if (CTC > 0) {
-                const fixedPF_ER = 1800;
-                const earningsBudget = CTC - fixedPF_ER;
-
                 fixedBasic = CTC * 0.50;
-                fixedHRA = CTC * 0.20;
-                fixedConv = 1600;
-                fixedEdu = 200;
-                fixedMed = 1250;
-
-                const used = fixedBasic + fixedHRA + fixedConv + fixedEdu + fixedMed;
-                fixedOther = Math.max(0, earningsBudget - used);
+                fixedHRA = fixedBasic * 0.50;
+                fixedConv = 0;
+                fixedEdu = 0;
+                fixedMed = 0;
+                fixedLTA = 0;
+                fixedOther = 0;
             }
 
             const row = [
@@ -438,15 +434,17 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
                 fixedConv,
                 fixedEdu,
                 fixedMed,
+                fixedLTA,
                 fixedOther,
 
                 // Earned Salary Breakdown
                 p.basicPaid,
                 p.hraPaid,
-                details['CONVEYANCE'] || 0,
-                details['EDU_ALL'] || 0,
-                details['MEDICAL'] || 0,
-                details['OTHER_ALLOW'] || 0,
+                (details['CONVEYANCE_ALLOWANCE'] || details['CONVEYANCE'] || 0),
+                (details['EDUCATION_ALLOWANCE'] || details['EDU_ALL'] || 0),
+                (details['MEDICAL_ALLOWANCE'] || details['MEDICAL'] || 0),
+                (details['LTA'] || 0),
+                (details['SPECIAL_ALLOWANCE'] || details['OTHER_ALLOWANCE'] || details['OTHER_ALLOW'] || 0),
                 p.grossSalary, // Total Earned
 
                 // Deductions
@@ -462,7 +460,7 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
                 // Net
                 p.netSalary,
                 p.retentionDeduction,
-                0, // LOP Amount
+                Math.round(CTC - p.grossSalary), // LOP Amount calculated as CTC minus earned Gross
                 p.finalTakeHome
             ];
 
