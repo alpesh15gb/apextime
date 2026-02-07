@@ -199,74 +199,75 @@ export class PayrollEngine {
                     orderBy: { type: 'asc' } // Earnings first
                 });
 
-                // Separate Earnings and Deductions
                 const earningComps = tenantComponents.filter(c => c.type === 'EARNING');
-                const deductionComps = tenantComponents.filter(c => c.type === 'DEDUCTION');
-
-                // --- EARNINGS CALCULATION ---
-                // We need to resolve dependencies. Simple approach: 
-                // 1. Resolve CTC based first.
-                // 2. Resolve BASIC based next.
-                // 3. Others.
-
-                // Temp storage for calculated monthly values (full month)
                 const monthlyValues: Record<string, number> = {};
 
-                // Helper to evaluate value
-                const calculateValue = (comp: any, context: any) => {
-                    if (comp.calculationType === 'FLAT') return comp.value || 0;
-                    if (comp.calculationType === 'PERCENTAGE') {
-                        // Check formula or default to CTC
-                        const percent = (comp.value || 0) / 100;
-                        if (comp.formula && comp.formula.includes('BASIC')) {
-                            return (context.BASIC || 0) * percent;
-                        }
-                        return context.CTC * percent;
-                    }
-                    return 0;
-                };
-
-                // Pass 1: Calculate BASIC (Priority)
+                // Pass 1: Handle Priority/Base Components (BASIC)
                 const basicComp = earningComps.find(c => c.code === 'BASIC' || c.name.toUpperCase() === 'BASIC');
                 if (basicComp) {
-                    monthlyValues['BASIC'] = calculateValue(basicComp, { CTC });
+                    if (basicComp.calculationType === 'PERCENTAGE') {
+                        monthlyValues['BASIC'] = CTC * ((basicComp.value || 40) / 100);
+                    } else {
+                        monthlyValues['BASIC'] = basicComp.value || (CTC * 0.4);
+                    }
                 } else {
-                    // Fallback if no Basic component configured
-                    monthlyValues['BASIC'] = CTC * 0.50;
+                    monthlyValues['BASIC'] = CTC * 0.4; // Default if missing
                 }
 
-                // Pass 2: Calculate Rest
+                // Pass 2: Calculate other components (Fixed ones first)
                 earningComps.forEach(comp => {
-                    if (comp.code === 'BASIC' || comp.name.toUpperCase() === 'BASIC') return; // Already done
+                    if (comp.code === 'BASIC' || comp.name.toUpperCase() === 'BASIC') return;
+                    if (comp.formula === 'REMAINING_CTC' || comp.name === 'Fixed Allowance' || comp.code === 'FIXED_ALLOWANCE') return;
 
-                    // Simple dependency injection
-                    monthlyValues[comp.code] = calculateValue(comp, {
-                        CTC,
-                        BASIC: monthlyValues['BASIC']
-                    });
+                    if (comp.calculationType === 'FLAT') {
+                        monthlyValues[comp.code] = comp.value || 0;
+                    } else if (comp.calculationType === 'PERCENTAGE') {
+                        const baseValue = (comp.formula && comp.formula.includes('BASIC'))
+                            ? monthlyValues['BASIC']
+                            : CTC;
+                        monthlyValues[comp.code] = baseValue * ((comp.value || 0) / 100);
+                    }
                 });
 
-                // Calculate "Other Allowance" (Balancing figure) -> Fixed Allowance
-                // Check if there is a component with formula 'REMAINING_CTC' or similar
-                const fixedAllowComp = earningComps.find(c => c.formula === 'REMAINING_CTC' || c.name === 'Fixed Allowance');
+                // Pass 3: Calculate Balancer (Fixed Allowance / REMAINING_CTC)
+                // CTC = Gross_Earnings + Employer_PF + Employer_ESI + Bonus + Gratuity
+                const fixedAllowComp = earningComps.find(c => c.formula === 'REMAINING_CTC' || c.name === 'Fixed Allowance' || c.code === 'FIXED_ALLOWANCE');
                 if (fixedAllowComp) {
-                    // Sum all others
-                    const usedCTC = Object.values(monthlyValues).reduce((a, b) => a + b, 0); // Note: This includes Basic + others
+                    const knownMonthlyEarnings = Object.entries(monthlyValues)
+                        .reduce((sum, [code, val]) => sum + val, 0);
 
-                    // Deduct PF Employer if it's part of CTC (usually is)
-                    // We assume a standard 1800 or 12% PF Employer for CTC calculation for now
-                    // For precise "Cost to Company" reverse calc, we need to know Employer contributions.
-                    // Simplified: CTC = Gross Earnings + Employer PF + Employer ESA
+                    // 1. Employer PF (13% of Basic, capped at 15k basis)
+                    let erPF = 0;
+                    if (employee.isPFEnabled) {
+                        erPF = Math.round(Math.min(monthlyValues['BASIC'] || 0, 15000) * 0.13);
+                    }
 
-                    // Let's assume the user defined "Fixed Allowance" as the balancer for GROSS, not CTC.
-                    // But if formula is REMAINING_CTC, we try our best.
-                    const currentTotal = usedCTC; // Already calculated
-                    const employerPF = 1800; // Hardcoded estimate for now
-                    monthlyValues[fixedAllowComp.code] = Math.max(0, CTC - currentTotal - employerPF);
+                    // 2. Bonus & Gratuity (Usually part of CTC in India)
+                    // Bonus: 8.33% of Basic or 7000 (usually 8.33% of Basic for CTC purpose)
+                    // Gratuity: 4.81% of Basic
+                    const bonus = Math.round((monthlyValues['BASIC'] || 0) * 0.0833);
+                    const gratuity = Math.round((monthlyValues['BASIC'] || 0) * 0.0481);
+
+                    let balancerValue = Math.max(0, CTC - knownMonthlyEarnings - erPF - bonus - gratuity);
+
+                    // 3. ESI Check (Employer 3.25%)
+                    if (employee.isESIEnabled && CTC <= 25000) {
+                        const totalContributionBasis = CTC - erPF - bonus - gratuity;
+                        const likelyGross = totalContributionBasis / 1.0325;
+                        if (likelyGross <= 21000) {
+                            balancerValue = Math.max(0, likelyGross - knownMonthlyEarnings);
+                        }
+                    }
+
+                    monthlyValues[fixedAllowComp.code] = Math.round(balancerValue);
+
+                    // Store ER contributions in details for payslip
+                    components['PF_ER'] = erPF;
+                    components['BONUS_ACCRUAL'] = bonus;
+                    components['GRATUITY_ACCRUAL'] = gratuity;
                 }
 
-                // --- PRO-RATA & STATUTORY BASIS ---
-
+                // --- PRO-RATA APPLY ---
                 earningComps.forEach(comp => {
                     const monthlyVal = monthlyValues[comp.code] || 0;
                     const proRated = Math.round(monthlyVal * attendRatio);
@@ -278,18 +279,18 @@ export class PayrollEngine {
                     if (comp.isESIApplicable) esiBasis += proRated;
                 });
 
-                const proRatedGross = totalEarnings;
-                components['GROSS_FOR_PAYOUT'] = proRatedGross;
+                // Re-calculate Employer ESI on pro-rated Gross
+                if (employee.isESIEnabled && totalEarnings <= 21000) {
+                    components['ESI_ER'] = Math.round(totalEarnings * 0.0325);
+                }
 
             } else {
-                // Fallback to manual components if CTC is not set (Legacy logic)
+                // Legacy / Manual Entry Mode
                 employee.salaryComponents.forEach(esc => {
                     if (esc.component.type === 'EARNING') {
-                        const amount = (esc.monthlyAmount / daysInMonth) * paidDays;
+                        const amount = Math.round((esc.monthlyAmount / daysInMonth) * paidDays);
                         components[esc.component.code] = amount;
                         totalEarnings += amount;
-                        // For legacy manual, we assume flags aren't set or just take all for now?
-                        // Let's rely on the component flags if available
                         if (esc.component.isEPFApplicable) pfBasis += amount;
                         if (esc.component.isESIApplicable) esiBasis += amount;
                     }
@@ -308,85 +309,50 @@ export class PayrollEngine {
                 });
                 if (totalOtHours > 0) {
                     const hourlyRate = (totalEarnings / (paidDays * 8)) || 0;
-                    otAmount = totalOtHours * hourlyRate * (employee.otRateMultiplier || 1.25);
+                    otAmount = Math.round(totalOtHours * hourlyRate * (employee.otRateMultiplier || 1.25));
                     totalEarnings += otAmount;
                     components['OVERTIME'] = otAmount;
-                    // Usually OT is also part of ESI wages
-                    esiBasis += otAmount;
+                    esiBasis += otAmount; // OT is part of ESI wages
                 }
             }
 
-            // 4. DEDUCTIONS
+            // 4. DEDUCTIONS (Statutory & Custom)
             let totalDeductions = 0;
 
-            // PF Employee 
-            // Logic: 12% of pfBasis, capped at 15k limit usually, but let's follow flags
+            // Employee PF (12% of pfBasis, capped at 1800)
             if (employee.isPFEnabled) {
-                // Check for explicit PF Component or default
-                // If isEPFApplicable was set, we use pfBasis
-                // Default rule: 12% of Basic + DA (pfBasis)
-                // Cap at 1800 (12% of 15000) ?? User might want Actuals. 
-                // For now, implementing standard rule: Min(pfBasis, 15000) * 0.12 if capped.
-                // But simplified: 12% of pfBasis
                 let pfAmount = Math.round(pfBasis * 0.12);
-
-                // Hard Cap check (optional, usually configurable)
-                if (pfAmount > 1800) pfAmount = 1800; // Default cap
-
+                if (pfAmount > 1800) pfAmount = 1800;
                 components['PF_EMP'] = pfAmount;
                 totalDeductions += pfAmount;
             }
 
-            // ESI Employee
-            if (employee.isESIEnabled) {
-                // ESI Rule: 0.75% of Gross Wages (esiBasis)
-                // Only if Gross <= 21000? Usually checked at master level.
-                // Simplified: Calculate if enabled
+            // Employee ESI (0.75% of esiBasis)
+            if (employee.isESIEnabled && esiBasis <= 21000) {
                 const esiAmount = Math.ceil(esiBasis * 0.0075);
                 components['ESI_EMP'] = esiAmount;
                 totalDeductions += esiAmount;
             }
 
-            // PT — use state-based slab calculator
+            // Professional Tax (Slab based)
             if (employee.isPTEnabled) {
-                const monthlyGross = components['GROSS_FOR_PAYOUT'] || totalEarnings;
-                const pt = PTCalculator.calculatePT(employee.state || null, monthlyGross);
+                const pt = PTCalculator.calculatePT(employee.state || null, totalEarnings);
                 components['PT'] = pt;
                 totalDeductions += pt;
             }
 
-            // TDS — use proper slab-based calculator
-            if (CTC > 0) {
-                const annualIncome = totalEarnings * 12; // Simplified projection
-                // Real TDS needs annual projection. Re-using existing legacy logic or 0 for now to safe-guard
-                // ... (Keep existing TDS logic if it works, or 0)
-                const annualBasic = (components['BASIC'] || 0) * 12; // approximation
-                // ... Keep it simple for dynamic
-
-                // Fallback to simple calculation or 0 if complex
-                components['TDS'] = 0;
-                // totalDeductions += 0;
-            } else {
-                components['TDS'] = 0;
-            }
-
-            // Other Deductions from valid components
-            // Fetch Deduction Components
-            const tenantComponents = await prisma.salaryComponent.findMany({
+            // Other Deductions from components
+            const tenantDeductionComps = await prisma.salaryComponent.findMany({
                 where: { tenantId: employee.tenantId, type: 'DEDUCTION', isActive: true }
             });
-            tenantComponents.forEach(comp => {
-                if (['PF_EMP', 'ESI_EMP', 'PT', 'TDS'].includes(comp.code)) return; // Handled specially above
+            tenantDeductionComps.forEach(comp => {
+                const codesToSkip = ['PF_EMP', 'ESI_EMP', 'PT', 'TDS'];
+                if (codesToSkip.includes(comp.code)) return;
 
-                // Flat deductions usually
                 const val = comp.value || 0;
-                components[comp.code] = val;
+                components[comp.code] = val; // Usually deductions are flat monthly
                 totalDeductions += val;
             });
-
-            // Staff Welfare / Insurance (Legacy hardcodes - remove if moved to Components)
-            // Keeping them if they are NOT in components to avoid breaking existing data
-            // But ideally user adds them as "DEDUCTION" components now.
 
             // 5. LOANS
             let totalLoanDeduction = 0;
@@ -395,47 +361,43 @@ export class PayrollEngine {
                 if (loan.balanceAmount <= 0) continue;
                 let deduction = Math.min(loan.monthlyDeduction, loan.balanceAmount);
                 totalLoanDeduction += deduction;
-                // Don't add to totalDeductions here, we sum it up below
                 loanDeductionsToCreate.push({ loanId: loan.id, amount: deduction });
             }
             components['LOAN'] = totalLoanDeduction;
-
-            // Recalculate Total Deductions
             totalDeductions += totalLoanDeduction;
 
             // 6. NET SALARY & RETENTION
             const netSalary = Math.round(totalEarnings - totalDeductions);
-            const retentionRequested = employee.retentionAmount || 0;
-            const actualRetention = retentionRequested * attendRatio;
+            const actualRetention = Math.round((employee.retentionAmount || 0) * attendRatio);
             const finalTakeHome = netSalary - actualRetention;
 
             // 7. SYNC TO DATABASE
             const payrollData = {
                 totalWorkingDays: totalMonthDays,
                 actualPresentDays: daysWorkedOrPaid,
-                lopDays: daysInMonth - paidDays, paidDays,
-                grossSalary: Math.round(components['GROSS_FOR_PAYOUT'] || totalEarnings),
+                lopDays: daysInMonth - paidDays,
+                paidDays,
+                grossSalary: Math.round(totalEarnings),
                 totalDeductions: Math.round(totalDeductions),
                 netSalary: netSalary,
-                retentionDeduction: Math.round(actualRetention),
+                retentionDeduction: actualRetention,
                 finalTakeHome: Math.round(finalTakeHome),
                 status: 'generated',
                 basicPaid: components['BASIC'] || 0,
-                hraPaid: components['HRA'] || 0,
-                // allowsPaid: sum of all non-basic/hra earnings
-                allowancesPaid: totalEarnings - (components['BASIC'] || 0) - (components['HRA'] || 0),
+                hraPaid: components['HRA'] || components['CONVEYANCE'] || 0, // Fallback for breakdown
+                allowancesPaid: totalEarnings - (components['BASIC'] || 0),
                 otPay: otAmount,
                 pfDeduction: components['PF_EMP'] || 0,
                 esiDeduction: components['ESI_EMP'] || 0,
                 ptDeduction: components['PT'] || 0,
                 loanDeduction: totalLoanDeduction,
-                employerPF: components['PF_ER'] || 0, // Need to calc ER too if needed
+                employerPF: components['PF_ER'] || 0,
                 employerESI: components['ESI_ER'] || 0,
-                gratuityAccrual: components['GRATUITY'] || 0,
-                bonus: components['BONUS'] || 0,
-                payrollRunId: payrollRunId,
+                bonus: components['BONUS_ACCRUAL'] || 0,
+                gratuityAccrual: components['GRATUITY_ACCRUAL'] || 0,
                 details: JSON.stringify(components),
-                processedAt: new Date()
+                processedAt: new Date(),
+                payrollRunId
             };
 
             const payroll = await prisma.payroll.upsert({

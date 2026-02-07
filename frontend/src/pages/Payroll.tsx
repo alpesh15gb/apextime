@@ -647,8 +647,12 @@ export const Payroll = () => {
                                                 {/* Dynamic Earnings from metadata */}
                                                 {Object.entries(payslipDetails)
                                                     .filter(([key, val]) => {
-                                                        const skip = ['BASIC', 'HRA', 'GROSS_FOR_PAYOUT', 'PF_EMP', 'ESI_EMP', 'PT', 'TDS', 'PF_ER', 'ESI_ER', 'GRATUITY', 'BONUS', 'OT', 'LOAN'];
-                                                        return !skip.includes(key) && Number(val) > 0;
+                                                        const skip = [
+                                                            'BASIC', 'HRA', 'GROSS_FOR_PAYOUT', 'PF_EMP', 'ESI_EMP', 'PT', 'TDS',
+                                                            'PF_ER', 'ESI_ER', 'GRATUITY', 'BONUS', 'OT', 'LOAN',
+                                                            'BONUS_ACCRUAL', 'GRATUITY_ACCRUAL'
+                                                        ];
+                                                        return !skip.includes(key.toUpperCase()) && Number(val) > 0;
                                                     })
                                                     .map(([key, val]) => (
                                                         <div key={key} className="p-1 flex justify-between border-b border-gray-200 border-dashed">
