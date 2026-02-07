@@ -193,12 +193,13 @@ async function seed() {
       console.log('Salary components created/updated for tenant');
     });
   }
+}
 
-  seed()
-    .catch((error) => {
-      console.error('Seeding failed:', error);
-      process.exit(1);
-    })
-    .finally(async () => {
-      await prisma.$disconnect();
-    });
+seed()
+  .catch((error) => {
+    console.error('Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
