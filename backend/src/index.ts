@@ -194,15 +194,15 @@ const server = app.listen(PORT, () => {
 // Initialize WebSocket for RealTime Devices
 initializeRealtimeWebSocket(server);
 
-// Schedule log sync every 15 minutes - TEMPORARILY DISABLED TO STOP LOG NOISE
-// cron.schedule('*/15 * * * *', async () => {
-//   logger.info('Starting scheduled log sync...');
-//   try {
-//     await startLogSync();
-//   } catch (error) {
-//     logger.error('Scheduled log sync failed:', error);
-//   }
-// });
+// Schedule log sync every 15 minutes
+cron.schedule('*/15 * * * *', async () => {
+  logger.info('Starting scheduled log sync...');
+  try {
+    await startLogSync();
+  } catch (error) {
+    logger.error('Scheduled log sync failed:', error);
+  }
+});
 
 // Nightly Attendance Reconciliation (at 23:30)
 cron.schedule('30 23 * * *', async () => {
