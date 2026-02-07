@@ -62,10 +62,14 @@ router.get('/stats', async (req, res) => {
     // REGULAR ADMIN/MANAGER DASHBOARD LOGIC (Tenant Scoped)
     // ------------------------------------------------------------------
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use IST today for dashboard stats
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const today = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()));
 
-    const yesterday = subDays(today, 1);
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
     // Initialize defaults
     let totalEmployees = 0;
@@ -78,6 +82,7 @@ router.get('/stats', async (req, res) => {
     let absentEmployees: any[] = [];
     let lateArrivals = 0;
     let lastSync = null;
+    let pendingLeaves = 0;
 
     // Execute queries sequentially to prevent total failure
     // Note: 'prisma' client here automatically scopes to tenantId via middleware/extensions
@@ -93,32 +98,56 @@ router.get('/stats', async (req, res) => {
     } catch (e) { console.error('Org count error', e); }
 
     try {
-      yesterdayAttendance = await prisma.attendanceLog.count({
-        where: { date: { gte: yesterday, lt: today }, status: 'present' }
+      const yesterdayLogs = await prisma.attendanceLog.groupBy({
+        by: ['employeeId'],
+        where: {
+          date: {
+            gte: yesterday,
+            lt: today
+          },
+          status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late'] },
+          employee: { status: 'active' }
+        }
       });
+      yesterdayAttendance = yesterdayLogs.length;
     } catch (e) { console.error('Yesterday att error', e); }
 
     try {
-      // Today's Status
-      const presentCount = await prisma.attendanceLog.count({
-        where: { date: { gte: today }, status: { in: ['Present', 'present'] } }
-      });
-
-      // Accurate Absent Count (Active employees only)
-      const absentCount = await prisma.attendanceLog.count({
+      // Today's Status: Count unique ACTIVE employees who have a log for today
+      // Using groupBy to ensure we count unique employees even if duplicate logs exist
+      const todayLogs = await prisma.attendanceLog.groupBy({
+        by: ['employeeId'],
         where: {
-          date: { gte: today },
-          status: { in: ['Absent', 'absent'] },
-          employee: { status: 'active' } // Prisma extension handles tenantId on employee relation implicitly
+          date: {
+            gte: today, // Exactly 2026-02-07 00:00:00 UTC
+            lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) // Before 2026-02-08 00:00:00 UTC
+          },
+          status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late'] },
+          employee: { status: 'active' }
         }
       });
+
+      const presentCount = todayLogs.length;
+
+      // Calculate Absent as Active - Present
+      const absentCount = Math.max(0, activeEmployees - presentCount);
 
       todayStatus = { present: presentCount, absent: absentCount };
     } catch (e) { console.error('Today status error', e); }
 
     try {
+      pendingLeaves = await prisma.leaveEntry.count({
+        where: { status: 'pending' }
+      });
+    } catch (e) { console.error('Pending leaves error', e); }
+
+    try {
       absentEmployees = await prisma.attendanceLog.findMany({
-        where: { date: { gte: today }, status: { in: ['Absent', 'absent'] }, employee: { status: 'active' } },
+        where: {
+          date: today,
+          status: { in: ['Absent', 'absent'] },
+          employee: { status: 'active' }
+        },
         include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
         take: 20
       }).then(logs => logs.map(l => l.employee));
@@ -126,7 +155,11 @@ router.get('/stats', async (req, res) => {
 
     try {
       lateArrivals = await prisma.attendanceLog.count({
-        where: { date: { gte: today }, lateArrival: { gt: 0 } }
+        where: {
+          date: today,
+          lateArrival: { gt: 0 },
+          employee: { status: 'active' }
+        }
       });
     } catch (e) { console.error('Late arrivals error', e); }
 
@@ -175,6 +208,7 @@ router.get('/stats', async (req, res) => {
         totalDepartments,
         totalBranches,
         devicesCount,
+        pendingLeaves,
       },
       schoolStats,
       today: {
@@ -182,7 +216,7 @@ router.get('/stats', async (req, res) => {
         absent: todayStatus.absent,
         absentEmployees,
         lateArrivals,
-        attendanceRate: totalEmployees > 0 ? Math.round((todayStatus.present / totalEmployees) * 100) : 0,
+        attendanceRate: activeEmployees > 0 ? Math.round((todayStatus.present / activeEmployees) * 100) : 0,
       },
       yesterdayAttendance,
       lastSync,
@@ -196,8 +230,10 @@ router.get('/stats', async (req, res) => {
 // Get recent activity
 router.get('/recent-activity', async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const today = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()));
 
     // Recent check-ins
     const recentCheckins = await prisma.attendanceLog.findMany({
@@ -254,35 +290,38 @@ router.get('/chart-data', async (req, res) => {
     const data = [];
 
     for (let i = days - 1; i >= 0; i--) {
-      const date = subDays(new Date(), i);
-      date.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const date = new Date(now.getTime() + istOffset);
+      date.setUTCDate(date.getUTCDate() - i);
+      const targetDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
+      const nextDate = new Date(targetDate);
+      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
 
       const [present, absent, late] = await Promise.all([
         prisma.attendanceLog.count({
           where: {
-            date: { gte: date, lt: nextDate },
-            status: { in: ['Present', 'present'] },
+            date: { gte: targetDate, lt: nextDate },
+            status: { in: ['Present', 'present', 'Half Day', 'half day'] },
           },
         }),
         prisma.attendanceLog.count({
           where: {
-            date: { gte: date, lt: nextDate },
+            date: { gte: targetDate, lt: nextDate },
             status: { in: ['Absent', 'absent'] },
           },
         }),
         prisma.attendanceLog.count({
           where: {
-            date: { gte: date, lt: nextDate },
+            date: { gte: targetDate, lt: nextDate },
             lateArrival: { gt: 0 },
           },
         }),
       ]);
 
       data.push({
-        date: date.toISOString().split('T')[0],
+        date: targetDate.toISOString().split('T')[0],
         present,
         absent,
         late,
