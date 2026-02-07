@@ -553,6 +553,9 @@ model SalaryComponent {
   value             Float?   // For flat/percentage
   formula           String?  // e.g., "BASIC * 0.12"
   isActive          Boolean  @default(true)
+  isEPFApplicable   Boolean  @default(false)
+  isESIApplicable   Boolean  @default(false)
+  isVariable        Boolean  @default(false)
   
   employeeLinks     EmployeeSalaryComponent[]
 

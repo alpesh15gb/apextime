@@ -18,6 +18,7 @@ import { MonthlyReport } from './pages/MonthlyReport';
 import { SyncDiagnostics } from './pages/SyncDiagnostics';
 import { Holidays } from './pages/Holidays';
 import { Payroll } from './pages/Payroll';
+import PayrollSettings from './pages/PayrollSettings';
 import { Leaves } from './pages/Leaves';
 import { EmployeePortal } from './pages/EmployeePortal';
 import { Settings } from './pages/Settings';
@@ -134,6 +135,7 @@ function App() {
                     <Route path="/visitors" element={<ModuleRoute module="visitors"><Visitors /></ModuleRoute>} />
                     <Route path="/onboarding" element={<ModuleRoute module="onboarding"><Onboarding /></ModuleRoute>} />
                     <Route path="/tenants" element={<Tenants />} />
+                    <Route path="/payroll/settings" element={<ModuleRoute module="payroll"><PayrollSettings /></ModuleRoute>} />
 
                   </Routes>
                 </Layout>
