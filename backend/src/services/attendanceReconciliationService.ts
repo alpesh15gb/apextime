@@ -8,10 +8,11 @@ import { startOfDay, endOfDay, subDays } from 'date-fns';
  */
 export async function reconcileAttendance(date: Date = new Date()): Promise<void> {
     try {
-        const targetDate = startOfDay(date);
-        const dayOfWeek = targetDate.getDay(); // 0 = Sunday
+        // Ensure we always use UTC midnight for the date column to match sync service logic
+        const targetDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayOfWeek = date.getDay(); // 0 = Sunday
 
-        logger.info(`Starting attendance reconciliation for ${targetDate.toDateString()}`);
+        logger.info(`Starting attendance reconciliation for ${targetDate.toISOString().split('T')[0]} (UTC Midnight)`);
 
         const [activeEmployees, holidays] = await Promise.all([
             prisma.employee.findMany({ where: { isActive: true } }),

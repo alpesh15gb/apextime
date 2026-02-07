@@ -26,8 +26,8 @@ async function getAttendanceData(filters: any) {
   const where: any = {
     tenantId,
     date: {
-      gte: startOfDay(parseISO(startDate)),
-      lte: endOfDay(parseISO(endDate)),
+      gte: new Date(startDate + 'T00:00:00Z'),
+      lte: new Date(endDate + 'T23:59:59Z'),
     },
   };
 
@@ -561,8 +561,17 @@ router.get('/:type/download/:format', async (req, res) => {
   const { type, format } = req.params;
   const { startDate, endDate, date, departmentId, branchId, locationId, employeeId } = req.query;
 
-  const start = (startDate || date) as string;
-  const end = (endDate || date) as string;
+  let start = (startDate || date) as string;
+  let end = (endDate || date) as string;
+
+  // Fallback if only month and year are provided (e.g. from MonthlyReport page)
+  if (!start && req.query.month && req.query.year) {
+    const m = parseInt(req.query.month as string);
+    const y = parseInt(req.query.year as string);
+    const dateObj = new Date(y, m - 1, 1);
+    start = new Date(y, m - 1, 1).toISOString().split('T')[0];
+    end = new Date(y, m, 0).toISOString().split('T')[0];
+  }
 
   if (type === 'daily' || type === 'daily_detailed') {
     const logs = await getAttendanceData({

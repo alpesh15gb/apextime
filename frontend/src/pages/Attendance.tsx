@@ -25,14 +25,51 @@ export const Attendance = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    startDate: new Date().toLocaleDateString('en-CA'),
-    endDate: new Date().toLocaleDateString('en-CA'),
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
     employeeId: user?.role === 'employee' ? user.employeeId : '',
     departmentId: '',
     branchId: '',
     locationId: '',
     search: '',
   });
+
+  const handleExport = async (format: 'excel' | 'pdf') => {
+    try {
+      const params: any = {
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        employeeId: filters.employeeId,
+        departmentId: filters.departmentId,
+        branchId: filters.branchId,
+        locationId: filters.locationId,
+        search: filters.search
+      };
+
+      const reportType = 'daily_detailed';
+      let response;
+      if (format === 'excel') {
+        response = await reportsAPI.downloadExcel(reportType, params);
+      } else {
+        response = await reportsAPI.downloadPDF(reportType, params);
+      }
+
+      const blob = new Blob([response.data], {
+        type: format === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Attendance_Export_${filters.startDate}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Export failed', error);
+      alert('Export failed');
+    }
+  };
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
@@ -130,7 +167,7 @@ export const Attendance = () => {
   };
 
   const getStatusBadge = (log: AttendanceLog) => {
-    if (log.status === 'absent') {
+    if (log.status?.toLowerCase() === 'absent') {
       return (
         <div className="badge border border-red-100 bg-red-50 text-red-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
           Absent
@@ -177,9 +214,15 @@ export const Attendance = () => {
             Import CSV
             <input type="file" accept=".csv,.xlsx" onChange={handleImport} className="hidden" />
           </label>
-          <button className="px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105">
-            <Download className="w-4 h-4" /> Export
-          </button>
+          <div className="relative group">
+            <button className="px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105">
+              <Download className="w-4 h-4" /> Export
+            </button>
+            <div className="absolute right-0 top-full mt-2 hidden group-hover:block bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden min-w-[120px]">
+              <button onClick={() => handleExport('excel')} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">Excel (.xlsx)</button>
+              <button onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-red-50 hover:text-red-500 transition-colors">PDF Document</button>
+            </div>
+          </div>
         </div>
       </div>
 

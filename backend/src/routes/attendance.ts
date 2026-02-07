@@ -40,14 +40,13 @@ router.get('/', async (req, res) => {
     if (status) where.status = status as string;
 
     if (startDate && endDate) {
-      // Precise range: Starts at D-1 18:00Z (captures IST midnight) to D 23:59:59Z
       where.date = {
-        gte: new Date(new Date(startDate as string + 'T00:00:00Z').getTime() - (6 * 60 * 60 * 1000)),
+        gte: new Date(startDate as string + 'T00:00:00Z'),
         lte: new Date(endDate as string + 'T23:59:59Z'),
       };
     } else if (startDate) {
       where.date = {
-        gte: new Date(new Date(startDate as string + 'T00:00:00Z').getTime() - (6 * 60 * 60 * 1000)),
+        gte: new Date(startDate as string + 'T00:00:00Z'),
       };
     }
 
