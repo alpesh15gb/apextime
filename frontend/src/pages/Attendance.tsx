@@ -11,7 +11,8 @@ import {
   Activity,
   Search,
   Building2,
-  MapPin
+  MapPin,
+  UploadCloud
 } from 'lucide-react';
 import { attendanceAPI, employeesAPI, departmentsAPI, branchesAPI, locationsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +38,33 @@ export const Attendance = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [branches, setBranches] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      try {
+        setUploading(true);
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await attendanceAPI.import(formData);
+        if (res.data.success) {
+          alert(`Import successful!\nProcessed: ${res.data.imported}\nFailed: ${res.data.failed}`);
+          fetchAttendance(); // Refresh
+        } else {
+          alert('Import failed');
+        }
+      } catch (error: any) {
+        console.error('Import error:', error);
+        alert('Import failed: ' + (error.response?.data?.error || error.message));
+      } finally {
+        setUploading(false);
+        // Reset input
+        e.target.value = '';
+      }
+    }
+  };
 
   useEffect(() => {
     fetchAttendance();
@@ -139,9 +167,20 @@ export const Attendance = () => {
           <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.3em]">Daily attendance logs</p>
         </div>
 
-        <button className="px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105">
-          <Download className="w-4 h-4" /> Export
-        </button>
+        <div className="flex items-center gap-3">
+          <label className={`px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {uploading ? (
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <UploadCloud className="w-4 h-4" />
+            )}
+            Import CSV
+            <input type="file" accept=".csv,.xlsx" onChange={handleImport} className="hidden" />
+          </label>
+          <button className="px-6 py-3 bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm transition-all hover:scale-105">
+            <Download className="w-4 h-4" /> Export
+          </button>
+        </div>
       </div>
 
       {/* Control Deck */}

@@ -2,6 +2,11 @@ import express from 'express';
 import { prisma } from '../config/database';
 import { authenticate } from '../middleware/auth';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
+import multer from 'multer';
+import fs from 'fs';
+import ExcelJS from 'exceljs';
+
+const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 
@@ -496,6 +501,189 @@ router.post('/reprocess', async (req, res) => {
   } catch (error) {
     console.error('Reprocess attendance error:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Historical re-processing failed' });
+  }
+});
+
+// Import Attendance Route
+router.post('/import', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const tenantId = (req as any).user.tenantId;
+    const workbook = new ExcelJS.Workbook();
+
+    // Detect format
+    if (req.file.originalname.endsWith('.csv')) {
+      await workbook.csv.readFile(filePath);
+    } else {
+      await workbook.xlsx.readFile(filePath);
+    }
+
+    const worksheet = workbook.getWorksheet(1);
+    if (!worksheet) {
+      return res.status(400).json({ error: 'No worksheet found' });
+    }
+
+    // Map headers
+    const headers: any = {};
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell: any, colNumber: any) => {
+      const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
+      if (val.includes('code') || val === 'id' || val === 'employee id') headers.code = colNumber;
+      else if (val.includes('date')) headers.date = colNumber;
+      else if (val.includes('first') || val === 'in' || val === 'in time') headers.in = colNumber;
+      else if (val.includes('last') || val === 'out' || val === 'out time') headers.out = colNumber;
+      else if (val === 'status') headers.status = colNumber;
+    });
+
+    if (!headers.code || !headers.date) {
+      return res.status(400).json({ error: 'Missing required columns: Employee Code, Date' });
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors: string[] = [];
+
+    // Fetch all employees for this tenant to quick lookup ID
+    const employees = await prisma.employee.findMany({
+      where: { tenantId },
+      select: { id: true, employeeCode: true }
+    });
+    const empMap = new Map(employees.map(e => [e.employeeCode.toLowerCase(), e.id]));
+
+    // Process rows (skip header)
+    const rowsToProcess: any[] = [];
+    worksheet.eachRow((row: any, rowNumber: number) => {
+      if (rowNumber === 1) return;
+      rowsToProcess.push({
+        code: row.getCell(headers.code).value,
+        date: row.getCell(headers.date).value,
+        in: headers.in ? row.getCell(headers.in).value : null,
+        out: headers.out ? row.getCell(headers.out).value : null,
+        status: headers.status ? row.getCell(headers.status).value : null,
+        rowNumber
+      });
+    });
+
+    for (const rowData of rowsToProcess) {
+      try {
+        if (!rowData.code) continue;
+
+        const empCode = rowData.code.toString().trim();
+        const empId = empMap.get(empCode.toLowerCase());
+
+        if (!empId) {
+          failCount++;
+          errors.push(`Row ${rowData.rowNumber}: Employee code '${empCode}' not found`);
+          continue;
+        }
+
+        // Parse Date
+        let dateVal = rowData.date;
+        let parsedDate: Date;
+
+        if (dateVal instanceof Date) {
+          parsedDate = dateVal;
+        } else {
+          if (typeof dateVal === 'string') {
+            if (dateVal.match(/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/)) {
+              const parts = dateVal.split(/[/-]/);
+              // DD-MM-YYYY
+              parsedDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            } else {
+              parsedDate = new Date(dateVal);
+            }
+          } else {
+            parsedDate = new Date(dateVal);
+          }
+        }
+
+        if (isNaN(parsedDate.getTime())) {
+          failCount++;
+          errors.push(`Row ${rowData.rowNumber}: Invalid date '${dateVal}'`);
+          continue;
+        }
+
+        // Normalise date to UTC midnight for key
+        const dateKey = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate()));
+
+        // Parse In/Out Times
+        const parseTime = (val: any) => {
+          if (!val) return null;
+          if (val instanceof Date) return val;
+          if (typeof val === 'string') {
+            // try to match HH:mm or HH:mm:ss
+            const parts = val.trim().split(':');
+            if (parts.length >= 2) {
+              const d = new Date(parsedDate); // Base on the attendance date
+              d.setHours(parseInt(parts[0]), parseInt(parts[1]), parts[2] ? parseInt(parts[2]) : 0);
+              return d;
+            }
+          }
+          return null;
+        };
+
+        const firstIn = parseTime(rowData.in);
+        const lastOut = parseTime(rowData.out);
+
+        let workingHours: number | null = null;
+        if (firstIn && lastOut) {
+          workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
+        }
+
+        let status = 'present';
+        if (rowData.status) status = rowData.status.toString().toLowerCase();
+        else if (!firstIn && !lastOut && !rowData.status) status = 'absent';
+
+        await prisma.attendanceLog.upsert({
+          where: {
+            employeeId_date_tenantId: {
+              tenantId,
+              employeeId: empId,
+              date: dateKey
+            }
+          },
+          update: {
+            firstIn: firstIn || undefined,
+            lastOut: lastOut || undefined,
+            workingHours: workingHours || undefined,
+            status
+          },
+          create: {
+            tenantId,
+            employeeId: empId,
+            date: dateKey,
+            firstIn,
+            lastOut,
+            workingHours,
+            status
+          }
+        });
+
+        successCount++;
+
+      } catch (err: any) {
+        failCount++;
+        errors.push(`Row ${rowData.rowNumber}: ${err.message}`);
+      }
+    }
+
+    // Clean up
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    res.json({
+      success: true,
+      imported: successCount,
+      failed: failCount,
+      errors: errors.slice(0, 50)
+    });
+
+  } catch (error: any) {
+    console.error('Import error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
