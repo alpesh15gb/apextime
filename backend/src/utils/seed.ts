@@ -154,16 +154,15 @@ async function seed() {
 
       // Create Salary Components based on the User's provided structure
       const salaryComponents = [
-        { name: 'Basic', code: 'BASIC', type: 'EARNING', calculationType: 'PERCENTAGE', value: 40, formula: 'CTC * 0.40', isEPFApplicable: true, isESIApplicable: true },
-        { name: 'House Rent Allowance', code: 'HRA', type: 'EARNING', calculationType: 'PERCENTAGE', value: 20, formula: 'CTC * 0.20', isEPFApplicable: false, isESIApplicable: true },
-        { name: 'Conveyance Allowance', code: 'CONVEYANCE_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 5, formula: 'CTC * 0.05', isEPFApplicable: true, isESIApplicable: false },
-        { name: 'Education Allowance', code: 'EDUCATION_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 5, formula: 'CTC * 0.05', isEPFApplicable: true, isESIApplicable: true },
-        { name: 'Medical Allowance', code: 'MEDICAL_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: true, isESIApplicable: true },
-        { name: 'L.T.A', code: 'LTA', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: true, isESIApplicable: true },
-        { name: 'Other Allowance', code: 'OTHER_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: false, isESIApplicable: false },
-
+        { name: 'Basic', code: 'BASIC', type: 'EARNING', calculationType: 'PERCENTAGE', value: 50, formula: 'CTC * 0.50', isEPFApplicable: true, isESIApplicable: true },
+        { name: 'House Rent Allowance', code: 'HRA', type: 'EARNING', calculationType: 'PERCENTAGE', value: 50, formula: 'BASIC * 0.50', isEPFApplicable: false, isESIApplicable: true },
+        { name: 'Conveyance Allowance', code: 'CONVEYANCE_ALLOWANCE', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: true, isESIApplicable: false },
+        { name: 'Fixed Allowance', code: 'FIXED_ALLOWANCE', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: true, isESIApplicable: true },
         { name: 'Bonus', code: 'BONUS', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: false, isVariable: true },
         { name: 'Commission', code: 'COMMISSION', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: true, isVariable: true },
+        { name: 'Children Education Allowance', code: 'CHILDREN_EDUCATION', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: true, isESIApplicable: true, isActive: false },
+        { name: 'Transport Allowance', code: 'TRANSPORT_ALLOWANCE', type: 'EARNING', calculationType: 'FLAT', value: 1600, isEPFApplicable: true, isESIApplicable: true, isActive: false },
+        { name: 'Travelling Allowance', code: 'TRAVELLING_ALLOWANCE', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: true, isESIApplicable: false, isActive: false },
         { name: 'Leave Encashment', code: 'LEAVE_ENCASHMENT', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: false, isVariable: true },
         { name: 'Gratuity', code: 'GRATUITY', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: false, isVariable: true },
         { name: 'Overtime Allowance', code: 'OVERTIME_ALLOWANCE', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: true, isVariable: true, isActive: false },
