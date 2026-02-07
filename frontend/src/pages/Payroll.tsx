@@ -606,8 +606,16 @@ export const Payroll = () => {
                                                 <span>: {selectedPayroll.employee.accountNumber || 'N/A'}</span>
                                             </div>
                                             <div className="grid grid-cols-[120px_1fr]">
-                                                <span className="font-bold">WORKING DAYS</span>
-                                                <span>: {selectedPayroll.paidDays} / {selectedPayroll.totalWorkingDays}</span>
+                                                <span className="font-bold">TOTAL DAYS</span>
+                                                <span>: {selectedPayroll.totalWorkingDays}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[120px_1fr]">
+                                                <span className="font-bold">PAID DAYS</span>
+                                                <span>: {selectedPayroll.paidDays}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[120px_1fr]">
+                                                <span className="font-bold">LOP DAYS</span>
+                                                <span className={selectedPayroll.lopDays > 0 ? 'text-red-600 font-bold' : ''}>: {selectedPayroll.lopDays}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -635,28 +643,34 @@ export const Payroll = () => {
                                                     <span>HRA</span>
                                                     <span>{selectedPayroll.hraPaid?.toFixed(2)}</span>
                                                 </div>
-                                                {(payslipDetails['CONVEYANCE'] > 0) && (
+                                                {(payslipDetails['CONVEYANCE_ALLOWANCE'] > 0 || payslipDetails['CONVEYANCE'] > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Conveyance</span>
-                                                        <span>{Number(payslipDetails['CONVEYANCE']).toFixed(2)}</span>
+                                                        <span>Conveyance Allowance</span>
+                                                        <span>{(Number(payslipDetails['CONVEYANCE_ALLOWANCE']) || Number(payslipDetails['CONVEYANCE'])).toFixed(2)}</span>
                                                     </div>
                                                 )}
-                                                {(payslipDetails['MEDICAL'] > 0) && (
+                                                {(payslipDetails['MEDICAL_ALLOWANCE'] > 0 || payslipDetails['MEDICAL'] > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
                                                         <span>Medical Allowance</span>
-                                                        <span>{Number(payslipDetails['MEDICAL']).toFixed(2)}</span>
+                                                        <span>{(Number(payslipDetails['MEDICAL_ALLOWANCE']) || Number(payslipDetails['MEDICAL'])).toFixed(2)}</span>
                                                     </div>
                                                 )}
-                                                {(payslipDetails['EDU_ALL'] > 0) && (
+                                                {(payslipDetails['EDUCATION_ALLOWANCE'] > 0 || payslipDetails['EDU_ALL'] > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
                                                         <span>Education Allowance</span>
-                                                        <span>{Number(payslipDetails['EDU_ALL']).toFixed(2)}</span>
+                                                        <span>{(Number(payslipDetails['EDUCATION_ALLOWANCE']) || Number(payslipDetails['EDU_ALL'])).toFixed(2)}</span>
                                                     </div>
                                                 )}
-                                                {(payslipDetails['OTHER_ALLOW'] > 0) && (
+                                                {(payslipDetails['LTA'] > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Other Allowances</span>
-                                                        <span>{Number(payslipDetails['OTHER_ALLOW']).toFixed(2)}</span>
+                                                        <span>L.T.A</span>
+                                                        <span>{Number(payslipDetails['LTA']).toFixed(2)}</span>
+                                                    </div>
+                                                )}
+                                                {(payslipDetails['SPECIAL_ALLOWANCE'] > 0 || payslipDetails['OTHER_ALLOWANCE'] > 0 || payslipDetails['OTHER_ALLOW'] > 0) && (
+                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                        <span>Special Allowance</span>
+                                                        <span>{(Number(payslipDetails['SPECIAL_ALLOWANCE']) || Number(payslipDetails['OTHER_ALLOWANCE']) || Number(payslipDetails['OTHER_ALLOW'])).toFixed(2)}</span>
                                                     </div>
                                                 )}
                                                 {(selectedPayroll.otPay > 0) && (
