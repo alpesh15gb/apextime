@@ -26,8 +26,8 @@ async function getAttendanceData(filters: any) {
   const where: any = {
     tenantId,
     date: {
-      gte: new Date(new Date(startDate + 'T00:00:00Z').getTime() - (6 * 60 * 60 * 1000)),
-      lte: new Date(endDate + 'T23:59:59Z'),
+      gte: startOfDay(parseISO(startDate)),
+      lte: endOfDay(parseISO(endDate)),
     },
   };
 
@@ -97,10 +97,10 @@ router.get('/daily', async (req, res) => {
     res.json({
       date: reportDate,
       totalRecords: logs.length,
-      present: logs.filter(l => l.status === 'present').length,
-      absent: logs.filter(l => l.status === 'absent').length,
-      late: logs.filter(l => l.lateArrival > 0).length,
-      earlyDeparture: logs.filter(l => l.earlyDeparture > 0).length,
+      present: logs.filter(l => l.status?.toLowerCase() === 'present').length,
+      absent: logs.filter(l => l.status?.toLowerCase() === 'absent').length,
+      late: logs.filter(l => (l.lateArrival || 0) > 0).length,
+      earlyDeparture: logs.filter(l => (l.earlyDeparture || 0) > 0).length,
       logs,
     });
   } catch (error) {
@@ -155,10 +155,11 @@ router.get('/weekly', async (req, res) => {
 
       const stats = employeeStats.get(empId);
       stats.days.push(log);
-      if (log.status === 'present') stats.present++;
-      if (log.status === 'absent') stats.absent++;
-      if (log.lateArrival > 0) stats.late++;
-      if (log.earlyDeparture > 0) stats.earlyDeparture++;
+      const status = (log.status || '').toLowerCase();
+      if (status === 'present') stats.present++;
+      if (status === 'absent') stats.absent++;
+      if ((log.lateArrival || 0) > 0) stats.late++;
+      if ((log.earlyDeparture || 0) > 0) stats.earlyDeparture++;
       stats.totalWorkingHours += log.workingHours || 0;
     }
 
@@ -228,10 +229,11 @@ router.get('/monthly', async (req, res) => {
 
       const stats = employeeStats.get(empId);
       stats.days.push(log);
-      if (log.status === 'present') stats.present++;
-      if (log.status === 'absent') stats.absent++;
-      if (log.lateArrival > 0) stats.late++;
-      if (log.earlyDeparture > 0) stats.earlyDeparture++;
+      const status = (log.status || '').toLowerCase();
+      if (status === 'present') stats.present++;
+      if (status === 'absent') stats.absent++;
+      if ((log.lateArrival || 0) > 0) stats.late++;
+      if ((log.earlyDeparture || 0) > 0) stats.earlyDeparture++;
       stats.totalWorkingHours += log.workingHours || 0;
     }
 
@@ -563,13 +565,29 @@ router.get('/:type/download/:format', async (req, res) => {
   const end = (endDate || date) as string;
 
   if (type === 'daily' || type === 'daily_detailed') {
-    const logs = await getAttendanceData({ startDate: start, endDate: end, departmentId, branchId, locationId, employeeId });
+    const logs = await getAttendanceData({
+      startDate: start,
+      endDate: end,
+      tenantId: (req as any).user.tenantId,
+      departmentId,
+      branchId,
+      locationId,
+      employeeId
+    });
     if (format === 'excel') return generateExcelReport(logs, `Daily_Report_${start}`, res);
     return generatePDFReport(logs, `Daily Attendance Report (Detailed)`, res, { startDate: start, endDate: end });
   }
 
   if (type === 'monthly' || type === 'monthly_detailed') {
-    const logs = await getAttendanceData({ startDate: start, endDate: end, departmentId, branchId, locationId, employeeId });
+    const logs = await getAttendanceData({
+      startDate: start,
+      endDate: end,
+      tenantId: (req as any).user.tenantId,
+      departmentId,
+      branchId,
+      locationId,
+      employeeId
+    });
     if (format === 'excel') return generateExcelReport(logs, `Monthly_Report_${start}`, res);
     return generatePDFReport(logs, `Monthly Status Report (Work Duration)`, res, { startDate: start, endDate: end });
   }
@@ -593,7 +611,11 @@ router.get('/:type/download/:format', async (req, res) => {
   }
 
   if (type === 'department_summary') {
-    const logs = await getAttendanceData({ startDate: start, endDate: end });
+    const logs = await getAttendanceData({
+      startDate: start,
+      endDate: end,
+      tenantId: (req as any).user.tenantId
+    });
     const summary = groupDepartmentSummary(logs);
     if (format === 'excel') return generateDeptExcelReport(summary, `Dept_Summary`, res);
     return generateDeptPDFReport(summary, `Department Summary Report`, res, { startDate: start, endDate: end });
@@ -619,7 +641,15 @@ router.get('/:type/download/:format', async (req, res) => {
 
   if (type === 'full_forms') {
     // Usually refers to a combined summary or all employees in a list
-    const logs = await getAttendanceData({ startDate: start, endDate: end, departmentId, branchId, locationId, employeeId });
+    const logs = await getAttendanceData({
+      startDate: start,
+      endDate: end,
+      tenantId: (req as any).user.tenantId,
+      departmentId,
+      branchId,
+      locationId,
+      employeeId
+    });
     if (format === 'excel') return generateExcelReport(logs, `Full_Form_Report`, res);
     return generatePDFReport(logs, `Attendance Full Form`, res, { startDate: start, endDate: end });
   }
@@ -664,7 +694,7 @@ async function generateYearlyPDFReport(data: any, title: string, res: express.Re
     doc.fontSize(8);
     months.forEach((m, i) => {
       const mLogs = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i);
-      const present = mLogs.filter((l: any) => l.status === 'present').length;
+      const present = mLogs.filter((l: any) => l.status?.toLowerCase() === 'present').length;
       doc.text(`${m}: ${present}P`, 40 + (i * 60), y);
     });
     y += 20;
@@ -698,7 +728,7 @@ async function generateYearlyExcelReport(data: any, filename: string, res: expre
   data.employees.forEach((emp: any) => {
     const row: any = { code: emp.employeeCode, name: `${emp.firstName} ${emp.lastName || ''}` };
     for (let i = 0; i < 12; i++) {
-      row[`m${i}`] = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i && l.status === 'present').length;
+      row[`m${i}`] = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i && l.status?.toLowerCase() === 'present').length;
     }
     ws.addRow(row);
   });
@@ -846,9 +876,12 @@ function groupDepartmentSummary(logs: any[]) {
     stats.Total++;
     const status = (log.status || '').toLowerCase();
     if (status === 'present') stats.P++;
-    if (status === 'absent') stats.A++;
-    if (log.lateArrival > 0) stats.Late++;
-    if (log.earlyDeparture > 0) stats.Early++;
+    else if (status === 'absent') stats.A++;
+    else if (status.includes('holiday')) stats.H++;
+    else if (status.includes('off')) stats.WO++;
+
+    if ((log.lateArrival || 0) > 0) stats.Late++;
+    if ((log.earlyDeparture || 0) > 0) stats.Early++;
   });
   return groups;
 }
