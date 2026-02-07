@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 const PayScheduleSettings = () => {
     const [workWeek, setWorkWeek] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
     const [calculateBasis, setCalculateBasis] = useState('actual');
-    const [cycleStartDay, setCycleStartDay] = useState(1);
+    const [cycleStartDay, setCycleStartDay] = useState(5);
     const [saving, setSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState(''); // 'saved' | ''
 
     // Mock days
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -19,22 +20,19 @@ const PayScheduleSettings = () => {
 
     const handleSave = async () => {
         setSaving(true);
+        setSaveStatus('');
+
         // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         console.log('Saved:', { workWeek, calculateBasis, cycleStartDay });
 
-        // Show temporary success feedback
-        const btn = document.getElementById('save-schedule-btn');
-        if (btn) {
-            const originalText = btn.innerText;
-            btn.innerText = 'Saved!';
-            btn.classList.add('bg-green-600');
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.classList.remove('bg-green-600');
-            }, 2000);
-        }
         setSaving(false);
+        setSaveStatus('saved');
+
+        // Clear success message after 2 seconds
+        setTimeout(() => {
+            setSaveStatus('');
+        }, 2000);
     };
 
     return (
@@ -107,12 +105,14 @@ const PayScheduleSettings = () => {
             </div>
 
             <button
-                id="save-schedule-btn"
                 onClick={handleSave}
                 disabled={saving}
-                className={`bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium transition-colors flex items-center ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`px-6 py-2 rounded-md font-medium transition-colors flex items-center shadow-sm ${saveStatus === 'saved'
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    } ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save'}
             </button>
         </div>
     );
