@@ -636,43 +636,28 @@ export const Payroll = () => {
                                             {/* Earnings Column */}
                                             <div className="border-r border-black p-0">
                                                 <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                    <span>Basic Salary</span>
+                                                    <span className="font-medium">Basic Salary</span>
                                                     <span>{selectedPayroll.basicPaid?.toFixed(2)}</span>
                                                 </div>
                                                 <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                    <span>HRA</span>
+                                                    <span className="font-medium">HRA</span>
                                                     <span>{selectedPayroll.hraPaid?.toFixed(2)}</span>
                                                 </div>
-                                                {(payslipDetails['CONVEYANCE_ALLOWANCE'] > 0 || payslipDetails['CONVEYANCE'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Conveyance Allowance</span>
-                                                        <span>{(Number(payslipDetails['CONVEYANCE_ALLOWANCE']) || Number(payslipDetails['CONVEYANCE'])).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(payslipDetails['MEDICAL_ALLOWANCE'] > 0 || payslipDetails['MEDICAL'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Medical Allowance</span>
-                                                        <span>{(Number(payslipDetails['MEDICAL_ALLOWANCE']) || Number(payslipDetails['MEDICAL'])).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(payslipDetails['EDUCATION_ALLOWANCE'] > 0 || payslipDetails['EDU_ALL'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Education Allowance</span>
-                                                        <span>{(Number(payslipDetails['EDUCATION_ALLOWANCE']) || Number(payslipDetails['EDU_ALL'])).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(payslipDetails['LTA'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>L.T.A</span>
-                                                        <span>{Number(payslipDetails['LTA']).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(payslipDetails['SPECIAL_ALLOWANCE'] > 0 || payslipDetails['OTHER_ALLOWANCE'] > 0 || payslipDetails['OTHER_ALLOW'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Other Allowance</span>
-                                                        <span>{(Number(payslipDetails['SPECIAL_ALLOWANCE']) || Number(payslipDetails['OTHER_ALLOWANCE']) || Number(payslipDetails['OTHER_ALLOW'])).toFixed(2)}</span>
-                                                    </div>
-                                                )}
+
+                                                {/* Dynamic Earnings from metadata */}
+                                                {Object.entries(payslipDetails)
+                                                    .filter(([key, val]) => {
+                                                        const skip = ['BASIC', 'HRA', 'GROSS_FOR_PAYOUT', 'PF_EMP', 'ESI_EMP', 'PT', 'TDS', 'PF_ER', 'ESI_ER', 'GRATUITY', 'BONUS', 'OT', 'LOAN'];
+                                                        return !skip.includes(key) && Number(val) > 0;
+                                                    })
+                                                    .map(([key, val]) => (
+                                                        <div key={key} className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                            <span className="capitalize">{key.toLowerCase().replace(/_/g, ' ')}</span>
+                                                            <span>{Number(val).toFixed(2)}</span>
+                                                        </div>
+                                                    ))
+                                                }
+
                                                 {(selectedPayroll.otPay > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
                                                         <span>Overtime</span>
@@ -691,7 +676,7 @@ export const Payroll = () => {
                                                         <span>{selectedPayroll.incentives?.toFixed(2)}</span>
                                                     </div>
                                                 )}
-                                                <div className="h-8"></div> {/* Spacer */}
+                                                <div className="h-4"></div> {/* Spacer */}
                                             </div>
 
                                             {/* Deductions Column */}
@@ -708,28 +693,25 @@ export const Payroll = () => {
                                                     <span>Professional Tax</span>
                                                     <span>{selectedPayroll.ptDeduction?.toFixed(2)}</span>
                                                 </div>
-                                                {(payslipDetails['STAFF_WELFARE'] > 0) && (
+
+                                                {/* Dynamic Deductions from metadata */}
+                                                {Object.entries(payslipDetails)
+                                                    .filter(([key, val]) => {
+                                                        const show = ['TDS', 'STAFF_WELFARE', 'INSURANCE', 'UNIFORM', 'TRANSPORT_DEDUCTION', 'FOOD_DEDUCTION'];
+                                                        return show.includes(key) && Number(val) > 0;
+                                                    })
+                                                    .map(([key, val]) => (
+                                                        <div key={key} className="p-1 flex justify-between border-b border-gray-200 border-dashed">
+                                                            <span className="capitalize">{key.toLowerCase().replace(/_/g, ' ')}</span>
+                                                            <span>{Number(val).toFixed(2)}</span>
+                                                        </div>
+                                                    ))
+                                                }
+
+                                                {(selectedPayroll.loanDeduction > 0) && (
                                                     <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Staff Welfare</span>
-                                                        <span>{Number(payslipDetails['STAFF_WELFARE']).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(payslipDetails['INSURANCE'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Insurance</span>
-                                                        <span>{Number(payslipDetails['INSURANCE']).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(payslipDetails['UNIFORM'] > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>Uniform</span>
-                                                        <span>{Number(payslipDetails['UNIFORM']).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {(selectedPayroll.tdsDeduction > 0) && (
-                                                    <div className="p-1 flex justify-between border-b border-gray-200 border-dashed">
-                                                        <span>TDS</span>
-                                                        <span>{selectedPayroll.tdsDeduction?.toFixed(2)}</span>
+                                                        <span>Loan/Advance</span>
+                                                        <span>{selectedPayroll.loanDeduction?.toFixed(2)}</span>
                                                     </div>
                                                 )}
                                                 {(selectedPayroll.otherDeductions > 0) && (

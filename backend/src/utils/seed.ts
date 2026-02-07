@@ -152,6 +152,12 @@ async function seed() {
       }
       console.log('Leave types created');
 
+      // CLEANUP: Remove old components to ensure no logic interference
+      await prisma.salaryComponent.deleteMany({
+        where: { tenantId: tenant.id }
+      });
+      console.log(`Cleaned up salary components for tenant: ${tenant.name}`);
+
       // Create Salary Components based on the User's provided structure
       const salaryComponents = [
         { name: 'Basic', code: 'BASIC', type: 'EARNING', calculationType: 'PERCENTAGE', value: 40, formula: 'CTC * 0.40', isEPFApplicable: true, isESIApplicable: true },
@@ -160,7 +166,7 @@ async function seed() {
         { name: 'Education Allowance', code: 'EDUCATION_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 5, formula: 'CTC * 0.05', isEPFApplicable: true, isESIApplicable: true },
         { name: 'Medical Allowance', code: 'MEDICAL_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: true, isESIApplicable: true },
         { name: 'L.T.A', code: 'LTA', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: true, isESIApplicable: true },
-        { name: 'Special Allowance', code: 'SPECIAL_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: false, isESIApplicable: false },
+        { name: 'Other Allowance', code: 'OTHER_ALLOWANCE', type: 'EARNING', calculationType: 'PERCENTAGE', value: 10, formula: 'CTC * 0.10', isEPFApplicable: false, isESIApplicable: false },
 
         { name: 'Bonus', code: 'BONUS', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: false, isVariable: true },
         { name: 'Commission', code: 'COMMISSION', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: true, isVariable: true },
@@ -178,26 +184,14 @@ async function seed() {
       ];
 
       for (const comp of salaryComponents) {
-        await (prisma.salaryComponent as any).upsert({
-          where: { code_tenantId: { code: comp.code, tenantId: tenant.id } },
-          update: {
-            name: comp.name,
-            type: comp.type,
-            calculationType: comp.calculationType,
-            value: comp.value,
-            formula: (comp as any).formula,
-            isEPFApplicable: comp.isEPFApplicable,
-            isESIApplicable: comp.isESIApplicable,
-            isVariable: (comp as any).isVariable || false,
-            isActive: comp.isActive !== undefined ? comp.isActive : true
-          },
-          create: {
+        await (prisma.salaryComponent as any).create({
+          data: {
             ...comp,
             tenantId: tenant.id
           }
         });
       }
-      console.log('Salary components created/updated for tenant');
+      console.log('Salary components synced for tenant');
     });
   }
 }
