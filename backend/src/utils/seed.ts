@@ -168,6 +168,11 @@ async function seed() {
         { name: 'Overtime Allowance', code: 'OVERTIME_ALLOWANCE', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: true, isVariable: true, isActive: false },
         { name: 'Notice Pay', code: 'NOTICE_PAY', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: false, isVariable: true },
         { name: 'Hold Salary', code: 'HOLD_SALARY', type: 'EARNING', calculationType: 'FLAT', value: 0, isEPFApplicable: false, isESIApplicable: false, isVariable: true },
+        // Standard Deductions
+        { name: 'Provident Fund', code: 'PF_EMP', type: 'DEDUCTION', calculationType: 'PERCENTAGE', value: 12, formula: 'BASIC * 0.12' },
+        { name: 'ESI', code: 'ESI_EMP', type: 'DEDUCTION', calculationType: 'PERCENTAGE', value: 0.75, formula: 'GROSS * 0.0075' },
+        { name: 'Professional Tax', code: 'PT', type: 'DEDUCTION', calculationType: 'FLAT', value: 0, formula: 'SLAB_BASED' },
+        { name: 'TDS', code: 'TDS', type: 'DEDUCTION', calculationType: 'FLAT', value: 0, formula: 'SLAB_BASED' },
       ];
 
       for (const comp of salaryComponents) {
