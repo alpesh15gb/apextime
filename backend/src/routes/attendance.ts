@@ -569,7 +569,7 @@ router.get('/date-range-report', async (req, res) => {
       let presentDays = 0, absentDays = 0, lateDays = 0, totalWorkingHours = 0;
 
       for (const dateInfo of dates) {
-        const dateKey = `${dateInfo.year}-${String(dateInfo.month).padStart(2, '0')}-${String(dateInfo.day).padStart(2, '0')}`;
+        const dateKey = dateInfo.dateKey;
         const log = logIndex.get(`${emp.id}:${dateKey}`);
         const isSunday = dateInfo.dayName === 'Sun';
         const isHoliday = holidaySet.has(dateKey);
