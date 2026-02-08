@@ -845,11 +845,21 @@ router.post('/import', upload.single('file'), async (req, res) => {
     const tenantId = (req as any).user.tenantId;
     const deviceType = req.body.deviceType || 'auto'; // 'hikvision', 'essl', or 'auto'
     
+    // Initialize status tracking
+    importStatus.set(tenantId, {
+      status: 'processing',
+      progress: 0,
+      total: 0,
+      message: 'Starting CSV processing...',
+      startedAt: new Date()
+    });
+    
     // Respond immediately to avoid timeout
     res.json({
       message: 'CSV upload started. Processing in background...',
       status: 'processing',
-      info: 'Refresh the page in 1-2 minutes to see updated attendance data'
+      info: 'Check status at: GET /api/attendance/import/status/' + tenantId,
+      tenantId: tenantId
     });
 
     // Process file in background (non-blocking)
