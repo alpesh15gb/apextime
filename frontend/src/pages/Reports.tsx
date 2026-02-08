@@ -276,11 +276,11 @@ export const Reports = () => {
 
   return (
     <div data-testid="reports-page" className="min-h-screen pb-20" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Monthly Print View */}
+      {/* Print View */}
       {showPrint && (
         <MonthlyPrintView
-          month={selectedMonth}
-          year={selectedYear}
+          defaultMonth={selectedMonth}
+          defaultYear={selectedYear}
           departmentId={filters.departmentId || undefined}
           branchId={filters.branchId || undefined}
           locationId={filters.locationId || undefined}
@@ -306,15 +306,13 @@ export const Reports = () => {
             <RotateCcw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
             {recalculating ? 'Recalculating...' : 'Recalculate'}
           </button>
-          {activeTab === 'monthly' && (
-            <button
-              data-testid="print-monthly-btn"
-              onClick={() => setShowPrint(true)}
-              className="h-10 px-4 flex items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-900 transition-colors text-white text-sm font-semibold"
-            >
-              <Printer className="w-4 h-4" /> Print Monthly
-            </button>
-          )}
+          <button
+            data-testid="print-register-btn"
+            onClick={() => setShowPrint(true)}
+            className="h-10 px-4 flex items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-900 transition-colors text-white text-sm font-semibold"
+          >
+            <Printer className="w-4 h-4" /> Print Register
+          </button>
           <button
             data-testid="refresh-btn"
             onClick={fetchReport}
