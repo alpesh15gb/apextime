@@ -197,6 +197,9 @@ export const payrollAPI = {
 };
 
 export const reportsAPI = {
+  getDaily: (params: any) => api.get('/reports/daily', { params }),
+  getWeekly: (params: any) => api.get('/reports/weekly', { params }),
+  getMonthly: (params: any) => api.get('/reports/monthly', { params }),
   downloadExcel: (type: string, params: any) =>
     api.get(`/reports/${type}/download/excel`, { params, responseType: 'blob' }),
   downloadPDF: (type: string, params: any) =>
