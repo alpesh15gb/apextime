@@ -43,6 +43,9 @@ import { attendanceAPI } from '../services/api';
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Masters']); // Default expand Masters
+  const [uploading, setUploading] = useState(false);
+  const hikvisionInputRef = useRef<HTMLInputElement>(null);
+  const esslInputRef = useRef<HTMLInputElement>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
