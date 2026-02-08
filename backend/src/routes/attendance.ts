@@ -480,6 +480,165 @@ router.get('/monthly-report', async (req, res) => {
   }
 });
 
+/**
+ * Custom date range report for printout
+ * Returns employees grouped by department/branch with daily In/Out data
+ */
+router.get('/date-range-report', async (req, res) => {
+  try {
+    const { startDate, endDate, departmentId, branchId, locationId, groupBy } = req.query;
+    const tenantId = (req as any).user.tenantId;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+
+    const start = new Date(startDate as string + 'T00:00:00Z');
+    const end = new Date(endDate as string + 'T23:59:59Z');
+
+    // Calculate all dates in range
+    const dates: { date: Date; day: number; month: number; year: number; dayName: string }[] = [];
+    const current = new Date(start);
+    while (current <= end) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      dates.push({
+        date: new Date(current),
+        day: current.getUTCDate(),
+        month: current.getUTCMonth() + 1,
+        year: current.getUTCFullYear(),
+        dayName: dayNames[current.getUTCDay()],
+      });
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+
+    // Build employee filter
+    const employeeWhere: any = {
+      status: 'active',
+      tenantId,
+      AND: []
+    };
+    if (departmentId) employeeWhere.departmentId = departmentId as string;
+    if (branchId) employeeWhere.branchId = branchId as string;
+    if (locationId) {
+      employeeWhere.AND.push({
+        OR: [
+          { locationId: locationId as string },
+          { branch: { locationId: locationId as string } }
+        ]
+      });
+    }
+    if (employeeWhere.AND.length === 0) delete employeeWhere.AND;
+
+    const employees = await prisma.employee.findMany({
+      where: employeeWhere,
+      include: { department: true, branch: true },
+      orderBy: [{ department: { name: 'asc' } }, { firstName: 'asc' }],
+    });
+
+    // Get attendance logs
+    const logs = await prisma.attendanceLog.findMany({
+      where: {
+        tenantId,
+        date: { gte: start, lte: end },
+        employeeId: { in: employees.map(e => e.id) },
+      },
+    });
+
+    // Get holidays
+    const holidays = await prisma.holiday.findMany({
+      where: {
+        tenantId,
+        date: { gte: start, lte: end },
+      },
+    });
+    const holidaySet = new Set(holidays.map(h => new Date(h.date).toISOString().split('T')[0]));
+
+    // Index logs by employeeId + dateKey
+    const logIndex = new Map<string, any>();
+    for (const log of logs) {
+      const d = new Date(log.date);
+      const day = d.getUTCHours() > 12 ? d.getUTCDate() + 1 : d.getUTCDate();
+      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      logIndex.set(`${log.employeeId}:${dateKey}`, log);
+    }
+
+    // Build report per employee
+    const reportData = employees.map(emp => {
+      const dailyData: any[] = [];
+      let presentDays = 0, absentDays = 0, lateDays = 0, totalWorkingHours = 0;
+
+      for (const dateInfo of dates) {
+        const dateKey = `${dateInfo.year}-${String(dateInfo.month).padStart(2, '0')}-${String(dateInfo.day).padStart(2, '0')}`;
+        const log = logIndex.get(`${emp.id}:${dateKey}`);
+        const isSunday = dateInfo.dayName === 'Sun';
+        const isHoliday = holidaySet.has(dateKey);
+        const isOff = isSunday || isHoliday;
+
+        if (log) {
+          presentDays++;
+          totalWorkingHours += log.workingHours || 0;
+          if (log.lateArrival > 0) lateDays++;
+          dailyData.push({
+            dateKey,
+            day: dateInfo.day,
+            dayName: dateInfo.dayName,
+            firstIn: log.firstIn,
+            lastOut: log.lastOut,
+            workingHours: log.workingHours,
+            status: log.status,
+            isSunday, isHoliday, isOff,
+          });
+        } else {
+          if (!isOff) absentDays++;
+          dailyData.push({
+            dateKey,
+            day: dateInfo.day,
+            dayName: dateInfo.dayName,
+            firstIn: null,
+            lastOut: null,
+            workingHours: null,
+            status: isOff ? 'off' : 'absent',
+            isSunday, isHoliday, isOff,
+          });
+        }
+      }
+
+      return {
+        employee: {
+          id: emp.id,
+          name: `${emp.firstName} ${emp.lastName}`,
+          employeeCode: emp.employeeCode,
+          department: emp.department?.name || 'Unassigned',
+          branch: emp.branch?.name || 'Unassigned',
+        },
+        dailyData,
+        summary: { presentDays, absentDays, lateDays, totalWorkingHours: Math.round(totalWorkingHours * 100) / 100 },
+      };
+    });
+
+    // Group by department or branch
+    const grouped: Record<string, any[]> = {};
+    const groupField = (groupBy as string) === 'branch' ? 'branch' : 'department';
+    for (const emp of reportData) {
+      const key = emp.employee[groupField] || 'Unassigned';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(emp);
+    }
+
+    res.json({
+      startDate: startDate as string,
+      endDate: endDate as string,
+      totalDays: dates.length,
+      dates,
+      groups: Object.entries(grouped).map(([name, employees]) => ({ name, employees })),
+      reportData,
+    });
+  } catch (error) {
+    console.error('Date range report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Administrative route to re-process historical logs with latest logic
 router.post('/reprocess', async (req, res) => {
   try {
