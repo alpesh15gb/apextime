@@ -27,7 +27,6 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
   const fetchData = async () => {
     setLoading(true);
     try {
-      // If "only till today" is on, clamp endDate to today
       let effectiveEnd = endDate;
       if (onlyTillToday) {
         const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -51,23 +50,18 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
-    const h = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' });
-    return h;
+    const h = String(d.getUTCHours() + 5 + Math.floor((d.getUTCMinutes() + 30) / 60)).padStart(2, '0');
+    const m = String((d.getUTCMinutes() + 30) % 60).padStart(2, '0');
+    return `${h}:${m}`;
   };
 
-  const dates: any[] = (data?.dates || []).map((d: any) => ({
+  const rawDates: any[] = data?.dates || [];
+  const dates = rawDates.map((d: any) => ({
     ...d,
     dateKey: `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`,
   }));
   const groups: any[] = data?.groups || [];
-
-  // Split dates into chunks for A4 landscape pages (max 16 days per page)
-  const DAYS_PER_PAGE = 16;
-  const dateChunks: any[][] = [];
-  for (let i = 0; i < dates.length; i += DAYS_PER_PAGE) {
-    dateChunks.push(dates.slice(i, i + DAYS_PER_PAGE));
-  }
-  if (dateChunks.length === 0) dateChunks.push([]);
+  const totalDays = dates.length;
 
   return (
     <div className="fixed inset-0 z-[9999] bg-white overflow-auto" data-testid="monthly-print-view">
@@ -91,14 +85,11 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
               <option value="branch">Branch Wise</option>
             </select>
             <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
-              <input type="checkbox" checked={onlyTillToday} onChange={e => setOnlyTillToday(e.target.checked)}
-                className="rounded border-slate-500" />
-              Till Today Only
+              <input type="checkbox" checked={onlyTillToday} onChange={e => setOnlyTillToday(e.target.checked)} className="rounded border-slate-500" />
+              Till Today
             </label>
             <button data-testid="generate-btn" onClick={fetchData}
-              className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 rounded text-xs font-bold transition-colors">
-              Generate
-            </button>
+              className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 rounded text-xs font-bold transition-colors">Generate</button>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -126,87 +117,69 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
       ) : (
         <div className="print-content">
           {groups.map((group: any, gIdx: number) => (
-            dateChunks.map((chunk, cIdx) => {
-              const isLastChunk = cIdx === dateChunks.length - 1;
-              return (
-                <div key={`${gIdx}-${cIdx}`} className="print-page">
-                  <table className="reg-table">
-                    {/* Department header row */}
-                    <thead>
-                      <tr className="dept-row">
-                        <td className="dept-cell" colSpan={2}>
-                          <strong>Dep : {group.name}</strong>
+            <div key={gIdx} className="print-page">
+              {/* ALL days in ONE table — no pagination */}
+              <table className="reg-table">
+                <thead>
+                  {/* Department header + day numbers */}
+                  <tr className="dept-row">
+                    <td className="dept-cell" colSpan={2}>
+                      <strong>Dep : {group.name}</strong>
+                    </td>
+                    {dates.map((d: any, i: number) => (
+                      <td key={i} className={`day-hdr ${d.dayName === 'Sun' ? 'sun' : ''}`}>{d.day}</td>
+                    ))}
+                    <td className="sum-hdr">P</td>
+                    <td className="sum-hdr">A</td>
+                    <td className="sum-hdr">Hrs</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.employees.map((emp: any, eIdx: number) => (
+                    <>
+                      {/* IN row */}
+                      <tr key={`in-${eIdx}`} className="in-row" data-testid={`emp-in-${eIdx}`}>
+                        <td className="info-cell" rowSpan={2}>
+                          <div className="emp-name">{emp.employee.name}</div>
+                          <div className="emp-code">{emp.employee.employeeCode}</div>
                         </td>
-                        <td className="io-label-cell"></td>
-                        {chunk.map((d: any, i: number) => (
-                          <td key={i} className={`day-hdr ${d.dayName === 'Sun' ? 'sun' : ''}`}>
-                            <div className="day-num">{d.day}</div>
-                          </td>
-                        ))}
-                        {isLastChunk && (
-                          <>
-                            <td className="sum-hdr">P</td>
-                            <td className="sum-hdr">A</td>
-                            <td className="sum-hdr">Hrs</td>
-                          </>
-                        )}
+                        <td className="io-label">IN</td>
+                        {dates.map((d: any, dIdx: number) => {
+                          const dd = emp.dailyData.find((x: any) => x.dateKey === d.dateKey);
+                          const isOff = d.dayName === 'Sun' || dd?.isHoliday;
+                          return (
+                            <td key={dIdx} className={`tc ${isOff ? 'sun' : ''}`}>
+                              {dd?.firstIn ? formatTime(dd.firstIn) : ''}
+                            </td>
+                          );
+                        })}
+                        <td className="sv sp" rowSpan={2}>{emp.summary.presentDays}</td>
+                        <td className="sv sa" rowSpan={2}>{emp.summary.absentDays}</td>
+                        <td className="sv sh" rowSpan={2}>{emp.summary.totalWorkingHours.toFixed(1)}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {group.employees.map((emp: any, eIdx: number) => {
-                        return (
-                          <>
-                            {/* IN Row - Employee Name */}
-                            <tr key={`in-${eIdx}`} className="in-row" data-testid={`emp-in-${eIdx}`}>
-                              <td className="info-cell name-cell" rowSpan={2}>
-                                <div className="emp-name">Name : {emp.employee.name}</div>
-                                <div className="emp-code">E.Code : {emp.employee.employeeCode}</div>
-                              </td>
-                              <td className="io-label in-label">IN</td>
-                              {chunk.map((d: any, dIdx: number) => {
-                                const dd = emp.dailyData.find((x: any) => x.dateKey === d.dateKey);
-                                const isOff = d.dayName === 'Sun' || dd?.isHoliday;
-                                return (
-                                  <td key={dIdx} className={`time-cell ${isOff ? 'sun' : ''}`}>
-                                    {dd?.firstIn ? formatTime(dd.firstIn) : ''}
-                                  </td>
-                                );
-                              })}
-                              {isLastChunk && (
-                                <>
-                                  <td className="sum-val sum-p" rowSpan={2}>{emp.summary.presentDays}</td>
-                                  <td className="sum-val sum-a" rowSpan={2}>{emp.summary.absentDays}</td>
-                                  <td className="sum-val sum-h" rowSpan={2}>{emp.summary.totalWorkingHours.toFixed(1)}</td>
-                                </>
-                              )}
-                            </tr>
-                            {/* OUT Row - Employee Code */}
-                            <tr key={`out-${eIdx}`} className="out-row" data-testid={`emp-out-${eIdx}`}>
-                              <td className="io-label out-label">OUT</td>
-                              {chunk.map((d: any, dIdx: number) => {
-                                const dd = emp.dailyData.find((x: any) => x.dateKey === d.dateKey);
-                                const isOff = d.dayName === 'Sun' || dd?.isHoliday;
-                                const noOut = dd?.firstIn && !dd?.lastOut;
-                                return (
-                                  <td key={dIdx} className={`time-cell ${isOff ? 'sun' : ''} ${noOut ? 'no-out' : ''}`}>
-                                    {dd?.lastOut ? formatTime(dd.lastOut) : ''}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          </>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <div className="page-ftr">
-                    <span>Period: {data.startDate} to {data.endDate}</span>
-                    {dateChunks.length > 1 && <span>Page {cIdx + 1} of {dateChunks.length}</span>}
-                    <span>Printed: {new Date().toLocaleDateString('en-IN')}</span>
-                  </div>
-                </div>
-              );
-            })
+                      {/* OUT row */}
+                      <tr key={`out-${eIdx}`} className="out-row" data-testid={`emp-out-${eIdx}`}>
+                        <td className="io-label">OUT</td>
+                        {dates.map((d: any, dIdx: number) => {
+                          const dd = emp.dailyData.find((x: any) => x.dateKey === d.dateKey);
+                          const isOff = d.dayName === 'Sun' || dd?.isHoliday;
+                          const noOut = dd?.firstIn && !dd?.lastOut;
+                          return (
+                            <td key={dIdx} className={`tc ${isOff ? 'sun' : ''} ${noOut ? 'no-out' : ''}`}>
+                              {dd?.lastOut ? formatTime(dd.lastOut) : ''}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </>
+                  ))}
+                </tbody>
+              </table>
+              <div className="page-ftr">
+                <span>Period: {data.startDate} to {data.endDate}</span>
+                <span>Printed: {new Date().toLocaleDateString('en-IN')}</span>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -215,135 +188,81 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
         @media print {
           .print-hide { display: none !important; }
           body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { size: A4 landscape; margin: 5mm 4mm; }
+          @page { size: A4 landscape; margin: 4mm 3mm; }
           .print-page { page-break-after: always; }
           .print-page:last-child { page-break-after: auto; }
         }
         @media screen {
-          .print-page { max-width: 1140px; margin: 12px auto; padding: 12px; border: 1px solid #bbb; background: #fff; }
+          .print-page { margin: 10px auto; padding: 10px; border: 1px solid #bbb; background: #fff; overflow-x: auto; }
         }
 
         .reg-table {
           width: 100%;
           border-collapse: collapse;
           font-family: Arial, Helvetica, sans-serif;
-          font-size: 9px;
+          table-layout: fixed;
         }
-        .reg-table td {
-          border: 1.5px solid #333;
-          text-align: center;
-          vertical-align: middle;
-        }
+        .reg-table td { border: 1px solid #555; text-align: center; vertical-align: middle; overflow: hidden; }
 
-        /* Department header */
-        .dept-row td {
-          background: #fff;
-          padding: 6px 4px;
-          font-size: 11px;
-        }
+        /* Department + day header */
         .dept-cell {
           text-align: left !important;
-          font-size: 12px;
-          padding: 8px 8px !important;
+          padding: 3px 4px !important;
+          font-size: 9px;
+          font-weight: 800;
+          width: 90px;
+          min-width: 90px;
         }
         .day-hdr {
-          font-size: 14px;
+          font-size: ${totalDays > 20 ? '7px' : '9px'};
           font-weight: 900;
-          padding: 6px 2px;
-          min-width: 34px;
+          padding: 3px 0;
           color: #111;
+          width: ${totalDays > 20 ? '20px' : '28px'};
         }
-        .day-hdr.sun {
-          background: #888 !important;
-          color: #fff !important;
-        }
-        .sum-hdr {
-          font-size: 8px;
-          font-weight: 800;
-          padding: 4px 2px;
-          min-width: 28px;
-          background: #eee;
-        }
+        .day-hdr.sun { background: #777 !important; color: #fff !important; }
+        .sum-hdr { font-size: 6px; font-weight: 900; width: 22px; min-width: 22px; background: #eee; padding: 2px; }
 
-        /* Employee rows */
+        /* Employee info */
         .info-cell {
           text-align: left !important;
-          padding: 4px 6px !important;
-          width: 140px;
-          min-width: 140px;
-          max-width: 140px;
-          vertical-align: middle;
+          padding: 2px 3px !important;
+          width: 75px;
+          min-width: 75px;
+          max-width: 75px;
         }
-        .emp-name {
-          font-size: 10px;
-          font-weight: 700;
-          color: #111;
-          margin-bottom: 4px;
-        }
-        .emp-code {
-          font-size: 9px;
-          font-weight: 600;
-          color: #444;
-        }
+        .emp-name { font-size: ${totalDays > 20 ? '6px' : '8px'}; font-weight: 800; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .emp-code { font-size: ${totalDays > 20 ? '5.5px' : '7px'}; font-weight: 600; color: #555; }
 
         .io-label {
-          width: 28px;
-          min-width: 28px;
-          font-size: 10px;
+          width: 18px; min-width: 18px;
+          font-size: ${totalDays > 20 ? '6px' : '8px'};
           font-weight: 900;
-          padding: 4px 2px;
-        }
-        .in-label {
-          color: #111;
-        }
-        .out-label {
-          color: #111;
+          padding: 1px;
         }
 
-        .time-cell {
-          font-size: 8.5px;
+        /* Time cells */
+        .tc {
+          font-size: ${totalDays > 20 ? '5.5px' : '7px'};
           font-weight: 500;
           color: #222;
-          padding: 3px 1px;
+          padding: 1px 0;
           white-space: nowrap;
-          min-width: 34px;
+          letter-spacing: -0.3px;
         }
-        .time-cell.sun {
-          background: #888 !important;
-          color: #fff !important;
-        }
-        .time-cell.no-out {
-          color: #cc0000;
-          font-weight: 700;
-        }
+        .tc.sun { background: #777 !important; color: #fff !important; }
+        .tc.no-out { color: #c00; font-weight: 700; }
 
-        .in-row td {
-          border-bottom: 0.5px solid #999;
-        }
-        .out-row td {
-          border-top: 0.5px solid #999;
-        }
+        .in-row td { border-bottom: 0.5px solid #aaa; }
+        .out-row td { border-top: 0.5px solid #aaa; }
 
         /* Summary */
-        .sum-val {
-          font-size: 9px;
-          font-weight: 800;
-          padding: 2px;
-          background: #f5f5f5;
-          vertical-align: middle;
-        }
-        .sum-p { color: #166534; }
-        .sum-a { color: #991b1b; }
-        .sum-h { color: #1e40af; }
+        .sv { font-weight: 900; padding: 1px; background: #f5f5f5; vertical-align: middle; width: 22px; min-width: 22px; }
+        .sp { color: #166534; font-size: 7px; }
+        .sa { color: #991b1b; font-size: 7px; }
+        .sh { color: #1e40af; font-size: 6px; }
 
-        .page-ftr {
-          display: flex;
-          justify-content: space-between;
-          font-size: 7px;
-          color: #999;
-          margin-top: 4px;
-          padding-top: 2px;
-        }
+        .page-ftr { display: flex; justify-content: space-between; font-size: 6px; color: #999; margin-top: 3px; }
       `}</style>
     </div>
   );
