@@ -36,9 +36,10 @@ export const Reports = () => {
   const [shifts, setShifts] = useState<Shift[]>([]);
 
   // Filter States
-  const [dateRange, setDateRange] = useState({
-    start: new Date().toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+  const [dateRange, setDateRange] = useState(() => {
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    const today = new Date(Date.now() + IST_OFFSET).toISOString().split('T')[0];
+    return { start: today, end: today };
   });
   const [filters, setFilters] = useState({
     departmentId: '',

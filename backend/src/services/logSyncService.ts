@@ -25,6 +25,7 @@ interface ProcessedAttendance {
   lateArrival: number;
   earlyDeparture: number;
   status: string;
+  logs?: string; // JSON array of punch times
 }
 
 // Cache for created employees to avoid repeated lookups
@@ -550,14 +551,22 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         const hours = log.LogDate.getHours();
         let logicalDate = new Date(log.LogDate);
         logicalDate.setHours(0, 0, 0, 0);
-        // Punches before 5 AM belong to previous calendar day (night shift)
-        if (hours < 5) {
-          logicalDate.setDate(logicalDate.getDate() - 1);
-        }
+
+        // Categorization for affected pairs
         const y = logicalDate.getFullYear();
         const m = String(logicalDate.getMonth() + 1).padStart(2, '0');
         const d = String(logicalDate.getDate()).padStart(2, '0');
         affectedPairs.add(`${log.UserId}|${y}-${m}-${d}`);
+
+        // BULLETPROOF: If punch is early morning (before 12 PM), also re-process YESTERDAY
+        if (hours < 12) {
+          const yesterday = new Date(logicalDate);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yy = yesterday.getFullYear();
+          const ym = String(yesterday.getMonth() + 1).padStart(2, '0');
+          const yd = String(yesterday.getDate()).padStart(2, '0');
+          affectedPairs.add(`${log.UserId}|${yy}-${ym}-${yd}`);
+        }
       }
 
       logger.info(`Processing attendance for ${affectedPairs.size} employee-day pairs...`);
@@ -616,6 +625,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
                 lateArrival: attendance.lateArrival,
                 earlyDeparture: attendance.earlyDeparture,
                 status: attendance.status,
+                logs: attendance.logs,
               },
               create: {
                 date: attendance.date,
@@ -628,6 +638,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
                 lateArrival: attendance.lateArrival,
                 earlyDeparture: attendance.earlyDeparture,
                 status: attendance.status,
+                logs: attendance.logs,
                 tenant: { connect: { id: tenant.id } },
                 employee: { connect: { id: attendance.employeeId } }
               },
@@ -993,46 +1004,61 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
     const employeeId = await findEmployeeId(deviceUserId);
     if (!employeeId) continue;
 
-    // 1. Group punches by IST calendar day
-    const simpleSessions = new Map<string, RawLog[]>();
+    // 1. Sort all punches for this user
+    userLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
-    for (const log of userLogs) {
-      const istTime = new Date(log.LogDate.getTime() + IST_OFFSET);
-      const y = istTime.getUTCFullYear();
-      const m = String(istTime.getUTCMonth() + 1).padStart(2, '0');
-      const d = String(istTime.getUTCDate()).padStart(2, '0');
-      const hour = istTime.getUTCHours();
-
-      let dateKey = `${y}-${m}-${d}`;
-
-      // SHIFT RULE: Punches between 12:00 AM and 05:00 AM IST belong to PREVIOUS logical day
-      if (hour < 5) {
-        const p = new Date(Date.UTC(y, istTime.getUTCMonth(), istTime.getUTCDate() - 1));
-        dateKey = `${p.getUTCFullYear()}-${String(p.getUTCMonth() + 1).padStart(2, '0')}-${String(p.getUTCDate()).padStart(2, '0')}`;
+    // 2. Cluster logs into contiguous "sessions" (Gap <= 14 hours)
+    // This allows night shifts (e.g. 10 PM to 6 AM) to be paired correctly
+    const sessions: RawLog[][] = [];
+    if (userLogs.length > 0) {
+      let currentSession = [userLogs[0]];
+      for (let i = 1; i < userLogs.length; i++) {
+        const gap = (userLogs[i].LogDate.getTime() - userLogs[i - 1].LogDate.getTime()) / (1000 * 60 * 60);
+        if (gap <= 14) {
+          currentSession.push(userLogs[i]);
+        } else {
+          sessions.push(currentSession);
+          currentSession = [userLogs[i]];
+        }
       }
-
-      if (!simpleSessions.has(dateKey)) simpleSessions.set(dateKey, []);
-      simpleSessions.get(dateKey)!.push(log);
+      sessions.push(currentSession);
     }
 
-    // 2. Process each session
-    for (const [dateKey, dateLogs] of simpleSessions) {
-      dateLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
+    // 3. Process each session
+    for (const sLogs of sessions) {
+      const firstIn = sLogs[0].LogDate;
+      const lastOut = sLogs.length > 1 ? sLogs[sLogs.length - 1].LogDate : undefined;
 
-      const firstIn = dateLogs[0].LogDate;
-      const lastOut = dateLogs.length > 1 ? dateLogs[dateLogs.length - 1].LogDate : undefined;
+      // Determine Logical Date based on the START of the session
+      const istStart = new Date(firstIn.getTime() + IST_OFFSET);
+      const hour = istStart.getUTCHours();
+      let y = istStart.getUTCFullYear();
+      let m = istStart.getUTCMonth();
+      let d = istStart.getUTCDate();
+
+      // If session starts before 5 AM, it logically belongs to the previous day
+      if (hour < 5) {
+        const prev = new Date(Date.UTC(y, m, d - 1));
+        y = prev.getUTCFullYear();
+        m = prev.getUTCMonth();
+        d = prev.getUTCDate();
+      }
+      const dateKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
       let workingHours = 0;
-      if (firstIn && lastOut) {
+      if (lastOut) {
         workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
       }
-      if (workingHours < 0) workingHours = 0;
 
       let status = 'Present';
-      if (dateLogs.length > 1 && lastOut) {
-        if (workingHours >= 4.5) status = 'Present';
-        else if (workingHours > 0) status = 'Half Day';
-        else status = 'Absent';
+      if (sLogs.length === 1) {
+        status = 'Shift Incomplete';
+      } else if (workingHours >= 4.5) {
+        status = 'Present';
+      } else if (workingHours > 0) {
+        status = 'Half Day';
+      } else {
+        status = 'Absent';
       }
 
       processedResults.push({
@@ -1041,12 +1067,13 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
         firstIn: firstIn,
         lastOut: lastOut || null,
         workingHours: Number(workingHours.toFixed(2)),
-        totalPunches: dateLogs.length,
+        totalPunches: sLogs.length,
         shiftStart: null,
         shiftEnd: null,
         lateArrival: 0,
         earlyDeparture: 0,
         status: status,
+        logs: JSON.stringify(sLogs.map(l => l.LogDate.toISOString())),
       });
     }
   }
@@ -1127,6 +1154,7 @@ export async function triggerRealtimeAttendanceSync(tenantId: string, userId: st
           lateArrival: attendance.lateArrival,
           earlyDeparture: attendance.earlyDeparture,
           status: attendance.status,
+          logs: attendance.logs,
         },
         create: {
           date: attendance.date,
@@ -1139,6 +1167,7 @@ export async function triggerRealtimeAttendanceSync(tenantId: string, userId: st
           lateArrival: attendance.lateArrival,
           earlyDeparture: attendance.earlyDeparture,
           status: attendance.status,
+          logs: attendance.logs,
           tenant: { connect: { id: tenantId } },
           employee: { connect: { id: attendance.employeeId } }
         },
@@ -1446,6 +1475,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
               lateArrival: attendance.lateArrival,
               earlyDeparture: attendance.earlyDeparture,
               status: attendance.status,
+              logs: attendance.logs,
             },
             create: {
               date: attendance.date,
@@ -1458,6 +1488,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
               lateArrival: attendance.lateArrival,
               earlyDeparture: attendance.earlyDeparture,
               status: attendance.status,
+              logs: attendance.logs,
               tenant: { connect: { id: rlTenantId } },
               employee: { connect: { id: attendance.employeeId } }
             },

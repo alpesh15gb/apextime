@@ -26,8 +26,8 @@ async function getAttendanceData(filters: any) {
   const where: any = {
     tenantId,
     date: {
-      gte: new Date(startDate + 'T00:00:00Z'),
-      lte: new Date(endDate + 'T23:59:59Z'),
+      gte: new Date(startDate), // Matches DATE column (UTC midnight)
+      lte: new Date(endDate),
     },
   };
 
@@ -71,7 +71,11 @@ router.get('/daily', async (req, res) => {
   try {
     const { date, departmentId, branchId, locationId, employeeId, format = 'json' } = req.query;
 
-    const reportDate = (date as string) || new Date().toISOString().split('T')[0];
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + IST_OFFSET);
+    const todayIST = nowIST.toISOString().split('T')[0];
+
+    const reportDate = (date as string) || todayIST;
 
     const logs = await getAttendanceData({
       startDate: reportDate,
@@ -269,6 +273,7 @@ async function generateExcelReport(logs: any[], filename: string, res: express.R
     { header: 'Status', key: 'status', width: 10 },
     { header: 'Late (min)', key: 'lateArrival', width: 12 },
     { header: 'Early Out (min)', key: 'earlyDeparture', width: 15 },
+    { header: 'Punch Records', key: 'punchRecords', width: 40 },
   ];
 
   // Add rows
@@ -291,6 +296,7 @@ async function generateExcelReport(logs: any[], filename: string, res: express.R
       status: log.status,
       lateArrival: log.lateArrival > 0 ? log.lateArrival : '-',
       earlyDeparture: log.earlyDeparture > 0 ? log.earlyDeparture : '-',
+      punchRecords: log.logs ? JSON.parse(log.logs).map((t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })).join(', ') : '-'
     });
   }
 
@@ -382,7 +388,7 @@ async function generatePDFReport(logs: any[], title: string, res: express.Respon
   doc.text('LateBy', col.late, tableTop);
   doc.text('EarlyGoingBy', col.early, tableTop);
   doc.text('Status', col.status, tableTop);
-  // doc.text('Punch Records', col.records, tableTop);
+  doc.text('Punches', col.records, tableTop);
 
   doc.moveTo(30, tableTop + 12).lineTo(760, tableTop + 12).stroke();
 
@@ -419,6 +425,15 @@ async function generatePDFReport(logs: any[], title: string, res: express.Respon
     doc.text(log.earlyDeparture > 0 ? log.earlyDeparture.toString() : '00.00', col.early, y);
 
     doc.text(log.status || 'Absent', col.status, y);
+
+    // Punch sequence
+    if (log.logs) {
+      try {
+        const pArr = JSON.parse(log.logs);
+        const pStr = pArr.map((t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })).join(', ');
+        doc.fontSize(6).text(pStr, col.records, y, { width: 50 });
+      } catch (e) { }
+    }
 
     y += 15;
     doc.moveTo(30, y - 2).lineTo(760, y - 2).lineWidth(0.5).dash(2, { space: 2 }).stroke().undash().lineWidth(1);
@@ -584,7 +599,7 @@ router.get('/:type/download/:format', async (req, res) => {
       employeeId
     });
     if (format === 'excel') return generateExcelReport(logs, `Daily_Report_${start}`, res);
-    return generatePDFReport(logs, `Daily Attendance Report (Detailed)`, res, { startDate: start, endDate: end });
+    return generatePDFReport(logs, `Daily Attendance (Detailed)`, res, { startDate: start, endDate: end });
   }
 
   if (type === 'monthly' || type === 'monthly_detailed') {
@@ -598,7 +613,7 @@ router.get('/:type/download/:format', async (req, res) => {
       employeeId
     });
     if (format === 'excel') return generateExcelReport(logs, `Monthly_Report_${start}`, res);
-    return generatePDFReport(logs, `Monthly Status Report (Work Duration)`, res, { startDate: start, endDate: end });
+    return generatePDFReport(logs, `Monthly Attendance Report`, res, { startDate: start, endDate: end });
   }
 
   if (type === 'leave_summary') {
