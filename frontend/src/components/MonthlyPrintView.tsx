@@ -134,33 +134,20 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
                     ))}
                     {chunkIdx === dayChunks.length - 1 && (
                       <>
-                        <th className="col-summary" rowSpan={2}>Present</th>
-                        <th className="col-summary" rowSpan={2}>Absent</th>
-                        <th className="col-summary" rowSpan={2}>Late</th>
-                        <th className="col-summary" rowSpan={2}>Total Hrs</th>
+                        <th className="col-summary" rowSpan={2}>P</th>
+                        <th className="col-summary" rowSpan={2}>A</th>
+                        <th className="col-summary" rowSpan={2}>L</th>
+                        <th className="col-summary" rowSpan={2}>Hrs</th>
                       </>
                     )}
                   </tr>
                   <tr>
-                    {chunk.map(day => (
-                      <th key={`io-${day}`} className={`col-inout ${isSunday(day) ? 'sunday' : ''}`} colSpan={1}>
-                        <span className="in-label">In</span>
-                      </th>
-                    ))}
-                    {chunk.map(day => (
-                      <></>
-                    ))}
-                  </tr>
-                  {/* Separate In/Out subheader */}
-                  <tr className="subheader-row">
-                    <td colSpan={3}></td>
                     {chunk.map(day => (
                       <>
                         <td key={`in-h-${day}`} className={`sub-in ${isSunday(day) ? 'sunday' : ''}`}>In</td>
                         <td key={`out-h-${day}`} className={`sub-out ${isSunday(day) ? 'sunday' : ''}`}>Out</td>
                       </>
                     ))}
-                    {chunkIdx === dayChunks.length - 1 && <td colSpan={4}></td>}
                   </tr>
                 </thead>
                 <tbody>
