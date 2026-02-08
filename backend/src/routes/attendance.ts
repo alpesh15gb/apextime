@@ -497,16 +497,18 @@ router.get('/date-range-report', async (req, res) => {
     const end = new Date(endDate as string + 'T23:59:59Z');
 
     // Calculate all dates in range
-    const dates: { date: Date; day: number; month: number; year: number; dayName: string }[] = [];
+    const dates: { date: Date; day: number; month: number; year: number; dayName: string; dateKey: string }[] = [];
     const current = new Date(start);
     while (current <= end) {
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dateKey = current.toISOString().split('T')[0];
       dates.push({
         date: new Date(current),
         day: current.getUTCDate(),
         month: current.getUTCMonth() + 1,
         year: current.getUTCFullYear(),
         dayName: dayNames[current.getUTCDay()],
+        dateKey,
       });
       current.setUTCDate(current.getUTCDate() + 1);
     }
