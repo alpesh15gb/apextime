@@ -1127,6 +1127,15 @@ router.post('/import', upload.single('file'), async (req, res) => {
         }));
         
         console.log(`[CSV IMPORT] Processed ${Math.min(i + batchSize, groupEntries.length)}/${groupEntries.length} groups`);
+        
+        // Update progress
+        importStatus.set(tenantId, {
+          status: 'processing',
+          progress: Math.min(i + batchSize, groupEntries.length),
+          total: groupEntries.length,
+          message: `Processed ${Math.min(i + batchSize, groupEntries.length)}/${groupEntries.length} employee-date groups`,
+          startedAt: importStatus.get(tenantId)!.startedAt
+        });
       } catch (batchError) {
         console.error('Batch processing error:', batchError);
       }
@@ -1138,8 +1147,30 @@ router.post('/import', upload.single('file'), async (req, res) => {
         }
 
         console.log(`[CSV IMPORT] ✅ Import completed: ${processedCount} records processed, ${successCount} punches imported, ${failCount} failed`);
+        
+        // Update status to completed
+        importStatus.set(tenantId, {
+          status: 'completed',
+          progress: processedCount,
+          total: processedCount,
+          message: `Import completed! ${processedCount} records processed, ${successCount} punches imported`,
+          startedAt: importStatus.get(tenantId)!.startedAt,
+          completedAt: new Date()
+        });
+        
       } catch (bgError) {
         console.error('[CSV IMPORT] Background processing error:', bgError);
+        
+        // Update status to failed
+        importStatus.set(tenantId, {
+          status: 'failed',
+          progress: 0,
+          total: 0,
+          message: `Import failed: ${bgError instanceof Error ? bgError.message : 'Unknown error'}`,
+          startedAt: importStatus.get(tenantId)!.startedAt,
+          completedAt: new Date()
+        });
+        
         // Cleanup file on error
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
