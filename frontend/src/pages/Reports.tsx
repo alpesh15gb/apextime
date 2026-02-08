@@ -19,10 +19,13 @@ import {
   Search,
   RefreshCw,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Printer,
+  RotateCcw
 } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
+import { MonthlyPrintView } from '../components/MonthlyPrintView';
 import { reportsAPI, departmentsAPI, branchesAPI, locationsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
