@@ -58,8 +58,8 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
   // Get employees from data
   const employees = data?.reportData || [];
 
-  // Split employees into pages (max ~7 employees per page for A4 landscape readability)
-  const EMPS_PER_PAGE = 7;
+  // Split employees into pages (max 4 employees per page for A4 portrait readability)
+  const EMPS_PER_PAGE = 4;
   const empChunks: any[][] = [];
   for (let i = 0; i < employees.length; i += EMPS_PER_PAGE) {
     empChunks.push(employees.slice(i, i + EMPS_PER_PAGE));
