@@ -543,29 +543,21 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
         logger.info(`Created ${employeesCreated} new employees`);
       }
 
-      // Process attendance - NEW HOLISTIC STRATEGY
+      // Process attendance - HOLISTIC STRATEGY
       // 1. Identify all (UserId, Date) pairs affected by these new logs
       const affectedPairs = new Set<string>();
       for (const log of uniqueLogs.values()) {
-        // Server is IST — use local getters directly
-        const hours = log.LogDate.getHours();
-        let logicalDate = new Date(log.LogDate);
-        logicalDate.setHours(0, 0, 0, 0);
+        // Use the centralized getLogicalDateFromPunch function
+        const { dateKey } = getLogicalDateFromPunch(log.LogDate);
+        affectedPairs.add(`${log.UserId}|${dateKey}`);
 
-        // Categorization for affected pairs
-        const y = logicalDate.getFullYear();
-        const m = String(logicalDate.getMonth() + 1).padStart(2, '0');
-        const d = String(logicalDate.getDate()).padStart(2, '0');
-        affectedPairs.add(`${log.UserId}|${y}-${m}-${d}`);
-
-        // BULLETPROOF: If punch is early morning (before 12 PM), also re-process YESTERDAY
-        if (hours < 12) {
-          const yesterday = new Date(logicalDate);
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yy = yesterday.getFullYear();
-          const ym = String(yesterday.getMonth() + 1).padStart(2, '0');
-          const yd = String(yesterday.getDate()).padStart(2, '0');
-          affectedPairs.add(`${log.UserId}|${yy}-${ym}-${yd}`);
+        // Also process the previous day if punch is early morning (night shift end)
+        const hour = log.LogDate.getHours();
+        if (hour < 5) {
+          const prevDay = new Date(log.LogDate);
+          prevDay.setDate(prevDay.getDate() - 1);
+          const prevKey = `${prevDay.getFullYear()}-${String(prevDay.getMonth() + 1).padStart(2, '0')}-${String(prevDay.getDate()).padStart(2, '0')}`;
+          affectedPairs.add(`${log.UserId}|${prevKey}`);
         }
       }
 
@@ -574,10 +566,9 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
       for (const pair of affectedPairs) {
         try {
           const [uId, dStr] = pair.split('|');
-          const targetDate = new Date(dStr);
-          // To support night shifts, we need to fetch logs from 8 hours before 
-          // and up to 24 hours after. Example: For Feb 2nd, fetch from Feb 1st 4 PM 
-          // to Feb 3rd 4 AM.
+          const targetDate = new Date(dStr + 'T00:00:00Z');
+          // To support night shifts, we need to fetch logs from 12 hours before 
+          // and up to 36 hours after.
           const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
           const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
 
