@@ -162,11 +162,11 @@ export const Reports = () => {
     }
   };
 
-  const handleRecalculate = async () => {
-    if (!confirm('This will recalculate all attendance data using First In / Last Out logic. Continue?')) return;
+  const handleRecalculate = async (startDate: string, endDate: string) => {
     try {
       setRecalculating(true);
-      const res = await attendanceAPI.recalculate({});
+      setShowRecalculateModal(false);
+      const res = await attendanceAPI.recalculate({ startDate, endDate });
       alert(`Recalculation complete! ${res.data.updated} records updated out of ${res.data.total}`);
       fetchReport();
     } catch (error) {
