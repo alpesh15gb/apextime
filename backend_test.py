@@ -134,34 +134,83 @@ class PayrollSystemTester:
             return response
         return None
 
-    def test_monthly_print_endpoint(self):
-        """Test the monthly report endpoint that feeds MonthlyPrintView"""
-        self.log("=== TESTING MONTHLY REPORT ENDPOINT ===")
+    def test_date_range_report_endpoint(self):
+        """Test the NEW date range report endpoint used by MonthlyPrintView"""
+        self.log("=== TESTING DATE RANGE REPORT ENDPOINT ===")
         
+        # Test the specific endpoint mentioned in requirements
         response = self.run_test(
-            "Monthly Report February 2026",
+            "Date Range Report (Department Wise)",
             "GET", 
-            "/attendance/monthly-report?month=2&year=2026",
+            "/attendance/date-range-report?startDate=2026-01-15&endDate=2026-02-08&groupBy=department",
             200
         )
         
         if response:
-            report_data = response.get('reportData', [])
-            self.log(f"✅ Monthly report has {len(report_data)} employees")
+            groups = response.get('groups', [])
+            self.log(f"✅ Date range report returned {len(groups)} department groups")
             
-            # Check structure for print view
-            if report_data:
-                first_emp = report_data[0]
-                daily_data = first_emp.get('dailyData', [])
-                self.log(f"✅ Each employee has {len(daily_data)} daily records")
+            # Check for the 3 expected departments
+            expected_depts = ['Engineering', 'Finance', 'Human Resources']
+            found_depts = [group.get('name', '') for group in groups]
+            self.log(f"Found departments: {found_depts}")
+            
+            for dept in expected_depts:
+                if dept in found_depts:
+                    self.log(f"✅ Found expected department: {dept}")
+                else:
+                    self.log(f"❌ Missing department: {dept}")
+            
+            # Check structure of each group
+            for group in groups:
+                dept_name = group.get('name', 'Unknown')
+                employees = group.get('employees', [])
+                self.log(f"Department '{dept_name}' has {len(employees)} employees")
                 
-                # Check a few daily records have proper In/Out times
-                for day_record in daily_data[:3]:
-                    day = day_record.get('day')
-                    first_in = day_record.get('firstIn')
-                    last_out = day_record.get('lastOut')
-                    self.log(f"  Day {day}: In={first_in}, Out={last_out}")
+                # Check first employee structure
+                if employees:
+                    first_emp = employees[0]
+                    daily_data = first_emp.get('dailyData', [])
+                    summary = first_emp.get('summary', {})
                     
+                    self.log(f"  Employee has {len(daily_data)} daily records")
+                    self.log(f"  Summary: Present={summary.get('presentDays', 0)}, Absent={summary.get('absentDays', 0)}, Hours={summary.get('totalWorkingHours', 0)}")
+                    
+                    # Check daily data structure
+                    if daily_data:
+                        sample_day = daily_data[0]
+                        self.log(f"  Sample day data: Day={sample_day.get('day')}, DayName={sample_day.get('dayName')}")
+                        self.log(f"    FirstIn={sample_day.get('firstIn')}, LastOut={sample_day.get('lastOut')}")
+            
+            # Check dates array
+            dates = response.get('dates', [])
+            self.log(f"✅ Date range has {len(dates)} dates")
+            if dates:
+                first_date = dates[0]
+                last_date = dates[-1]
+                self.log(f"  Date range: {first_date.get('day')}/{first_date.get('month')} to {last_date.get('day')}/{last_date.get('month')}")
+                
+            return response
+        return None
+
+    def test_branch_wise_grouping(self):
+        """Test branch wise grouping option"""
+        self.log("=== TESTING BRANCH WISE GROUPING ===")
+        
+        response = self.run_test(
+            "Date Range Report (Branch Wise)",
+            "GET", 
+            "/attendance/date-range-report?startDate=2026-01-15&endDate=2026-02-08&groupBy=branch",
+            200
+        )
+        
+        if response:
+            groups = response.get('groups', [])
+            self.log(f"✅ Branch wise report returned {len(groups)} branch groups")
+            
+            group_names = [group.get('name', '') for group in groups]
+            self.log(f"Found branches: {group_names}")
+            
             return response
         return None
 
