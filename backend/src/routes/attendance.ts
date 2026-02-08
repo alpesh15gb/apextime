@@ -503,6 +503,151 @@ router.post('/reprocess', async (req, res) => {
   }
 });
 
+/**
+ * RECALCULATE attendance from stored punch logs
+ * Re-applies First IN / Last OUT logic and recalculates all derived fields
+ * Works directly on AttendanceLog records (no RawDeviceLog dependency)
+ */
+router.post('/recalculate', async (req, res) => {
+  try {
+    const tenantId = (req as any).user.tenantId;
+    const { startDate, endDate, employeeId } = req.body;
+
+    const where: any = { tenantId };
+
+    if (startDate && endDate) {
+      where.date = {
+        gte: new Date(startDate + 'T00:00:00Z'),
+        lte: new Date(endDate + 'T23:59:59Z'),
+      };
+    } else if (startDate) {
+      where.date = { gte: new Date(startDate + 'T00:00:00Z') };
+    }
+
+    if (employeeId) where.employeeId = employeeId;
+
+    const logs = await prisma.attendanceLog.findMany({
+      where,
+      include: { employee: { include: { shift: true } } }
+    });
+
+    console.log(`[RECALCULATE] Processing ${logs.length} attendance logs...`);
+
+    let updated = 0;
+    let errors = 0;
+
+    for (const log of logs) {
+      try {
+        // Parse stored punch logs
+        let punches: Date[] = [];
+        if (log.logs) {
+          try {
+            const parsed = JSON.parse(log.logs as string);
+            if (Array.isArray(parsed)) {
+              punches = parsed.map((t: string) => new Date(t)).filter((d: Date) => !isNaN(d.getTime()));
+            }
+          } catch { /* invalid JSON, skip */ }
+        }
+
+        // If no stored logs, use firstIn/lastOut as fallback
+        if (punches.length === 0) {
+          if (log.firstIn) punches.push(new Date(log.firstIn));
+          if (log.lastOut) punches.push(new Date(log.lastOut));
+        }
+
+        if (punches.length === 0) continue;
+
+        // Sort ascending
+        punches.sort((a, b) => a.getTime() - b.getTime());
+
+        // FIRST IN = earliest punch
+        const firstIn = punches[0];
+
+        // LAST OUT = latest punch (must be >1min from firstIn)
+        let lastOut: Date | null = null;
+        if (punches.length > 1) {
+          const lastPunch = punches[punches.length - 1];
+          if (lastPunch.getTime() - firstIn.getTime() > 60000) {
+            lastOut = lastPunch;
+          }
+        }
+
+        // Working hours = First IN to Last OUT
+        let workingHours = 0;
+        if (lastOut) {
+          workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
+          if (workingHours > 24 || workingHours < 0) workingHours = 0;
+        }
+
+        // Late arrival calculation
+        let lateArrival = 0;
+        const shift = log.employee?.shift;
+        if (shift?.startTime) {
+          const logDate = new Date(log.date);
+          const [sh, sm] = shift.startTime.split(':');
+          const shiftStart = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate(), parseInt(sh), parseInt(sm));
+          const grace = shift.graceTimeLate || 0;
+          const graceTime = new Date(shiftStart.getTime() + grace * 60000);
+          if (firstIn > graceTime) {
+            lateArrival = (firstIn.getTime() - shiftStart.getTime()) / (1000 * 60 * 60);
+          }
+        }
+
+        // Early departure
+        let earlyDeparture = 0;
+        if (shift?.endTime && lastOut) {
+          const logDate = new Date(log.date);
+          const [eh, em] = shift.endTime.split(':');
+          const shiftEnd = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate(), parseInt(eh), parseInt(em));
+          if (shift.startTime > shift.endTime) shiftEnd.setDate(shiftEnd.getDate() + 1);
+          if (lastOut < shiftEnd) {
+            earlyDeparture = (shiftEnd.getTime() - lastOut.getTime()) / (1000 * 60 * 60);
+          }
+        }
+
+        // Status
+        let status = 'Present';
+        if (!lastOut) {
+          status = 'Shift Incomplete';
+        } else if (workingHours < 4) {
+          status = 'Half Day';
+        }
+
+        // Update
+        await prisma.attendanceLog.update({
+          where: { id: log.id },
+          data: {
+            firstIn,
+            lastOut,
+            workingHours: Math.round(workingHours * 100) / 100,
+            totalHours: Math.round(workingHours * 100) / 100,
+            lateArrival: Math.round(Math.max(0, lateArrival) * 100) / 100,
+            earlyDeparture: Math.round(Math.max(0, earlyDeparture) * 100) / 100,
+            status,
+            totalPunches: punches.length,
+          }
+        });
+        updated++;
+      } catch (e) {
+        errors++;
+        console.error(`[RECALCULATE] Error on log ${log.id}:`, e);
+      }
+    }
+
+    console.log(`[RECALCULATE] Done: ${updated} updated, ${errors} errors out of ${logs.length} total`);
+
+    res.json({
+      message: `Recalculation complete`,
+      total: logs.length,
+      updated,
+      errors,
+    });
+  } catch (error) {
+    console.error('Recalculate attendance error:', error);
+    res.status(500).json({ error: 'Recalculation failed' });
+  }
+});
+
 // Import Attendance Route
 router.post('/import', upload.single('file'), async (req, res) => {
   try {
