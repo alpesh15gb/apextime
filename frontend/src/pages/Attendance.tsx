@@ -374,7 +374,12 @@ export const Attendance = () => {
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                          {log.date ? new Date(log.date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).replace(/\//g, '/') : '--'}
+                          {log.date ? new Date(log.date).toLocaleDateString('en-IN', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            timeZone: 'Asia/Kolkata' 
+                          }) : '--'}
                         </span>
                       </td>
                       <td className="px-6 py-5">
@@ -384,7 +389,12 @@ export const Attendance = () => {
                               <Clock className="w-4 h-4 text-emerald-600 group-hover/time:text-white transition-colors" />
                             </div>
                             <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
-                              {log.firstIn ? new Date(log.firstIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
+                              {new Date(log.firstIn).toLocaleTimeString('en-IN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                hour12: false,
+                                timeZone: 'Asia/Kolkata'
+                              })}
                             </span>
                           </div>
                         ) : (
@@ -398,7 +408,12 @@ export const Attendance = () => {
                               <Clock className="w-4 h-4 text-red-600 group-hover/time:text-white transition-colors" />
                             </div>
                             <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
-                              {log.lastOut ? new Date(log.lastOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
+                              {new Date(log.lastOut).toLocaleTimeString('en-IN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                hour12: false,
+                                timeZone: 'Asia/Kolkata'
+                              })}
                             </span>
                           </div>
                         ) : (
