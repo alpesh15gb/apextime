@@ -35,6 +35,12 @@ type TabType = 'daily' | 'weekly' | 'monthly';
 
 export const Reports = () => {
   const { user } = useAuth();
+  
+  const getISTToday = () => {
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    return new Date(Date.now() + IST_OFFSET).toISOString().split('T')[0];
+  };
+
   const [activeTab, setActiveTab] = useState<TabType>('daily');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -54,11 +60,6 @@ export const Reports = () => {
     branchId: '',
     locationId: '',
   });
-
-  const getISTToday = () => {
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-    return new Date(Date.now() + IST_OFFSET).toISOString().split('T')[0];
-  };
 
   const [selectedDate, setSelectedDate] = useState(getISTToday());
   const [weekStart, setWeekStart] = useState(() => {
