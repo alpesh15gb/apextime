@@ -14,7 +14,7 @@ import {
   MapPin,
   UploadCloud
 } from 'lucide-react';
-import { attendanceAPI, employeesAPI, departmentsAPI, branchesAPI, locationsAPI } from '../services/api';
+import { attendanceAPI, employeesAPI, departmentsAPI, branchesAPI, locationsAPI, reportsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AttendanceLog } from '../types';
 
