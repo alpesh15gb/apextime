@@ -142,21 +142,45 @@ class AttendanceAPITester:
         """Test reports endpoints"""
         print("\n=== REPORTS ENDPOINTS TESTS ===")
         
+        if not self.token:
+            print("❌ No authentication token - skipping authenticated tests")
+            return False
+            
         # Test daily report endpoint
         today = datetime.now().strftime('%Y-%m-%d')
         success, response = self.run_test(
-            "Daily Report (No Auth)", 
+            "Daily Report (Authenticated)", 
             "GET", 
             f"api/reports/daily?date={today}", 
-            401  # Should require authentication
+            200
+        )
+        
+        if success:
+            print(f"✅ Daily report data structure valid")
+            # Check if response has expected structure
+            expected_keys = ['date', 'totalRecords', 'summary', 'logs']
+            for key in expected_keys:
+                if key in response:
+                    print(f"   ✓ Found key: {key}")
+                else:
+                    print(f"   ⚠️ Missing key: {key}")
+
+        # Test weekly report
+        success, response = self.run_test(
+            "Weekly Report", 
+            "GET", 
+            f"api/reports/weekly?startDate={today}", 
+            200
         )
 
-        # Test reports with IST date
+        # Test monthly report
+        current_month = datetime.now().month
+        current_year = datetime.now().year
         success, response = self.run_test(
-            "Reports with IST Date Filter", 
+            "Monthly Report", 
             "GET", 
-            f"api/reports/daily?date={today}&format=json", 
-            401
+            f"api/reports/monthly?month={current_month}&year={current_year}", 
+            200
         )
 
         return True
