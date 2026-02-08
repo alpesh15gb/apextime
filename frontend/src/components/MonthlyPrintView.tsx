@@ -49,10 +49,9 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
 
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const h = String(d.getUTCHours() + 5 + Math.floor((d.getUTCMinutes() + 30) / 60)).padStart(2, '0');
-    const m = String((d.getUTCMinutes() + 30) % 60).padStart(2, '0');
-    return `${h}:${m}`;
+    return new Date(dateStr).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata'
+    });
   };
 
   const rawDates: any[] = data?.dates || [];
