@@ -67,15 +67,49 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       
       // Check if it's async processing
       if (response.data.status === 'processing') {
-        alert(`✅ ${response.data.message}\n\n${response.data.info}\n\nYou can continue working while the import completes.`);
+        const tenantId = response.data.tenantId;
+        
+        alert(`✅ CSV Upload Started!\n\nProcessing in background...\n\nClick OK to continue. We'll notify you when it's complete.`);
+        
+        // Poll for status every 3 seconds
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await attendanceAPI.getImportStatus(tenantId);
+            const status = statusRes.data;
+            
+            console.log('[CSV Import Status]:', status);
+            
+            if (status.status === 'completed') {
+              clearInterval(pollInterval);
+              setUploading(false);
+              alert(`✅ Import Complete!\n\n${status.message}\n\nYour attendance data has been updated.`);
+            } else if (status.status === 'failed') {
+              clearInterval(pollInterval);
+              setUploading(false);
+              alert(`❌ Import Failed\n\n${status.message}`);
+            }
+          } catch (err) {
+            console.error('Status check error:', err);
+          }
+        }, 3000);
+        
+        // Stop polling after 10 minutes (safety measure)
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          if (uploading) {
+            setUploading(false);
+            alert('Import is taking longer than expected. Please check the Reports page or contact support.');
+          }
+        }, 600000);
       } else {
         alert(`CSV uploaded successfully! ${response.data.imported || response.data.processed || 0} records processed.`);
+        setUploading(false);
       }
     } catch (error: any) {
       console.error('CSV upload error:', error);
       alert(`Upload failed: ${error.response?.data?.error || error.message || 'Unknown error'}`);
-    } finally {
       setUploading(false);
+    } finally {
       // Reset file input
       if (hikvisionInputRef.current) hikvisionInputRef.current.value = '';
       if (esslInputRef.current) esslInputRef.current.value = '';
