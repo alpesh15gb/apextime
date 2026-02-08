@@ -1091,17 +1091,21 @@ router.post('/import', upload.single('file'), async (req, res) => {
       }
     }
 
-    // Cleanup uploaded file
-    fs.unlinkSync(filePath);
+        // Cleanup uploaded file
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
 
-    res.json({
-      message: 'Import completed',
-      format: detectedType,
-      imported: successCount,
-      processed: processedCount,
-      failed: failCount,
-      errors: errors.slice(0, 10), // Return only first 10 errors
+        console.log(`[CSV IMPORT] ✅ Import completed: ${processedCount} records processed, ${successCount} punches imported, ${failCount} failed`);
+      } catch (bgError) {
+        console.error('[CSV IMPORT] Background processing error:', bgError);
+        // Cleanup file on error
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
     });
+
   } catch (error) {
     console.error('Import error:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Import failed' });
