@@ -230,8 +230,8 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
           .print-hide { display: none !important; }
           body { margin: 0; padding: 0; }
           @page {
-            size: A4 landscape;
-            margin: 6mm 5mm;
+            size: A4 portrait;
+            margin: 6mm 4mm;
           }
           .print-page {
             page-break-after: always;
