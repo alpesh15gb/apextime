@@ -41,6 +41,9 @@ export const Reports = () => {
   const [recalculating, setRecalculating] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [showRecalculateModal, setShowRecalculateModal] = useState(false);
+  const [recalcStartDate, setRecalcStartDate] = useState(getISTToday());
+  const [recalcEndDate, setRecalcEndDate] = useState(getISTToday());
 
   // Filters
   const [departments, setDepartments] = useState<any[]>([]);
