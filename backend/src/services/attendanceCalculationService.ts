@@ -131,68 +131,97 @@ export class AttendanceCalculationService {
 
     /**
      * Calculate attendance metrics
+     * ROBUST PAYROLL LOGIC: First IN = earliest punch, Last OUT = latest punch
+     * Uses First IN to Last OUT for total working hours calculation
      */
     calculateMetrics(logs: any[], shift: any, date: Date) {
-        // Sort logs by time
+        // Sort logs by time (ascending)
         logs.sort((a, b) => new Date(a.punchTime).getTime() - new Date(b.punchTime).getTime());
 
-        const firstIn = logs.find(l => l.punchType === 'IN' || l.punchType === '0' || l.punchType === 0)?.punchTime || logs[0]?.punchTime;
-        const lastOut = [...logs].reverse().find(l => l.punchType === 'OUT' || l.punchType === '1' || l.punchType === 1)?.punchTime || logs[logs.length - 1]?.punchTime;
+        if (logs.length === 0) {
+            return {
+                firstIn: null,
+                lastOut: null,
+                totalHours: 0,
+                workingHours: 0,
+                lateArrival: 0,
+                earlyDeparture: 0,
+                status: 'Absent',
+                totalPunches: 0
+            };
+        }
+
+        // FIRST IN = absolute earliest punch of the day
+        const firstIn = logs[0]?.punchTime;
+        
+        // LAST OUT = absolute latest punch (must be different from firstIn, at least 1 min apart)
+        let lastOut = null;
+        if (logs.length > 1) {
+            const lastPunch = logs[logs.length - 1]?.punchTime;
+            if (lastPunch && new Date(lastPunch).getTime() - new Date(firstIn).getTime() > 60000) {
+                lastOut = lastPunch;
+            }
+        }
 
         let totalHours = 0;
         let workingHours = 0;
         let lateArrival = 0;
         let earlyDeparture = 0;
-        let status = 'Absent';
+        let status = 'Present';
 
-        if (logs.length > 0) {
-            status = 'Present';
+        // Calculate total hours (First IN to Last OUT)
+        if (firstIn && lastOut) {
+            const diff = new Date(lastOut).getTime() - new Date(firstIn).getTime();
+            totalHours = diff / (1000 * 60 * 60);
+            // Cap unreasonable values
+            if (totalHours > 24 || totalHours < 0) totalHours = 0;
+        }
 
-            // Calculate total hours (First IN to Last OUT)
-            if (firstIn && lastOut) {
-                const diff = new Date(lastOut).getTime() - new Date(firstIn).getTime();
-                totalHours = diff / (1000 * 60 * 60);
+        // Working hours = same as total hours (First IN to Last OUT as per user requirement)
+        workingHours = totalHours;
+
+        // Status determination
+        if (!lastOut) {
+            status = 'Shift Incomplete';
+        } else if (workingHours < 4) {
+            status = 'Half Day';
+        }
+
+        // Shift-based calculations
+        if (shift) {
+            // Late Arrival: compare firstIn with shift start time
+            if (firstIn) {
+                const shiftStart = new Date(date);
+                const [sh, sm] = shift.startTime.split(':');
+                shiftStart.setHours(parseInt(sh), parseInt(sm), 0, 0);
+
+                // Add grace period
+                const graceTime = new Date(shiftStart.getTime() + (shift.graceTimeLate || 0) * 60000);
+
+                if (new Date(firstIn) > graceTime) {
+                    lateArrival = (new Date(firstIn).getTime() - shiftStart.getTime()) / (1000 * 60 * 60);
+                }
             }
 
-            // Calculate working hours (Sum of IN-OUT pairs)
-            workingHours = this.calculateWorkingHours(logs);
+            // Early Departure: compare lastOut with shift end time
+            if (lastOut) {
+                const shiftEnd = new Date(date);
+                const [eh, em] = shift.endTime.split(':');
+                shiftEnd.setHours(parseInt(eh), parseInt(em), 0, 0);
 
-            // Shift-based calculations
-            if (shift) {
-                // Late Arrival
-                if (firstIn) {
-                    const shiftStart = new Date(date);
-                    const [sh, sm] = shift.startTime.split(':');
-                    shiftStart.setHours(parseInt(sh), parseInt(sm), 0, 0);
-
-                    // Add slight buffer (grace period)
-                    const graceTime = new Date(shiftStart.getTime() + (shift.graceTimeLate || 0) * 60000);
-
-                    if (new Date(firstIn) > graceTime) {
-                        lateArrival = (new Date(firstIn).getTime() - shiftStart.getTime()) / (1000 * 60 * 60);
-                    }
+                // Handle overnight shift
+                if (shift.startTime > shift.endTime) {
+                    shiftEnd.setDate(shiftEnd.getDate() + 1);
                 }
 
-                // Early Departure
-                if (lastOut) {
-                    const shiftEnd = new Date(date);
-                    const [eh, em] = shift.endTime.split(':');
-                    shiftEnd.setHours(parseInt(eh), parseInt(em), 0, 0);
-
-                    // Handle overnight shift
-                    if (shift.startTime > shift.endTime) {
-                        shiftEnd.setDate(shiftEnd.getDate() + 1);
-                    }
-
-                    if (new Date(lastOut) < shiftEnd) {
-                        earlyDeparture = (shiftEnd.getTime() - new Date(lastOut).getTime()) / (1000 * 60 * 60);
-                    }
+                if (new Date(lastOut) < shiftEnd) {
+                    earlyDeparture = (shiftEnd.getTime() - new Date(lastOut).getTime()) / (1000 * 60 * 60);
                 }
+            }
 
-                // Status determination based on rules
-                if (shift.halfDayThreshold && workingHours < shift.halfDayThreshold) {
-                    status = 'Half Day';
-                }
+            // Half day threshold from shift
+            if (shift.halfDayThreshold && workingHours < shift.halfDayThreshold) {
+                status = 'Half Day';
             }
         }
 
