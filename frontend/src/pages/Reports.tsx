@@ -276,6 +276,18 @@ export const Reports = () => {
 
   return (
     <div data-testid="reports-page" className="min-h-screen pb-20" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {/* Monthly Print View */}
+      {showPrint && (
+        <MonthlyPrintView
+          month={selectedMonth}
+          year={selectedYear}
+          departmentId={filters.departmentId || undefined}
+          branchId={filters.branchId || undefined}
+          locationId={filters.locationId || undefined}
+          onClose={() => setShowPrint(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
@@ -284,7 +296,25 @@ export const Reports = () => {
           </h1>
           <p className="text-slate-500 text-sm mt-1">Attendance analytics, insights and data exports</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            data-testid="recalculate-btn"
+            onClick={handleRecalculate}
+            disabled={recalculating}
+            className="h-10 px-4 flex items-center gap-2 rounded-xl bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700 text-sm font-semibold border border-amber-200"
+          >
+            <RotateCcw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
+            {recalculating ? 'Recalculating...' : 'Recalculate'}
+          </button>
+          {activeTab === 'monthly' && (
+            <button
+              data-testid="print-monthly-btn"
+              onClick={() => setShowPrint(true)}
+              className="h-10 px-4 flex items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-900 transition-colors text-white text-sm font-semibold"
+            >
+              <Printer className="w-4 h-4" /> Print Monthly
+            </button>
+          )}
           <button
             data-testid="refresh-btn"
             onClick={fetchReport}
