@@ -159,6 +159,21 @@ export const Reports = () => {
     }
   };
 
+  const handleRecalculate = async () => {
+    if (!confirm('This will recalculate all attendance data using First In / Last Out logic. Continue?')) return;
+    try {
+      setRecalculating(true);
+      const res = await attendanceAPI.recalculate({});
+      alert(`Recalculation complete! ${res.data.updated} records updated out of ${res.data.total}`);
+      fetchReport();
+    } catch (error) {
+      console.error('Recalculate failed:', error);
+      alert('Recalculation failed');
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   // Get summary from report data
   const getSummary = () => {
     if (!reportData) return { present: 0, absent: 0, late: 0, total: 0, avgHours: 0, totalHours: 0, halfDay: 0, incomplete: 0 };
