@@ -37,3 +37,7 @@ Thumbs.db
 # Database
 prisma/migrations/
 */prisma/migrations/
+-e 
+# Environment files
+*.env
+*.env.*
