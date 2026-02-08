@@ -189,29 +189,42 @@ class AttendanceAPITester:
         """Test filter-related endpoints (departments, branches, locations)"""
         print("\n=== FILTER ENDPOINTS TESTS ===")
         
+        if not self.token:
+            print("❌ No authentication token - skipping authenticated tests")
+            return False
+        
         # Test departments endpoint
         success, response = self.run_test(
-            "Departments Endpoint", 
+            "Departments Endpoint (Authenticated)", 
             "GET", 
             "api/departments", 
-            401  # Should require auth
+            200
         )
+        
+        if success:
+            print(f"   Found {len(response.get('data', []))} departments")
 
         # Test branches endpoint  
         success, response = self.run_test(
-            "Branches Endpoint", 
+            "Branches Endpoint (Authenticated)", 
             "GET", 
             "api/branches", 
-            401
+            200
         )
+        
+        if success:
+            print(f"   Found {len(response.get('data', []))} branches")
 
         # Test locations endpoint
         success, response = self.run_test(
-            "Locations Endpoint", 
+            "Locations Endpoint (Authenticated)", 
             "GET", 
             "api/locations", 
-            401
+            200
         )
+        
+        if success:
+            print(f"   Found {len(response.get('data', []))} locations")
 
         return True
 
