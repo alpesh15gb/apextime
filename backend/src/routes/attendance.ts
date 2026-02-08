@@ -823,36 +823,50 @@ router.post('/import', upload.single('file'), async (req, res) => {
     const tenantId = (req as any).user.tenantId;
     const deviceType = req.body.deviceType || 'auto'; // 'hikvision', 'essl', or 'auto'
     
-    const workbook = new ExcelJS.Workbook();
+    // Respond immediately to avoid timeout
+    res.json({
+      message: 'CSV upload started. Processing in background...',
+      status: 'processing',
+      info: 'Refresh the page in 1-2 minutes to see updated attendance data'
+    });
 
-    // Detect format
-    if (req.file.originalname.endsWith('.csv')) {
-      await workbook.csv.readFile(filePath);
-    } else {
-      await workbook.xlsx.readFile(filePath);
-    }
+    // Process file in background (non-blocking)
+    setImmediate(async () => {
+      try {
+        console.log(`[CSV IMPORT] Starting background processing for ${req.file!.originalname}`);
+        
+        const workbook = new ExcelJS.Workbook();
 
-    const worksheet = workbook.getWorksheet(1);
-    if (!worksheet) {
-      return res.status(400).json({ error: 'No worksheet found' });
-    }
+        // Detect format
+        if (req.file!.originalname.endsWith('.csv')) {
+          await workbook.csv.readFile(filePath);
+        } else {
+          await workbook.xlsx.readFile(filePath);
+        }
 
-    // Map headers based on device type
-    const headers: any = {};
-    const headerRow = worksheet.getRow(1);
-    
-    // Detect device type if auto
-    let detectedType = deviceType;
-    if (deviceType === 'auto') {
-      const firstHeader = headerRow.getCell(1).value?.toString().toLowerCase() || '';
-      if (firstHeader.includes('employee code')) {
-        detectedType = 'hikvision';
-      } else if (firstHeader.includes('first name')) {
-        detectedType = 'essl';
-      }
-    }
+        const worksheet = workbook.getWorksheet(1);
+        if (!worksheet) {
+          console.error('[CSV IMPORT] No worksheet found');
+          fs.unlinkSync(filePath);
+          return;
+        }
 
-    console.log(`[CSV IMPORT] Processing ${detectedType} format`);
+        // Map headers based on device type
+        const headers: any = {};
+        const headerRow = worksheet.getRow(1);
+        
+        // Detect device type if auto
+        let detectedType = deviceType;
+        if (deviceType === 'auto') {
+          const firstHeader = headerRow.getCell(1).value?.toString().toLowerCase() || '';
+          if (firstHeader.includes('employee code')) {
+            detectedType = 'hikvision';
+          } else if (firstHeader.includes('first name')) {
+            detectedType = 'essl';
+          }
+        }
+
+        console.log(`[CSV IMPORT] Processing ${detectedType} format`);
 
     if (detectedType === 'hikvision') {
       // Hikvision Format: Employee Code, Employee Name, Employee Code In Device, LogDate, Company, Department
