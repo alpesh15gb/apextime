@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Printer, X, Download, Loader2 } from 'lucide-react';
+import { Printer, X, Loader2 } from 'lucide-react';
 import { attendanceAPI } from '../services/api';
 
 interface MonthlyPrintProps {
@@ -14,7 +14,6 @@ interface MonthlyPrintProps {
 export const MonthlyPrintView = ({ month, year, departmentId, branchId, locationId, onClose }: MonthlyPrintProps) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,33 +45,45 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
   };
 
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
-  const daysInMonth = data?.daysInMonth || new Date(year, month, 0).getDate();
+  const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // Split days into chunks for readable A4 (max 16 days per page to fit properly)
-  const DAYS_PER_PAGE = 16;
-  const dayChunks: number[][] = [];
-  for (let i = 0; i < days.length; i += DAYS_PER_PAGE) {
-    dayChunks.push(days.slice(i, i + DAYS_PER_PAGE));
+  const getDayName = (day: number) => {
+    const dt = new Date(year, month - 1, day);
+    return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][dt.getDay()];
+  };
+
+  const isSunday = (day: number) => new Date(year, month - 1, day).getDay() === 0;
+
+  // Get employees from data
+  const employees = data?.reportData || [];
+
+  // Split employees into pages (max ~7 employees per page for A4 landscape readability)
+  const EMPS_PER_PAGE = 7;
+  const empChunks: any[][] = [];
+  for (let i = 0; i < employees.length; i += EMPS_PER_PAGE) {
+    empChunks.push(employees.slice(i, i + EMPS_PER_PAGE));
   }
 
-  const getDayLabel = (day: number) => {
-    const dt = new Date(year, month - 1, day);
-    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return names[dt.getDay()];
+  // Get day data for an employee
+  const getDayData = (emp: any, day: number) => {
+    return emp.dailyData?.find((d: any) => d.day === day);
   };
 
-  const isSunday = (day: number) => {
-    return new Date(year, month - 1, day).getDay() === 0;
+  // Calculate total hours for an employee
+  const getTotalHours = (emp: any) => {
+    return emp.summary?.totalWorkingHours?.toFixed(1) || '0.0';
   };
+
+  const dateRange = `01/${String(month).padStart(2, '0')}/${year} - ${daysInMonth}/${String(month).padStart(2, '0')}/${year}`;
 
   return (
     <div className="fixed inset-0 z-[9999] bg-white overflow-auto" data-testid="monthly-print-view">
-      {/* Toolbar - hidden during print */}
+      {/* Toolbar */}
       <div className="print-hide sticky top-0 z-50 bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-3">
           <Printer className="w-5 h-5" />
-          <span className="font-bold text-sm">Monthly Attendance Report - {monthName} {year}</span>
+          <span className="font-bold text-sm">List of Logs - {monthName} {year}</span>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -97,101 +108,118 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
           <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
           <span className="ml-3 text-slate-500">Loading report data...</span>
         </div>
-      ) : !data ? (
+      ) : !data || employees.length === 0 ? (
         <div className="flex items-center justify-center h-96">
-          <span className="text-red-500">Failed to load data</span>
+          <span className="text-slate-500">No attendance data found for {monthName} {year}</span>
         </div>
       ) : (
-        <div ref={printRef} className="print-content">
-          {dayChunks.map((chunk, chunkIdx) => (
-            <div key={chunkIdx} className="print-page">
-              {/* Header */}
-              <div className="report-header">
-                <h1 className="report-title">Monthly Attendance Register</h1>
-                <div className="report-subtitle">
-                  <span>{monthName} {year}</span>
-                  <span>Days {chunk[0]} - {chunk[chunk.length - 1]}</span>
-                  {dayChunks.length > 1 && <span>Page {chunkIdx + 1} of {dayChunks.length}</span>}
+        <div className="print-content">
+          {empChunks.map((chunk, pageIdx) => (
+            <div key={pageIdx} className="print-page">
+              {/* Title */}
+              <div className="page-header">
+                <div className="page-title">List of Logs</div>
+                <div className="page-meta">
+                  <span>{dateRange}</span>
+                  {empChunks.length > 1 && <span>Page {pageIdx + 1} of {empChunks.length}</span>}
+                  <span>Printed: {new Date().toLocaleDateString('en-IN')}</span>
                 </div>
               </div>
 
-              {/* Table */}
-              <table className="muster-table">
+              {/* Main Table - Days as rows, Employees as columns */}
+              <table className="log-table">
                 <thead>
-                  <tr>
-                    <th className="col-sno" rowSpan={2}>S.No</th>
-                    <th className="col-emp" rowSpan={2}>Employee</th>
-                    <th className="col-code" rowSpan={2}>Code</th>
-                    {chunk.map(day => (
-                      <th
-                        key={day}
-                        className={`col-day ${isSunday(day) ? 'sunday' : ''}`}
-                        colSpan={2}
-                      >
-                        <div className="day-num">{day}</div>
-                        <div className="day-label">{getDayLabel(day)}</div>
+                  {/* Employee number row */}
+                  <tr className="emp-num-row">
+                    <th className="day-col" rowSpan={2}></th>
+                    <th className="dayname-col" rowSpan={2}></th>
+                    {chunk.map((emp: any, idx: number) => (
+                      <th key={idx} className="emp-header" colSpan={2}>
+                        {emp.employee?.employeeCode || `#${pageIdx * EMPS_PER_PAGE + idx + 1}`}
                       </th>
                     ))}
-                    {chunkIdx === dayChunks.length - 1 && (
-                      <>
-                        <th className="col-summary" rowSpan={2}>P</th>
-                        <th className="col-summary" rowSpan={2}>A</th>
-                        <th className="col-summary" rowSpan={2}>L</th>
-                        <th className="col-summary" rowSpan={2}>Hrs</th>
-                      </>
+                    {pageIdx === empChunks.length - 1 && (
+                      <th className="dur-header" rowSpan={2}>Duration</th>
                     )}
                   </tr>
-                  <tr>
-                    {chunk.map(day => (
+                  {/* Employee name row */}
+                  <tr className="emp-name-row">
+                    {chunk.map((emp: any, idx: number) => (
+                      <th key={idx} className="emp-name" colSpan={2}>
+                        {emp.employee?.name || 'Unknown'}
+                      </th>
+                    ))}
+                  </tr>
+                  {/* In/Out sub-header */}
+                  <tr className="inout-header-row">
+                    <th className="day-col">Day</th>
+                    <th className="dayname-col"></th>
+                    {chunk.map((_: any, idx: number) => (
                       <>
-                        <td key={`in-h-${day}`} className={`sub-in ${isSunday(day) ? 'sunday' : ''}`}>In</td>
-                        <td key={`out-h-${day}`} className={`sub-out ${isSunday(day) ? 'sunday' : ''}`}>Out</td>
+                        <th key={`in-${idx}`} className="in-hdr">In</th>
+                        <th key={`out-${idx}`} className="out-hdr">Out</th>
                       </>
                     ))}
+                    {pageIdx === empChunks.length - 1 && <th className="dur-hdr"></th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {data.reportData?.map((emp: any, idx: number) => (
-                    <tr key={idx} data-testid={`print-row-${idx}`}>
-                      <td className="col-sno">{idx + 1}</td>
-                      <td className="col-emp">{emp.employee?.name}</td>
-                      <td className="col-code">{emp.employee?.employeeCode}</td>
-                      {chunk.map(day => {
-                        const dayData = emp.dailyData?.find((d: any) => d.day === day);
-                        const isOff = dayData?.isSunday || dayData?.isHoliday;
-                        return (
-                          <>
-                            <td key={`in-${day}`} className={`time-cell ${isOff ? 'off-day' : ''} ${dayData?.status === 'absent' ? 'absent-cell' : ''}`}>
-                              {isOff ? '' : dayData?.firstIn ? formatTime(dayData.firstIn) : dayData?.status === 'absent' ? 'A' : '-'}
-                            </td>
-                            <td key={`out-${day}`} className={`time-cell ${isOff ? 'off-day' : ''} ${dayData?.status === 'absent' ? 'absent-cell' : ''} ${!dayData?.lastOut && dayData?.firstIn ? 'no-out' : ''}`}>
-                              {isOff ? '' : dayData?.lastOut ? formatTime(dayData.lastOut) : dayData?.firstIn ? 'X' : dayData?.status === 'absent' ? 'A' : '-'}
-                            </td>
-                          </>
-                        );
-                      })}
-                      {chunkIdx === dayChunks.length - 1 && (
-                        <>
-                          <td className="summary-cell present">{emp.summary?.presentDays ?? 0}</td>
-                          <td className="summary-cell absent">{emp.summary?.absentDays ?? 0}</td>
-                          <td className="summary-cell late">{emp.summary?.lateDays ?? 0}</td>
-                          <td className="summary-cell hours">{(emp.summary?.totalWorkingHours ?? 0).toFixed(1)}</td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
+                  {days.map(day => {
+                    const sunday = isSunday(day);
+                    return (
+                      <tr key={day} className={sunday ? 'sunday-row' : ''} data-testid={`print-day-${day}`}>
+                        <td className="day-num">{day}</td>
+                        <td className="day-name">{getDayName(day)}</td>
+                        {chunk.map((emp: any, eIdx: number) => {
+                          const dd = getDayData(emp, day);
+                          const isOff = dd?.isSunday || dd?.isHoliday || sunday;
+                          const noOut = dd?.firstIn && !dd?.lastOut;
+                          return (
+                            <>
+                              <td key={`in-${eIdx}`} className={`time-in ${isOff ? 'off' : ''} ${!dd?.firstIn && !isOff ? 'absent' : ''}`}>
+                                {isOff ? '' : dd?.firstIn ? formatTime(dd.firstIn) : ''}
+                              </td>
+                              <td key={`out-${eIdx}`} className={`time-out ${isOff ? 'off' : ''} ${noOut ? 'no-out' : ''} ${!dd?.firstIn && !isOff ? 'absent' : ''}`}>
+                                {isOff ? '' : dd?.lastOut ? formatTime(dd.lastOut) : dd?.firstIn ? '' : ''}
+                              </td>
+                            </>
+                          );
+                        })}
+                        {pageIdx === empChunks.length - 1 && <td className="dur-cell"></td>}
+                      </tr>
+                    );
+                  })}
+                  {/* Summary / Duration Row */}
+                  <tr className="summary-row">
+                    <td className="summary-label" colSpan={2}>Duration</td>
+                    {chunk.map((emp: any, idx: number) => (
+                      <td key={idx} className="summary-val" colSpan={2}>
+                        {getTotalHours(emp)} hrs
+                      </td>
+                    ))}
+                    {pageIdx === empChunks.length - 1 && <td className="dur-cell"></td>}
+                  </tr>
+                  {/* Present / Absent Count */}
+                  <tr className="count-row">
+                    <td className="summary-label" colSpan={2}>Present</td>
+                    {chunk.map((emp: any, idx: number) => (
+                      <td key={idx} className="count-present" colSpan={2}>
+                        {emp.summary?.presentDays ?? 0}
+                      </td>
+                    ))}
+                    {pageIdx === empChunks.length - 1 && <td className="dur-cell"></td>}
+                  </tr>
+                  <tr className="count-row">
+                    <td className="summary-label" colSpan={2}>Absent</td>
+                    {chunk.map((emp: any, idx: number) => (
+                      <td key={idx} className="count-absent" colSpan={2}>
+                        {emp.summary?.absentDays ?? 0}
+                      </td>
+                    ))}
+                    {pageIdx === empChunks.length - 1 && <td className="dur-cell"></td>}
+                  </tr>
                 </tbody>
               </table>
-
-              {/* Footer */}
-              <div className="report-footer">
-                <div className="legend">
-                  <span className="legend-item"><span className="legend-box off-day"></span> Off Day / Holiday</span>
-                  <span className="legend-item"><span className="legend-box absent-legend"></span> A = Absent</span>
-                  <span className="legend-item"><span className="legend-box no-out-legend"></span> X = No Out Punch</span>
-                </div>
-                <div className="print-date">Generated: {new Date().toLocaleDateString('en-IN')} | ApexTime Payroll</div>
-              </div>
             </div>
           ))}
         </div>
@@ -203,11 +231,10 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
           body { margin: 0; padding: 0; }
           @page {
             size: A4 landscape;
-            margin: 8mm 6mm;
+            margin: 6mm 5mm;
           }
           .print-page {
             page-break-after: always;
-            page-break-inside: avoid;
           }
           .print-page:last-child {
             page-break-after: auto;
@@ -216,163 +243,198 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
 
         @media screen {
           .print-page {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            max-width: 1100px;
+            margin: 16px auto;
+            padding: 16px;
+            border: 1px solid #d1d5db;
             background: white;
           }
         }
 
-        .report-header {
+        .page-header {
           text-align: center;
-          margin-bottom: 8px;
-          padding-bottom: 6px;
-          border-bottom: 2px solid #1e293b;
+          margin-bottom: 6px;
+          border-bottom: 2px solid #111;
+          padding-bottom: 4px;
         }
-        .report-title {
-          font-size: 14px;
-          font-weight: 800;
-          color: #0f172a;
-          margin: 0;
-          letter-spacing: 0.5px;
+        .page-title {
+          font-size: 13px;
+          font-weight: 900;
+          color: #111;
+          letter-spacing: 1px;
+          text-transform: uppercase;
         }
-        .report-subtitle {
+        .page-meta {
           display: flex;
           justify-content: space-between;
-          font-size: 10px;
-          color: #64748b;
-          margin-top: 3px;
+          font-size: 8px;
+          color: #555;
+          margin-top: 2px;
           font-weight: 600;
         }
 
-        .muster-table {
+        .log-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 7px;
-          font-family: 'Courier New', monospace;
+          font-family: 'Courier New', 'Consolas', monospace;
+          font-size: 7.5px;
+          line-height: 1.1;
         }
-        .muster-table th, .muster-table td {
-          border: 1px solid #cbd5e1;
-          padding: 2px 1px;
+
+        .log-table th,
+        .log-table td {
+          border: 1px solid #999;
           text-align: center;
           vertical-align: middle;
+          padding: 1.5px 1px;
         }
-        .muster-table thead th {
-          background: #1e293b;
-          color: white;
-          font-weight: 700;
-          font-size: 6.5px;
-          white-space: nowrap;
-        }
-        .subheader-row td {
-          background: #f1f5f9;
-          font-weight: 700;
-          font-size: 6px;
-          color: #475569;
-          padding: 1px;
-        }
-        .sub-in { color: #059669 !important; }
-        .sub-out { color: #dc2626 !important; }
 
-        .col-sno { width: 22px; min-width: 22px; }
-        .col-emp {
-          width: 80px;
-          min-width: 80px;
-          max-width: 80px;
-          text-align: left !important;
-          padding-left: 3px !important;
-          font-weight: 600;
+        /* Header styling */
+        .emp-num-row th {
+          background: #1a1a2e;
+          color: #fff;
+          font-size: 7px;
+          font-weight: 700;
+          padding: 2px 1px;
+          letter-spacing: 0.3px;
+        }
+        .emp-name-row th {
+          background: #16213e;
+          color: #fff;
           font-size: 6.5px;
+          font-weight: 600;
+          padding: 2px 1px;
+          max-width: 70px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        .col-code { width: 38px; font-size: 6px; }
-        .col-day {
-          min-width: 42px;
-          padding: 1px 0;
+        .emp-header {
+          min-width: 65px;
         }
-        .day-num { font-size: 7px; font-weight: 800; }
-        .day-label { font-size: 5px; opacity: 0.8; }
-        .col-inout { font-size: 5.5px; }
-        .col-summary {
-          width: 30px;
-          min-width: 30px;
-          background: #f8fafc !important;
-          color: #0f172a !important;
-          font-size: 6.5px;
+        .emp-name {
+          min-width: 65px;
+        }
+        .inout-header-row th {
+          background: #e8e8e8;
+          color: #333;
+          font-size: 6px;
+          font-weight: 800;
+          padding: 1px;
+          text-transform: uppercase;
+        }
+        .in-hdr { color: #166534 !important; min-width: 32px; }
+        .out-hdr { color: #991b1b !important; min-width: 32px; }
+
+        /* Day columns */
+        .day-col {
+          width: 18px;
+          min-width: 18px;
+          background: #f8f8f8 !important;
+          color: #333 !important;
+          font-weight: 800;
+          font-size: 7px;
+        }
+        .dayname-col {
+          width: 16px;
+          min-width: 16px;
+          background: #f8f8f8 !important;
+          color: #666 !important;
+          font-weight: 600;
+          font-size: 6px;
+        }
+        .day-num {
+          font-weight: 800;
+          font-size: 7.5px;
+          color: #222;
+          background: #f8f8f8;
+          width: 18px;
+        }
+        .day-name {
+          font-weight: 600;
+          font-size: 6px;
+          color: #666;
+          background: #f8f8f8;
+          width: 16px;
         }
 
-        .time-cell {
-          font-size: 6.5px;
+        /* Time cells */
+        .time-in {
+          color: #166534;
           font-weight: 500;
-          color: #334155;
+          font-size: 7px;
           white-space: nowrap;
-          letter-spacing: -0.3px;
         }
-        .off-day {
-          background: #f1f5f9 !important;
-          color: #94a3b8 !important;
+        .time-out {
+          color: #1e3a5f;
+          font-weight: 500;
+          font-size: 7px;
+          white-space: nowrap;
         }
-        .absent-cell {
+        .off {
+          background: #f1f1f1 !important;
+          color: #bbb !important;
+        }
+        .absent {
+          color: #ddd !important;
+        }
+        .no-out {
           color: #dc2626 !important;
           font-weight: 700;
         }
-        .no-out {
-          color: #f59e0b !important;
-          font-weight: 700;
-        }
-        .sunday {
-          background: #fef2f2 !important;
-        }
-        .summary-cell {
-          font-weight: 700;
-          font-size: 7px;
-          background: #f8fafc;
-        }
-        .summary-cell.present { color: #059669; }
-        .summary-cell.absent { color: #dc2626; }
-        .summary-cell.late { color: #f59e0b; }
-        .summary-cell.hours { color: #1e40af; }
 
-        tbody tr:nth-child(even) {
-          background: #fafbfc;
+        /* Sunday row */
+        .sunday-row {
+          background: #fff5f5 !important;
         }
-        tbody tr:hover {
-          background: #f0fdf4;
+        .sunday-row .day-num,
+        .sunday-row .day-name {
+          background: #fee2e2 !important;
+          color: #dc2626 !important;
         }
 
-        .report-footer {
-          margin-top: 8px;
-          padding-top: 4px;
-          border-top: 1px solid #e2e8f0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        /* Alternating row colors */
+        tbody tr:nth-child(even):not(.sunday-row):not(.summary-row):not(.count-row) {
+          background: #fafafa;
+        }
+
+        /* Duration/Summary */
+        .dur-header, .dur-hdr, .dur-cell {
+          width: 30px;
+          min-width: 30px;
+          background: #f0f0f0 !important;
+          font-size: 6px;
+        }
+
+        .summary-row {
+          border-top: 2px solid #333 !important;
+        }
+        .summary-row td {
+          background: #e8f5e9 !important;
+          font-weight: 800;
+          font-size: 7.5px;
+          color: #1a5276;
+          padding: 3px 2px;
+        }
+        .summary-label {
+          text-align: right !important;
+          padding-right: 4px !important;
           font-size: 7px;
-          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
-        .legend {
-          display: flex;
-          gap: 12px;
+        .count-row td {
+          background: #f8f9fa !important;
+          font-weight: 700;
+          font-size: 7px;
+          padding: 2px;
         }
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 3px;
+        .count-present {
+          color: #166534 !important;
         }
-        .legend-box {
-          display: inline-block;
-          width: 8px;
-          height: 8px;
-          border: 1px solid #cbd5e1;
-          border-radius: 1px;
+        .count-absent {
+          color: #991b1b !important;
         }
-        .off-day-legend { background: #f1f5f9; }
-        .absent-legend { background: #fecaca; }
-        .no-out-legend { background: #fef3c7; }
       `}</style>
     </div>
   );
