@@ -55,7 +55,10 @@ export const MonthlyPrintView = ({ onClose, defaultMonth, defaultYear, departmen
     return h;
   };
 
-  const dates: any[] = data?.dates || [];
+  const dates: any[] = (data?.dates || []).map((d: any) => ({
+    ...d,
+    dateKey: `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`,
+  }));
   const groups: any[] = data?.groups || [];
 
   // Split dates into chunks for A4 landscape pages (max 16 days per page)
