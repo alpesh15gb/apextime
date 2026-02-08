@@ -19,15 +19,18 @@ def start_node_backend():
     global NODE_PROCESS
     env = os.environ.copy()
     env['PORT'] = str(NODE_PORT)
+    
+    # Use full path to ts-node-dev
+    ts_node_dev = os.path.join('/app/backend/node_modules/.bin/ts-node-dev')
     NODE_PROCESS = subprocess.Popen(
-        ['npx', 'ts-node-dev', '--respawn', '--transpile-only', 'src/index.ts'],
+        [ts_node_dev, '--respawn', '--transpile-only', 'src/index.ts'],
         cwd='/app/backend',
         env=env,
         stdout=sys.stdout,
         stderr=sys.stderr
     )
     # Wait for node to start
-    time.sleep(3)
+    time.sleep(5)
     return NODE_PROCESS
 
 @asynccontextmanager
