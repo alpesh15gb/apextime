@@ -936,7 +936,18 @@ router.post('/import', upload.single('file'), async (req, res) => {
       });
 
       if (!headers.code || (!headers.date && !headers.logDate)) {
-        return res.status(400).json({ error: 'Missing required ESSL columns: ID, Date' });
+        const errorMsg = 'Missing required ESSL columns: ID, Date';
+        console.error(`[CSV IMPORT] ${errorMsg}`);
+        importStatus.set(tenantId, {
+          status: 'failed',
+          progress: 0,
+          total: 0,
+          message: errorMsg,
+          startedAt: importStatus.get(tenantId)!.startedAt,
+          completedAt: new Date()
+        });
+        fs.unlinkSync(filePath);
+        return;
       }
     } else {
       // Generic format detection
