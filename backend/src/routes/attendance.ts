@@ -743,9 +743,11 @@ router.post('/recalculate', async (req, res) => {
         const shift = log.employee?.shift;
         if (shift?.startTime) {
           const logDate = new Date(log.date);
-          const [sh, sm] = shift.startTime.split(':');
-          const shiftStart = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate(), parseInt(sh), parseInt(sm));
-          const grace = shift.graceTimeLate || 0;
+          const shiftTime = new Date(shift.startTime);
+          const sh = shiftTime.getUTCHours();
+          const sm = shiftTime.getUTCMinutes();
+          const shiftStart = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate(), sh, sm);
+          const grace = shift.gracePeriodIn || 0;
           const graceTime = new Date(shiftStart.getTime() + grace * 60000);
           if (firstIn > graceTime) {
             lateArrival = (firstIn.getTime() - shiftStart.getTime()) / (1000 * 60 * 60);
@@ -756,9 +758,11 @@ router.post('/recalculate', async (req, res) => {
         let earlyDeparture = 0;
         if (shift?.endTime && lastOut) {
           const logDate = new Date(log.date);
-          const [eh, em] = shift.endTime.split(':');
-          const shiftEnd = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate(), parseInt(eh), parseInt(em));
-          if (shift.startTime > shift.endTime) shiftEnd.setDate(shiftEnd.getDate() + 1);
+          const endTime = new Date(shift.endTime);
+          const eh = endTime.getUTCHours();
+          const em = endTime.getUTCMinutes();
+          const shiftEnd = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate(), eh, em);
+          if (new Date(shift.startTime) > new Date(shift.endTime)) shiftEnd.setDate(shiftEnd.getDate() + 1);
           if (lastOut < shiftEnd) {
             earlyDeparture = (shiftEnd.getTime() - lastOut.getTime()) / (1000 * 60 * 60);
           }
