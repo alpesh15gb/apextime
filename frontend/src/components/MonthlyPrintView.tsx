@@ -243,7 +243,7 @@ export const MonthlyPrintView = ({ month, year, departmentId, branchId, location
 
         @media screen {
           .print-page {
-            max-width: 1100px;
+            max-width: 800px;
             margin: 16px auto;
             padding: 16px;
             border: 1px solid #d1d5db;
