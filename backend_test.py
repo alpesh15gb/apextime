@@ -224,14 +224,17 @@ class PayrollSystemTester:
             self.log("❌ Login failed - cannot continue with protected endpoints")
             return False
         
-        # 2. Test new recalculate endpoint
+        # 2. Test new date range report endpoint (key for MonthlyPrintView)
+        date_range_result = self.test_date_range_report_endpoint()
+        
+        # 3. Test branch wise grouping
+        branch_result = self.test_branch_wise_grouping()
+        
+        # 4. Test recalculate endpoint
         recalc_result = self.test_recalculate_endpoint()
         
-        # 3. Test daily reports after recalculation
+        # 5. Test daily reports after recalculation
         daily_result = self.test_daily_reports_after_recalculate()
-        
-        # 4. Test monthly report for print view
-        monthly_result = self.test_monthly_print_endpoint()
         
         # Summary
         self.log("\n" + "="*50)
