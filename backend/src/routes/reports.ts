@@ -10,8 +10,10 @@ const router = express.Router();
 router.use(authenticate);
 
 // Helper to get company branding
-async function getBranding() {
-  const profile = await prisma.companyProfile.findFirst();
+async function getBranding(tenantId?: string) {
+  const profile = tenantId 
+    ? await prisma.companyProfile.findFirst({ where: { tenantId } })
+    : await prisma.companyProfile.findFirst();
   return profile || {
     name: 'Apextime Enterprises',
     logo: null,
@@ -19,36 +21,77 @@ async function getBranding() {
   };
 }
 
-// Helper function to get attendance data
+/**
+ * Helper function to get attendance data with proper filtering
+ * 
+ * FIXED: Proper location filtering that includes employees from branches
+ *        assigned to the selected location
+ */
 async function getAttendanceData(filters: any) {
   const { startDate, endDate, departmentId, branchId, locationId, employeeId, tenantId } = filters;
 
-  const where: any = {
+  // Parse dates - dates come as YYYY-MM-DD strings
+  // For @db.Date columns, we use UTC midnight
+  const startDateObj = new Date(startDate + 'T00:00:00Z');
+  const endDateObj = new Date(endDate + 'T23:59:59.999Z');
+
+  // Build employee filter
+  const employeeWhere: any = {
     tenantId,
-    date: {
-      gte: new Date(startDate), // Matches DATE column (UTC midnight)
-      lte: new Date(endDate),
-    },
+    isActive: true
   };
-
-  let employeeWhere: any = {};
-  if (departmentId) employeeWhere.departmentId = departmentId;
-  if (branchId) employeeWhere.branchId = branchId;
-  if (locationId) employeeWhere.locationId = locationId;
-  if (employeeId) employeeWhere.id = employeeId;
-
-  if (Object.keys(employeeWhere).length > 0) {
-    where.employee = employeeWhere;
+  
+  if (employeeId) {
+    employeeWhere.id = employeeId;
+  }
+  
+  if (departmentId) {
+    employeeWhere.departmentId = departmentId;
+  }
+  
+  if (branchId) {
+    employeeWhere.branchId = branchId;
+  }
+  
+  // FIXED: Location filter - include employees directly assigned to location
+  // OR employees whose branch is assigned to this location
+  if (locationId) {
+    employeeWhere.OR = [
+      { locationId: locationId },
+      { branch: { locationId: locationId } }
+    ];
   }
 
+  // First get filtered employee IDs
+  const filteredEmployees = await prisma.employee.findMany({
+    where: employeeWhere,
+    select: { id: true }
+  });
+  
+  const employeeIds = filteredEmployees.map(e => e.id);
+  
+  if (employeeIds.length === 0) {
+    console.log(`[REPORT DEBUG] No employees match the filters`);
+    return [];
+  }
+
+  // Now query attendance logs for these employees
   const logs = await prisma.attendanceLog.findMany({
-    where,
+    where: {
+      tenantId,
+      employeeId: { in: employeeIds },
+      date: {
+        gte: startDateObj,
+        lte: endDateObj,
+      },
+    },
     include: {
       employee: {
         include: {
           department: true,
           branch: true,
           shift: true,
+          location: true,
         },
       },
     },
@@ -58,12 +101,35 @@ async function getAttendanceData(filters: any) {
     ],
   });
 
-  console.log(`[REPORT DEBUG] Found ${logs.length} logs for range ${startDate} to ${endDate}`);
-  if (logs.length > 0) {
-    console.log(`[REPORT DEBUG] Sample Log Date: ${logs[0].date.toISOString()} Status: ${logs[0].status}`);
-  }
-
+  console.log(`[REPORT DEBUG] Found ${logs.length} logs for range ${startDate} to ${endDate}, ${employeeIds.length} employees`);
+  
   return logs;
+}
+
+/**
+ * Format time for display in IST
+ */
+function formatTimeIST(date: Date | null): string {
+  if (!date) return '-';
+  return new Date(date).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Kolkata'
+  });
+}
+
+/**
+ * Format date for display in IST
+ */
+function formatDateIST(date: Date | null): string {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
 }
 
 // Daily report
@@ -71,10 +137,9 @@ router.get('/daily', async (req, res) => {
   try {
     const { date, departmentId, branchId, locationId, employeeId, format = 'json' } = req.query;
 
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-    const nowIST = new Date(Date.now() + IST_OFFSET);
-    const todayIST = nowIST.toISOString().split('T')[0];
-
+    // Default to today in IST
+    const today = new Date();
+    const todayIST = today.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD format
     const reportDate = (date as string) || todayIST;
 
     const logs = await getAttendanceData({
@@ -116,7 +181,7 @@ router.get('/daily', async (req, res) => {
 // Weekly report
 router.get('/weekly', async (req, res) => {
   try {
-    const { startDate, departmentId, branchId, employeeId, format = 'json' } = req.query;
+    const { startDate, departmentId, branchId, locationId, employeeId, format = 'json' } = req.query;
 
     const reportStartDate = startDate
       ? parseISO(startDate as string)
@@ -129,6 +194,7 @@ router.get('/weekly', async (req, res) => {
       endDate: reportEndDate.toISOString().split('T')[0],
       departmentId: departmentId as string | undefined,
       branchId: branchId as string | undefined,
+      locationId: locationId as string | undefined,
       employeeId: employeeId as string | undefined,
       tenantId: (req as any).user.tenantId,
     });
@@ -138,7 +204,10 @@ router.get('/weekly', async (req, res) => {
     }
 
     if (format === 'pdf') {
-      return generatePDFReport(logs, `Weekly Attendance Report`, res);
+      return generatePDFReport(logs, `Weekly Attendance Report`, res, {
+        startDate: reportStartDate.toISOString().split('T')[0],
+        endDate: reportEndDate.toISOString().split('T')[0]
+      });
     }
 
     // Group by employee
@@ -266,11 +335,12 @@ async function generateExcelReport(logs: any[], filename: string, res: express.R
     { header: 'Employee Name', key: 'employeeName', width: 25 },
     { header: 'Department', key: 'department', width: 20 },
     { header: 'Branch', key: 'branch', width: 15 },
+    { header: 'Location', key: 'location', width: 15 },
     { header: 'Date', key: 'date', width: 12 },
     { header: 'First IN', key: 'firstIn', width: 12 },
     { header: 'Last OUT', key: 'lastOut', width: 12 },
     { header: 'Working Hours', key: 'workingHours', width: 15 },
-    { header: 'Status', key: 'status', width: 10 },
+    { header: 'Status', key: 'status', width: 12 },
     { header: 'Late (min)', key: 'lateArrival', width: 12 },
     { header: 'Early Out (min)', key: 'earlyDeparture', width: 15 },
     { header: 'Punch Records', key: 'punchRecords', width: 40 },
@@ -281,22 +351,24 @@ async function generateExcelReport(logs: any[], filename: string, res: express.R
     worksheet.addRow({
       employeeCode: log.employee?.employeeCode || '',
       employeeName: log.employee
-        ? `${log.employee.firstName} ${log.employee.lastName}`
+        ? `${log.employee.firstName} ${log.employee.lastName || ''}`
         : '',
       department: log.employee?.department?.name || '',
       branch: log.employee?.branch?.name || '',
-      date: new Date(log.date).toLocaleDateString(),
-      firstIn: log.firstIn
-        ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : '-',
-      lastOut: log.lastOut
-        ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : '-',
+      location: log.employee?.location?.name || log.employee?.branch?.location?.name || '',
+      date: formatDateIST(log.date),
+      firstIn: formatTimeIST(log.firstIn),
+      lastOut: formatTimeIST(log.lastOut),
       workingHours: log.workingHours ? log.workingHours.toFixed(2) : '-',
-      status: log.status,
-      lateArrival: log.lateArrival > 0 ? log.lateArrival : '-',
-      earlyDeparture: log.earlyDeparture > 0 ? log.earlyDeparture : '-',
-      punchRecords: log.logs ? JSON.parse(log.logs).map((t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })).join(', ') : '-'
+      status: log.status || 'Absent',
+      lateArrival: log.lateArrival > 0 ? Math.round(log.lateArrival * 60) : '-',
+      earlyDeparture: log.earlyDeparture > 0 ? Math.round(log.earlyDeparture * 60) : '-',
+      punchRecords: log.logs ? (() => {
+        try {
+          const punches = JSON.parse(log.logs);
+          return punches.map((t: string) => formatTimeIST(new Date(t))).join(', ');
+        } catch { return '-'; }
+      })() : '-'
     });
   }
 
@@ -317,7 +389,8 @@ async function generateExcelReport(logs: any[], filename: string, res: express.R
 
 // Generate PDF report
 async function generatePDFReport(logs: any[], title: string, res: express.Response, options: any = {}) {
-  const branding = await getBranding();
+  const tenantId = logs[0]?.employee?.tenantId;
+  const branding = await getBranding(tenantId);
   const doc = new PDFDocument({ margin: 30, layout: 'landscape' });
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -346,10 +419,10 @@ async function generatePDFReport(logs: any[], title: string, res: express.Respon
 
   // Title and branding
   doc.fontSize(16).font('Helvetica-Bold').text(title, 0, headerY, { align: 'center' });
-  doc.fontSize(10).font('Helvetica').text(`${options.startDate} To ${options.endDate}`, 0, headerY + 20, { align: 'center' });
+  doc.fontSize(10).font('Helvetica').text(`${options.startDate || ''} To ${options.endDate || ''}`, 0, headerY + 20, { align: 'center' });
 
   doc.fontSize(10).font('Helvetica-Bold').text(`Company:  ${branding.name}`, 30, headerY + 60);
-  doc.fontSize(8).font('Helvetica').text(`Printed On: ${new Date().toLocaleString()}`, 600, headerY + 60, { align: 'right' });
+  doc.fontSize(8).font('Helvetica').text(`Printed On: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 600, headerY + 60, { align: 'right' });
 
   doc.moveTo(30, headerY + 75).lineTo(760, headerY + 75).stroke();
 
@@ -407,22 +480,24 @@ async function generatePDFReport(logs: any[], title: string, res: express.Respon
 
     doc.text((index + 1).toString(), col.sno, y);
     doc.text(emp?.employeeCode || '-', col.code, y);
-    doc.text(`${emp?.firstName} ${emp?.lastName || ''}`.substring(0, 20), col.name, y);
+    doc.text(`${emp?.firstName || ''} ${emp?.lastName || ''}`.substring(0, 20), col.name, y);
     doc.text(shift?.code || 'GS', col.shift, y);
 
-    // Shift Times (Mocked if missing)
-    doc.text('09:30', col.sin, y);
-    doc.text('18:30', col.sout, y);
+    // Shift Times (from shift data or default)
+    const shiftStart = shift?.startTime ? formatTimeIST(new Date(`2000-01-01T${shift.startTime}`)) : '09:30';
+    const shiftEnd = shift?.endTime ? formatTimeIST(new Date(`2000-01-01T${shift.endTime}`)) : '18:30';
+    doc.text(shiftStart, col.sin, y);
+    doc.text(shiftEnd, col.sout, y);
 
-    doc.text(log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-', col.ain, y);
-    doc.text(log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '-', col.aout, y);
+    doc.text(formatTimeIST(log.firstIn), col.ain, y);
+    doc.text(formatTimeIST(log.lastOut), col.aout, y);
 
     doc.text(log.workingHours ? log.workingHours.toFixed(2) : '00:00', col.work, y);
     doc.text('00:00', col.ot, y);
     doc.text(log.workingHours ? log.workingHours.toFixed(2) : '00:00', col.tot, y);
 
-    doc.text(log.lateArrival > 0 ? log.lateArrival.toString() : '00.00', col.late, y);
-    doc.text(log.earlyDeparture > 0 ? log.earlyDeparture.toString() : '00.00', col.early, y);
+    doc.text(log.lateArrival > 0 ? Math.round(log.lateArrival * 60).toString() : '0', col.late, y);
+    doc.text(log.earlyDeparture > 0 ? Math.round(log.earlyDeparture * 60).toString() : '0', col.early, y);
 
     doc.text(log.status || 'Absent', col.status, y);
 
@@ -430,8 +505,9 @@ async function generatePDFReport(logs: any[], title: string, res: express.Respon
     if (log.logs) {
       try {
         const pArr = JSON.parse(log.logs);
-        const pStr = pArr.map((t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })).join(', ');
+        const pStr = pArr.map((t: string) => formatTimeIST(new Date(t))).join(', ');
         doc.fontSize(6).text(pStr, col.records, y, { width: 50 });
+        doc.fontSize(7);
       } catch (e) { }
     }
 
@@ -527,7 +603,7 @@ async function generateStudentExcelReport(records: any[], filename: string, res:
       studentName: `${rec.student?.firstName} ${rec.student?.lastName}`,
       class: rec.student?.batch?.course?.name,
       section: rec.student?.batch?.name,
-      date: new Date(rec.date).toLocaleDateString(),
+      date: formatDateIST(rec.date),
       status: rec.status,
       remarks: rec.remarks || '-',
     });
@@ -555,7 +631,7 @@ async function generateFeeExcelReport(records: any[], filename: string, res: exp
 
   for (const rec of records) {
     worksheet.addRow({
-      date: new Date(rec.updatedAt).toLocaleDateString(),
+      date: formatDateIST(rec.updatedAt),
       admissionNo: rec.student?.admissionNo,
       studentName: `${rec.student?.firstName} ${rec.student?.lastName}`,
       title: rec.title,
@@ -575,43 +651,44 @@ async function generateFeeExcelReport(records: any[], filename: string, res: exp
 router.get('/:type/download/:format', async (req, res) => {
   const { type, format } = req.params;
   const { startDate, endDate, date, departmentId, branchId, locationId, employeeId } = req.query;
+  const tenantId = (req as any).user.tenantId;
 
   let start = (startDate || date) as string;
   let end = (endDate || date) as string;
 
-  // Fallback if only month and year are provided (e.g. from MonthlyReport page)
+  // Fallback if only month and year are provided
   if (!start && req.query.month && req.query.year) {
     const m = parseInt(req.query.month as string);
     const y = parseInt(req.query.year as string);
-    const dateObj = new Date(y, m - 1, 1);
     start = new Date(y, m - 1, 1).toISOString().split('T')[0];
     end = new Date(y, m, 0).toISOString().split('T')[0];
   }
 
+  // Default to today if no dates provided
+  if (!start) {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    start = today;
+    end = today;
+  }
+
+  const filterParams = {
+    startDate: start,
+    endDate: end || start,
+    tenantId,
+    departmentId: departmentId as string | undefined,
+    branchId: branchId as string | undefined,
+    locationId: locationId as string | undefined,
+    employeeId: employeeId as string | undefined
+  };
+
   if (type === 'daily' || type === 'daily_detailed') {
-    const logs = await getAttendanceData({
-      startDate: start,
-      endDate: end,
-      tenantId: (req as any).user.tenantId,
-      departmentId,
-      branchId,
-      locationId,
-      employeeId
-    });
+    const logs = await getAttendanceData(filterParams);
     if (format === 'excel') return generateExcelReport(logs, `Daily_Report_${start}`, res);
     return generatePDFReport(logs, `Daily Attendance (Detailed)`, res, { startDate: start, endDate: end });
   }
 
   if (type === 'monthly' || type === 'monthly_detailed') {
-    const logs = await getAttendanceData({
-      startDate: start,
-      endDate: end,
-      tenantId: (req as any).user.tenantId,
-      departmentId,
-      branchId,
-      locationId,
-      employeeId
-    });
+    const logs = await getAttendanceData(filterParams);
     if (format === 'excel') return generateExcelReport(logs, `Monthly_Report_${start}`, res);
     return generatePDFReport(logs, `Monthly Attendance Report`, res, { startDate: start, endDate: end });
   }
@@ -619,11 +696,16 @@ router.get('/:type/download/:format', async (req, res) => {
   if (type === 'leave_summary') {
     const employees = await prisma.employee.findMany({
       where: {
-        tenantId: (req as any).user.tenantId,
+        tenantId,
         isActive: true,
         ...(departmentId ? { departmentId: departmentId as string } : {}),
         ...(branchId ? { branchId: branchId as string } : {}),
-        ...(locationId ? { locationId: locationId as string } : {}),
+        ...(locationId ? { 
+          OR: [
+            { locationId: locationId as string },
+            { branch: { locationId: locationId as string } }
+          ]
+        } : {}),
       },
       include: {
         leaveBalances: true,
@@ -635,11 +717,7 @@ router.get('/:type/download/:format', async (req, res) => {
   }
 
   if (type === 'department_summary') {
-    const logs = await getAttendanceData({
-      startDate: start,
-      endDate: end,
-      tenantId: (req as any).user.tenantId
-    });
+    const logs = await getAttendanceData(filterParams);
     const summary = groupDepartmentSummary(logs);
     if (format === 'excel') return generateDeptExcelReport(summary, `Dept_Summary`, res);
     return generateDeptPDFReport(summary, `Department Summary Report`, res, { startDate: start, endDate: end });
@@ -649,7 +727,7 @@ router.get('/:type/download/:format', async (req, res) => {
     const { month, year } = req.query;
     const m = parseInt(month as string) || new Date().getMonth() + 1;
     const y = parseInt(year as string) || new Date().getFullYear();
-    const matrixRes = await fetchMatrixData(m, y, departmentId as string, branchId as string, (req as any).user.tenantId);
+    const matrixRes = await fetchMatrixData(m, y, departmentId as string, branchId as string, locationId as string, tenantId);
 
     if (format === 'excel') return generateMatrixExcelReport(matrixRes, `Monthly_Matrix_${m}_${y}`, res);
     return generateMatrixPDFReport(matrixRes, `Employee Attendance Sheet`, res);
@@ -658,22 +736,13 @@ router.get('/:type/download/:format', async (req, res) => {
   if (type === 'yearly_attendance') {
     const { year } = req.query;
     const y = parseInt(year as string) || new Date().getFullYear();
-    const yearlyRes = await fetchYearlyData(y, departmentId as string, branchId as string, (req as any).user.tenantId);
+    const yearlyRes = await fetchYearlyData(y, departmentId as string, branchId as string, locationId as string, tenantId);
     if (format === 'excel') return generateYearlyExcelReport(yearlyRes, `Yearly_Attendance_${y}`, res);
     return generateYearlyPDFReport(yearlyRes, `Yearly Attendance Record - ${y}`, res);
   }
 
   if (type === 'full_forms') {
-    // Usually refers to a combined summary or all employees in a list
-    const logs = await getAttendanceData({
-      startDate: start,
-      endDate: end,
-      tenantId: (req as any).user.tenantId,
-      departmentId,
-      branchId,
-      locationId,
-      employeeId
-    });
+    const logs = await getAttendanceData(filterParams);
     if (format === 'excel') return generateExcelReport(logs, `Full_Form_Report`, res);
     return generatePDFReport(logs, `Attendance Full Form`, res, { startDate: start, endDate: end });
   }
@@ -681,12 +750,27 @@ router.get('/:type/download/:format', async (req, res) => {
   res.status(404).json({ error: 'Report type not supported' });
 });
 
-async function fetchYearlyData(year: number, departmentId: string, branchId: string, tenantId: string) {
-  const start = new Date(year, 0, 1);
-  const end = new Date(year, 11, 31);
+async function fetchYearlyData(year: number, departmentId: string, branchId: string, locationId: string, tenantId: string) {
+  const start = new Date(Date.UTC(year, 0, 1));
+  const end = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+
+  // Build employee filter
+  const employeeWhere: any = { 
+    tenantId, 
+    isActive: true,
+    ...(departmentId ? { departmentId } : {}),
+    ...(branchId ? { branchId } : {})
+  };
+  
+  if (locationId) {
+    employeeWhere.OR = [
+      { locationId },
+      { branch: { locationId } }
+    ];
+  }
 
   const employees = await prisma.employee.findMany({
-    where: { tenantId, isActive: true, ...(departmentId ? { departmentId } : {}), ...(branchId ? { branchId } : {}) },
+    where: employeeWhere,
   });
 
   const logs = await prisma.attendanceLog.findMany({
@@ -717,7 +801,7 @@ async function generateYearlyPDFReport(data: any, title: string, res: express.Re
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     doc.fontSize(8);
     months.forEach((m, i) => {
-      const mLogs = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i);
+      const mLogs = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getUTCMonth() === i);
       const present = mLogs.filter((l: any) => l.status?.toLowerCase() === 'present').length;
       doc.text(`${m}: ${present}P`, 40 + (i * 60), y);
     });
@@ -752,7 +836,7 @@ async function generateYearlyExcelReport(data: any, filename: string, res: expre
   data.employees.forEach((emp: any) => {
     const row: any = { code: emp.employeeCode, name: `${emp.firstName} ${emp.lastName || ''}` };
     for (let i = 0; i < 12; i++) {
-      row[`m${i}`] = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getMonth() === i && l.status?.toLowerCase() === 'present').length;
+      row[`m${i}`] = data.logs.filter((l: any) => l.employeeId === emp.id && new Date(l.date).getUTCMonth() === i && l.status?.toLowerCase() === 'present').length;
     }
     ws.addRow(row);
   });
@@ -763,13 +847,28 @@ async function generateYearlyExcelReport(data: any, filename: string, res: expre
   res.end();
 }
 
-async function fetchMatrixData(month: number, year: number, departmentId: string, branchId: string, tenantId: string) {
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0);
-  const daysInMonth = end.getDate();
+async function fetchMatrixData(month: number, year: number, departmentId: string, branchId: string, locationId: string, tenantId: string) {
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  // Build employee filter
+  const employeeWhere: any = { 
+    tenantId, 
+    isActive: true,
+    ...(departmentId ? { departmentId } : {}),
+    ...(branchId ? { branchId } : {})
+  };
+  
+  if (locationId) {
+    employeeWhere.OR = [
+      { locationId },
+      { branch: { locationId } }
+    ];
+  }
 
   const employees = await prisma.employee.findMany({
-    where: { tenantId, isActive: true, ...(departmentId ? { departmentId } : {}), ...(branchId ? { branchId } : {}) },
+    where: employeeWhere,
     include: { department: true, branch: true },
     orderBy: { firstName: 'asc' }
   });
@@ -806,8 +905,8 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
   doc.text(`Month: ${monthName}`, 80, y);
 
   const today = new Date();
-  if (data.month === today.getUTCMonth() + 1 && data.year === today.getUTCFullYear()) {
-    doc.text(`As of: ${today.toLocaleTimeString()}`, 150, y);
+  if (data.month === today.getMonth() + 1 && data.year === today.getFullYear()) {
+    doc.text(`As of: ${today.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 150, y);
   }
 
   // Table Header
@@ -847,12 +946,10 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
       const isSun = dayDate.getUTCDay() === 0;
 
       let row1 = '-';
-      let row2 = '';
       let color = '#333333';
 
       if (log) {
-        row1 = log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'P';
-        row2 = log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+        row1 = log.firstIn ? formatTimeIST(log.firstIn) : 'P';
         pCount++;
         if (log.lateArrival > 0) {
           lCount++;
@@ -868,7 +965,6 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
       }
 
       doc.fillColor(color).fontSize(8).text(row1, dX, y - 2, { width: colWidths.days, align: 'center' });
-      if (row2) doc.text(row2, dX, y + 8, { width: colWidths.days, align: 'center' });
       doc.fontSize(10);
       dX += colWidths.days;
     }
@@ -888,7 +984,7 @@ async function generateMatrixPDFReport(data: any, title: string, res: express.Re
 function groupDepartmentSummary(logs: any[]) {
   const groups: any = {};
   logs.forEach(log => {
-    const dateKey = log.date.toISOString().split('T')[0];
+    const dateKey = formatDateIST(log.date);
     const deptName = log.employee?.department?.name || 'Default';
 
     if (!groups[dateKey]) groups[dateKey] = {};
@@ -917,7 +1013,7 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
   const TEAL = 'FF297972';
 
   // Columns
-  const cols = [
+  const cols: any[] = [
     { header: 'Emp Code', key: 'code', width: 12 },
     { header: 'Name', key: 'name', width: 25 },
   ];
@@ -943,13 +1039,13 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
     let p = 0, a = 0, l = 0;
 
     for (let d = 1; d <= data.daysInMonth; d++) {
-      const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getUTCDate() === d);
+      const log = data.logs.find((lg: any) => lg.employeeId === emp.id && new Date(lg.date).getUTCDate() === d);
       const dayDate = new Date(Date.UTC(data.year, data.month - 1, d));
       const isSun = dayDate.getUTCDay() === 0;
 
       if (log) {
-        const inStr = log.firstIn ? new Date(log.firstIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'P';
-        const outStr = log.lastOut ? new Date(log.lastOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+        const inStr = log.firstIn ? formatTimeIST(log.firstIn) : 'P';
+        const outStr = log.lastOut ? formatTimeIST(log.lastOut) : '';
         rowData[`d${d}`] = inStr + (outStr ? '\n' + outStr : '');
         p++;
         if (log.lateArrival > 0) l++;
@@ -965,21 +1061,13 @@ async function generateMatrixExcelReport(data: any, filename: string, res: expre
     const row = ws.addRow(rowData);
 
     // Style the row cells
-    row.height = 30; // Double height for stacked times
+    row.height = 30;
     for (let d = 1; d <= data.daysInMonth; d++) {
       const cell = row.getCell(2 + d);
       const val = cell.value?.toString() || '';
       cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
 
-      if (val.includes(':')) {
-        // Check if late (based on data.logs lookup or just color if it's there)
-        // For simplicity, we can't easily re-lookup here safely without original logs, 
-        // but we can re-find it.
-        const log = data.logs.find((l: any) => l.employeeId === emp.id && new Date(l.date).getDate() === d);
-        if (log && log.lateArrival > 0) {
-          cell.font = { color: { argb: 'FFFFA500' }, bold: true };
-        }
-      } else if (val === 'A') {
+      if (val === 'A') {
         cell.font = { color: { argb: 'FFFF0000' } };
       } else if (val === 'WO') {
         cell.font = { color: { argb: 'FF0000FF' } };
