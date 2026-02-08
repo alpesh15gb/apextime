@@ -65,7 +65,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       
       const response = await attendanceAPI.import(formData);
       
-      alert(`CSV uploaded successfully! ${response.data.imported || response.data.processed || 0} records processed.`);
+      // Check if it's async processing
+      if (response.data.status === 'processing') {
+        alert(`✅ ${response.data.message}\n\n${response.data.info}\n\nYou can continue working while the import completes.`);
+      } else {
+        alert(`CSV uploaded successfully! ${response.data.imported || response.data.processed || 0} records processed.`);
+      }
     } catch (error: any) {
       console.error('CSV upload error:', error);
       alert(`Upload failed: ${error.response?.data?.error || error.message || 'Unknown error'}`);
