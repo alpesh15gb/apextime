@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import json
 
 class AttendanceAPITester:
-    def __init__(self, base_url="https://542fce52-fcdd-4fc9-9f47-a0b52af1ab6c.preview.emergentagent.com"):
+    def __init__(self, base_url="https://payroll-reports-hub.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
