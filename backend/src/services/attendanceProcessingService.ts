@@ -189,21 +189,40 @@ export async function processAttendanceForUser(
     
     // Process each day
     for (const [dateKey, dayPunches] of dateGroups) {
-      // Sort by time
+      // Sort by time (ascending) - CRITICAL for First IN / Last OUT
       dayPunches.sort((a, b) => a.punchTime.getTime() - b.punchTime.getTime());
       
+      // ROBUST FIRST IN / LAST OUT LOGIC FOR PAYROLL
+      // First IN = the absolute earliest punch of the day
+      // Last OUT = the absolute latest punch of the day (only if different from firstIn)
       const firstIn = dayPunches[0].punchTime;
-      const lastOut = dayPunches.length > 1 ? dayPunches[dayPunches.length - 1].punchTime : null;
       
-      // Calculate working hours
+      // Last OUT: Must be a DIFFERENT punch from firstIn (not the same timestamp)
+      // For single punch, lastOut is null (incomplete shift)
+      let lastOut: Date | null = null;
+      if (dayPunches.length > 1) {
+        const lastPunch = dayPunches[dayPunches.length - 1].punchTime;
+        // Ensure lastOut is different from firstIn (at least 1 min apart)
+        if (lastPunch.getTime() - firstIn.getTime() > 60000) {
+          lastOut = lastPunch;
+        }
+      }
+      
+      // Calculate working hours: First IN to Last OUT (total span)
       let workingHours = 0;
       if (lastOut) {
         workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
+        // Cap unreasonable hours (max 24)
+        if (workingHours > 24) workingHours = 0;
+        // Negative hours = data error
+        if (workingHours < 0) workingHours = 0;
       }
       
-      // Determine status
+      // Determine status robustly
       let status = 'Present';
       if (dayPunches.length === 1) {
+        status = 'Shift Incomplete';
+      } else if (workingHours <= 0) {
         status = 'Shift Incomplete';
       } else if (workingHours < 4) {
         status = 'Half Day';
