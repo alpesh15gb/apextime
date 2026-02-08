@@ -117,6 +117,7 @@ export const attendanceAPI = {
   import: (data: FormData) => api.post('/attendance/import', data, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  getImportStatus: (tenantId: string) => api.get(`/attendance/import/status/${tenantId}`),
 };
 
 export const holidaysAPI = {
