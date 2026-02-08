@@ -2,48 +2,42 @@
 
 ## Original Problem Statement
 - Punches not showing properly - need First In & Last Out logic
-- Wrong calculations in attendance
-- Complete revamp of Reports section with charts, exports, filters
-- Monthly report printout in vertical (portrait A4) matching physical register format
-- Recalculation endpoint for existing attendance data
+- Wrong calculations in attendance  
+- Complete revamp of Reports section
+- Monthly report printout matching physical register format
+- Custom date range with department/branch grouping
 
 ## Architecture
 - **Backend**: Node.js/Express + Prisma ORM + PostgreSQL
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS + Chart.js
-- **Proxy**: Python FastAPI proxy on port 8001 → Node.js on port 5001
-- **Database**: PostgreSQL with 8 sample employees, 30 days attendance data
+- **Proxy**: Python FastAPI on port 8001 → Node.js on port 5001
+- **Database**: PostgreSQL (3 departments, 8 employees, 30 days data)
 
 ## What's Been Implemented
 
 ### Session 1 (Feb 8, 2026)
-1. **Fixed Punch Logic (First In / Last Out)**
-   - attendanceProcessingService.ts & attendanceCalculationService.ts rewritten
-   - Working hours = Last OUT - First IN
-   - Handles edge cases: single punch, duplicate timestamps, >24h cap
+1. **Fixed Punch Logic** - First In / Last Out with robust edge case handling
+2. **Reports Revamp** - Daily/Weekly/Monthly tabs with charts, filters, export
+3. **Recalculate Endpoint** - POST /api/attendance/recalculate
 
-2. **Reports Section Complete Revamp**
-   - Tabs: Daily / Weekly / Monthly
-   - Charts: Doughnut (status), Bar (department), Line (trend)
-   - Filters: Date, Department, Branch, Location
-   - Export: PDF and Excel
-   - Summary cards with 6 key metrics
+### Session 2 (Feb 8, 2026)  
+4. **Custom Date Range Report** - GET /api/attendance/date-range-report
+   - Accepts startDate, endDate, groupBy (department|branch)
+   - Returns employees grouped by department or branch with daily In/Out data
+5. **Horizontal Print Register**
+   - Days 1-31 as horizontal columns, employees as rows
+   - Department-wise / Branch-wise grouping (separate table per group)
+   - Custom From/To date picker + Generate button
+   - Summary: P (Present), A (Absent), Hrs per employee
+   - Sunday highlighting, A4 Landscape, auto-pagination
+   - Print/Save PDF button
+6. **Department Setup** - Engineering, Human Resources, Finance with employee assignments
 
-3. **Recalculate Endpoint**
-   - POST /api/attendance/recalculate - re-applies First In/Last Out logic
-   - Button in Reports UI with confirmation dialog
-
-4. **Monthly Print View (Portrait A4)**
-   - Days as ROWS (1-31 vertically), Employees as COLUMNS (In/Out)
-   - 4 employees per page, auto-paginated
-   - Summary: Duration, Present, Absent per employee
-   - Sundays highlighted, proper print CSS
-
-## User Personas
-- **Admin**: Full access to all reports, filters, exports, recalculation
-- **Manager**: Department-level reports
-- **Employee**: Self-attendance view
+## Testing Status
+- All tests passed (100% backend, 100% frontend) across 3 iterations
 
 ## Backlog
-- P0: Custom date range printout for payroll cycles
-- P1: Overtime report, department grouping in printout
-- P2: Scheduled email reports, mobile responsive
+- P1: Add overtime and leave columns to register printout
+- P1: Branch data assignment for branch-wise reports
+- P2: Scheduled auto-email reports
+- P2: Mobile responsive optimization
