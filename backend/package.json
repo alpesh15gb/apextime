@@ -13,7 +13,8 @@
     "sync": "ts-node src/services/logSyncService.ts",
     "sync-logs": "ts-node src/services/logSyncService.ts",
     "sync:full": "ts-node src/services/logSyncService.ts full-sync",
-    "sync:reprocess": "ts-node src/services/logSyncService.ts reprocess"
+    "sync:reprocess": "ts-node src/services/logSyncService.ts reprocess",
+    "reprocess": "ts-node src/services/logSyncService.ts reprocess"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
