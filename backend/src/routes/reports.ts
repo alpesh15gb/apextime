@@ -349,6 +349,8 @@ router.get('/monthly', async (req, res) => {
           absent: 0,
           late: 0,
           earlyDeparture: 0,
+          halfDay: 0,
+          incomplete: 0,
           totalWorkingHours: 0,
           days: [],
         });
@@ -359,9 +361,36 @@ router.get('/monthly', async (req, res) => {
       const status = (log.status || '').toLowerCase();
       if (status === 'present') stats.present++;
       if (status === 'absent') stats.absent++;
+      if (status === 'half day') stats.halfDay++;
+      if (status === 'shift incomplete') stats.incomplete++;
       if ((log.lateArrival || 0) > 0) stats.late++;
       if ((log.earlyDeparture || 0) > 0) stats.earlyDeparture++;
       stats.totalWorkingHours += log.workingHours || 0;
+    }
+
+    // Daily trend for charts
+    const dailyTrend: Record<string, any> = {};
+    for (const log of logs) {
+      const dayKey = new Date(log.date).toISOString().split('T')[0];
+      if (!dailyTrend[dayKey]) {
+        dailyTrend[dayKey] = { date: dayKey, present: 0, absent: 0, late: 0, total: 0 };
+      }
+      dailyTrend[dayKey].total++;
+      const s = (log.status || '').toLowerCase();
+      if (s === 'present') dailyTrend[dayKey].present++;
+      if (s === 'absent') dailyTrend[dayKey].absent++;
+      if ((log.lateArrival || 0) > 0) dailyTrend[dayKey].late++;
+    }
+
+    // Department breakdown
+    const deptBreakdown: Record<string, any> = {};
+    for (const log of logs) {
+      const dName = log.employee?.department?.name || 'Unassigned';
+      if (!deptBreakdown[dName]) deptBreakdown[dName] = { present: 0, absent: 0, late: 0, total: 0 };
+      deptBreakdown[dName].total++;
+      if ((log.status || '').toLowerCase() === 'present') deptBreakdown[dName].present++;
+      if ((log.status || '').toLowerCase() === 'absent') deptBreakdown[dName].absent++;
+      if ((log.lateArrival || 0) > 0) deptBreakdown[dName].late++;
     }
 
     res.json({
@@ -370,6 +399,17 @@ router.get('/monthly', async (req, res) => {
       startDate: reportStartDate,
       endDate: reportEndDate,
       totalRecords: logs.length,
+      summary: {
+        totalPresent: logs.filter(l => (l.status || '').toLowerCase() === 'present').length,
+        totalAbsent: logs.filter(l => (l.status || '').toLowerCase() === 'absent').length,
+        totalLate: logs.filter(l => (l.lateArrival || 0) > 0).length,
+        totalHalfDay: logs.filter(l => (l.status || '').toLowerCase() === 'half day').length,
+        totalWorkingHours: Math.round(logs.reduce((a, l) => a + (l.workingHours || 0), 0) * 100) / 100,
+        avgWorkingHours: logs.length > 0 ? Math.round((logs.reduce((a, l) => a + (l.workingHours || 0), 0) / logs.length) * 100) / 100 : 0,
+        uniqueEmployees: employeeStats.size
+      },
+      dailyTrend: Object.values(dailyTrend).sort((a: any, b: any) => a.date.localeCompare(b.date)),
+      departmentBreakdown: Object.entries(deptBreakdown).map(([name, stats]) => ({ name, ...stats as any })),
       employeeStats: Array.from(employeeStats.values()),
     });
   } catch (error) {
