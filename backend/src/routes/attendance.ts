@@ -557,8 +557,7 @@ router.get('/date-range-report', async (req, res) => {
     const logIndex = new Map<string, any>();
     for (const log of logs) {
       const d = new Date(log.date);
-      const day = d.getUTCHours() > 12 ? d.getUTCDate() + 1 : d.getUTCDate();
-      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateKey = d.toISOString().split('T')[0];
       logIndex.set(`${log.employeeId}:${dateKey}`, log);
     }
 
