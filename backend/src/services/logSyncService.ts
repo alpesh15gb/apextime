@@ -988,6 +988,38 @@ async function createEmployeeFromDeviceLog(deviceUserId: string, tenantId: strin
 }
 
 
+/**
+ * Get the logical work date for a punch time.
+ * 
+ * IMPORTANT: Server runs in IST and devices send IST times.
+ * NO timezone conversion needed - just use local time directly.
+ * 
+ * Rules:
+ * - Punches from 05:00 to 23:59 belong to THAT calendar day
+ * - Punches from 00:00 to 04:59 belong to the PREVIOUS calendar day
+ *   (These are late night/early morning punches from night shift workers)
+ */
+function getLogicalDateFromPunch(punchTime: Date): { year: number; month: number; day: number; dateKey: string } {
+  // Get local hour (server is IST, punch time is IST)
+  const hour = punchTime.getHours();
+  
+  let year = punchTime.getFullYear();
+  let month = punchTime.getMonth();
+  let day = punchTime.getDate();
+  
+  // If punch is before 5 AM, it belongs to previous day's shift
+  if (hour < 5) {
+    const prevDay = new Date(year, month, day - 1);
+    year = prevDay.getFullYear();
+    month = prevDay.getMonth();
+    day = prevDay.getDate();
+  }
+  
+  const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  
+  return { year, month, day, dateKey };
+}
+
 export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendance[]> {
   const employeeLogs = new Map<string, RawLog[]>();
 
@@ -998,52 +1030,33 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
   }
 
   const processedResults: ProcessedAttendance[] = [];
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
     const employeeId = await findEmployeeId(deviceUserId);
     if (!employeeId) continue;
 
-    // 1. Sort all punches for this user
+    // 1. Sort all punches for this user by time
     userLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
-    // 2. Cluster logs into contiguous "sessions" (Gap <= 14 hours)
-    // This allows night shifts (e.g. 10 PM to 6 AM) to be paired correctly
-    const sessions: RawLog[][] = [];
-    if (userLogs.length > 0) {
-      let currentSession = [userLogs[0]];
-      for (let i = 1; i < userLogs.length; i++) {
-        const gap = (userLogs[i].LogDate.getTime() - userLogs[i - 1].LogDate.getTime()) / (1000 * 60 * 60);
-        if (gap <= 14) {
-          currentSession.push(userLogs[i]);
-        } else {
-          sessions.push(currentSession);
-          currentSession = [userLogs[i]];
-        }
+    // 2. Group punches by logical date
+    const dateGroups = new Map<string, RawLog[]>();
+    
+    for (const log of userLogs) {
+      const { dateKey } = getLogicalDateFromPunch(log.LogDate);
+      
+      if (!dateGroups.has(dateKey)) {
+        dateGroups.set(dateKey, []);
       }
-      sessions.push(currentSession);
+      dateGroups.get(dateKey)!.push(log);
     }
 
-    // 3. Process each session
-    for (const sLogs of sessions) {
-      const firstIn = sLogs[0].LogDate;
-      const lastOut = sLogs.length > 1 ? sLogs[sLogs.length - 1].LogDate : undefined;
-
-      // Determine Logical Date based on the START of the session
-      const istStart = new Date(firstIn.getTime() + IST_OFFSET);
-      const hour = istStart.getUTCHours();
-      let y = istStart.getUTCFullYear();
-      let m = istStart.getUTCMonth();
-      let d = istStart.getUTCDate();
-
-      // If session starts before 5 AM, it logically belongs to the previous day
-      if (hour < 5) {
-        const prev = new Date(Date.UTC(y, m, d - 1));
-        y = prev.getUTCFullYear();
-        m = prev.getUTCMonth();
-        d = prev.getUTCDate();
-      }
-      const dateKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    // 3. Process each day's punches
+    for (const [dateKey, dayLogs] of dateGroups) {
+      // Sort by time
+      dayLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
+      
+      const firstIn = dayLogs[0].LogDate;
+      const lastOut = dayLogs.length > 1 ? dayLogs[dayLogs.length - 1].LogDate : null;
 
       let workingHours = 0;
       if (lastOut) {
@@ -1051,7 +1064,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
       }
 
       let status = 'Present';
-      if (sLogs.length === 1) {
+      if (dayLogs.length === 1) {
         status = 'Shift Incomplete';
       } else if (workingHours >= 4.5) {
         status = 'Present';
@@ -1063,17 +1076,17 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
       processedResults.push({
         employeeId: employeeId,
-        date: new Date(dateKey + 'T00:00:00Z'),
+        date: new Date(dateKey + 'T00:00:00Z'), // UTC midnight for @db.Date storage
         firstIn: firstIn,
-        lastOut: lastOut || null,
+        lastOut: lastOut,
         workingHours: Number(workingHours.toFixed(2)),
-        totalPunches: sLogs.length,
+        totalPunches: dayLogs.length,
         shiftStart: null,
         shiftEnd: null,
         lateArrival: 0,
         earlyDeparture: 0,
         status: status,
-        logs: JSON.stringify(sLogs.map(l => l.LogDate.toISOString())),
+        logs: JSON.stringify(dayLogs.map(l => l.LogDate.toISOString())),
       });
     }
   }
