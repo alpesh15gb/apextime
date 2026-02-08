@@ -821,6 +821,8 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
     const filePath = req.file.path;
     const tenantId = (req as any).user.tenantId;
+    const deviceType = req.body.deviceType || 'auto'; // 'hikvision', 'essl', or 'auto'
+    
     const workbook = new ExcelJS.Workbook();
 
     // Detect format
@@ -835,32 +837,246 @@ router.post('/import', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No worksheet found' });
     }
 
-    // Map headers
+    // Map headers based on device type
     const headers: any = {};
     const headerRow = worksheet.getRow(1);
-    headerRow.eachCell((cell: any, colNumber: any) => {
-      const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
-      if (val.includes('code') || val === 'id' || val === 'employee id') headers.code = colNumber;
-      else if (val.includes('date')) headers.date = colNumber;
-      else if (val.includes('first') || val === 'in' || val === 'in time') headers.in = colNumber;
-      else if (val.includes('last') || val === 'out' || val === 'out time') headers.out = colNumber;
-      else if (val === 'status') headers.status = colNumber;
-    });
+    
+    // Detect device type if auto
+    let detectedType = deviceType;
+    if (deviceType === 'auto') {
+      const firstHeader = headerRow.getCell(1).value?.toString().toLowerCase() || '';
+      if (firstHeader.includes('employee code')) {
+        detectedType = 'hikvision';
+      } else if (firstHeader.includes('first name')) {
+        detectedType = 'essl';
+      }
+    }
 
-    if (!headers.code || !headers.date) {
-      return res.status(400).json({ error: 'Missing required columns: Employee Code, Date' });
+    console.log(`[CSV IMPORT] Processing ${detectedType} format`);
+
+    if (detectedType === 'hikvision') {
+      // Hikvision Format: Employee Code, Employee Name, Employee Code In Device, LogDate, Company, Department
+      headerRow.eachCell((cell: any, colNumber: any) => {
+        const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
+        if (val === 'employee code' || val === 'employeecode') headers.code = colNumber;
+        else if (val === 'employee name' || val === 'employeename') headers.name = colNumber;
+        else if (val === 'logdate' || val === 'log date') headers.logDate = colNumber;
+      });
+
+      if (!headers.code || !headers.logDate) {
+        return res.status(400).json({ error: 'Missing required Hikvision columns: Employee Code, LogDate' });
+      }
+    } else if (detectedType === 'essl') {
+      // ESSL Format: First Name, Last Name, ID, Department, Date, Week, Time, ...
+      headerRow.eachCell((cell: any, colNumber: any) => {
+        const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
+        if (val === 'id' || val === 'employee code') headers.code = colNumber;
+        else if (val === 'first name' || val === 'firstname') headers.firstName = colNumber;
+        else if (val === 'last name' || val === 'lastname') headers.lastName = colNumber;
+        else if (val === 'date') headers.date = colNumber;
+        else if (val === 'time') headers.time = colNumber;
+        else if (val === 'logdate' || val === 'log date') headers.logDate = colNumber;
+      });
+
+      if (!headers.code || (!headers.date && !headers.logDate)) {
+        return res.status(400).json({ error: 'Missing required ESSL columns: ID, Date' });
+      }
+    } else {
+      // Generic format detection
+      headerRow.eachCell((cell: any, colNumber: any) => {
+        const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
+        if (val.includes('code') || val === 'id' || val === 'employee id') headers.code = colNumber;
+        else if (val.includes('date')) headers.date = colNumber;
+        else if (val.includes('first') || val === 'in' || val === 'in time') headers.in = colNumber;
+        else if (val.includes('last') || val === 'out' || val === 'out time') headers.out = colNumber;
+        else if (val === 'status') headers.status = colNumber;
+      });
+
+      if (!headers.code || !headers.date) {
+        return res.status(400).json({ error: 'Missing required columns: Employee Code, Date' });
+      }
     }
 
     let successCount = 0;
     let failCount = 0;
     const errors: string[] = [];
 
-    // Fetch all employees for this tenant to quick lookup ID
+    // Fetch all employees for this tenant
     const employees = await prisma.employee.findMany({
       where: { tenantId },
       select: { id: true, employeeCode: true }
     });
-    const empMap = new Map(employees.map(e => [e.employeeCode.toLowerCase(), e.id]));
+    const empMap = new Map(employees.map(e => [e.employeeCode.toLowerCase().trim(), e.id]));
+
+    // Group punches by employee and date
+    const punchGroups: Map<string, { employeeId: string; date: Date; punches: Date[] }> = new Map();
+
+    // Process rows (skip header)
+    worksheet.eachRow((row: any, rowNumber: number) => {
+      if (rowNumber === 1) return;
+
+      try {
+        const empCode = row.getCell(headers.code).value?.toString().trim();
+        if (!empCode) return;
+
+        const empId = empMap.get(empCode.toLowerCase());
+        if (!empId) {
+          failCount++;
+          errors.push(`Row ${rowNumber}: Employee code '${empCode}' not found`);
+          return;
+        }
+
+        let punchDate: Date;
+        let punchTime: Date;
+
+        if (detectedType === 'hikvision') {
+          // LogDate contains both date and time: "2/8/2026 19:07"
+          const logDateValue = row.getCell(headers.logDate).value;
+          if (!logDateValue) return;
+
+          if (logDateValue instanceof Date) {
+            punchTime = logDateValue;
+          } else if (typeof logDateValue === 'string') {
+            // Parse "M/D/YYYY HH:MM" or "M/D/YYYY HH:MM:SS"
+            punchTime = new Date(logDateValue);
+          } else {
+            return;
+          }
+
+          if (isNaN(punchTime.getTime())) {
+            failCount++;
+            errors.push(`Row ${rowNumber}: Invalid LogDate`);
+            return;
+          }
+
+          punchDate = new Date(Date.UTC(punchTime.getFullYear(), punchTime.getMonth(), punchTime.getDate()));
+        } else if (detectedType === 'essl') {
+          // Date and Time are separate or combined in LogDate
+          const dateValue = headers.logDate ? row.getCell(headers.logDate).value : row.getCell(headers.date).value;
+          const timeValue = headers.time ? row.getCell(headers.time).value : null;
+
+          if (!dateValue) return;
+
+          if (dateValue instanceof Date) {
+            punchDate = new Date(Date.UTC(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate()));
+            punchTime = dateValue;
+          } else if (typeof dateValue === 'string') {
+            const parsedDate = new Date(dateValue);
+            if (isNaN(parsedDate.getTime())) {
+              failCount++;
+              errors.push(`Row ${rowNumber}: Invalid date`);
+              return;
+            }
+            punchDate = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate()));
+            
+            if (timeValue) {
+              const timeStr = timeValue.toString();
+              const timeParts = timeStr.split(':');
+              if (timeParts.length >= 2) {
+                punchTime = new Date(parsedDate);
+                punchTime.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), timeParts[2] ? parseInt(timeParts[2]) : 0);
+              } else {
+                punchTime = parsedDate;
+              }
+            } else {
+              punchTime = parsedDate;
+            }
+          } else {
+            return;
+          }
+        } else {
+          // Generic handling
+          return;
+        }
+
+        // Create group key: employeeId + date
+        const dateKey = punchDate.toISOString().split('T')[0];
+        const groupKey = `${empId}_${dateKey}`;
+
+        if (!punchGroups.has(groupKey)) {
+          punchGroups.set(groupKey, {
+            employeeId: empId,
+            date: punchDate,
+            punches: []
+          });
+        }
+
+        punchGroups.get(groupKey)!.punches.push(punchTime);
+        successCount++;
+      } catch (error) {
+        failCount++;
+        errors.push(`Row ${rowNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    });
+
+    // Now process each group and create/update attendance logs
+    let processedCount = 0;
+    for (const [groupKey, group] of punchGroups.entries()) {
+      try {
+        // Sort punches chronologically
+        group.punches.sort((a, b) => a.getTime() - b.getTime());
+
+        const firstIn = group.punches[0];
+        const lastOut = group.punches.length > 1 ? group.punches[group.punches.length - 1] : null;
+
+        // Calculate working hours
+        let workingHours: number | null = null;
+        if (lastOut && lastOut.getTime() - firstIn.getTime() > 60000) {
+          workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
+        }
+
+        // Store all punches as JSON
+        const logsJSON = JSON.stringify(group.punches.map(p => p.toISOString()));
+
+        await prisma.attendanceLog.upsert({
+          where: {
+            employeeId_date_tenantId: {
+              employeeId: group.employeeId,
+              date: group.date,
+              tenantId,
+            },
+          },
+          update: {
+            firstIn,
+            lastOut,
+            workingHours,
+            logs: logsJSON,
+            status: 'present',
+          },
+          create: {
+            tenantId,
+            employeeId: group.employeeId,
+            date: group.date,
+            firstIn,
+            lastOut,
+            workingHours,
+            logs: logsJSON,
+            status: 'present',
+          },
+        });
+
+        processedCount++;
+      } catch (error) {
+        console.error(`Error processing group ${groupKey}:`, error);
+      }
+    }
+
+    // Cleanup uploaded file
+    fs.unlinkSync(filePath);
+
+    res.json({
+      message: 'Import completed',
+      format: detectedType,
+      imported: successCount,
+      processed: processedCount,
+      failed: failCount,
+      errors: errors.slice(0, 10), // Return only first 10 errors
+    });
+  } catch (error) {
+    console.error('Import error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Import failed' });
+  }
+});
 
     // Process rows (skip header)
     const rowsToProcess: any[] = [];
