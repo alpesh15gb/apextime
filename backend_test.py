@@ -95,10 +95,25 @@ class AttendanceAPITester:
             "POST", 
             "api/auth/login", 
             401,  # Expecting unauthorized
-            data={"email": "test@test.com", "password": "wrongpassword"}
+            data={"username": "invalid", "password": "wrongpassword", "companyCode": "invalid"}
         )
 
-        return True
+        # Test with correct credentials for testing (from requirements)
+        success, response = self.run_test(
+            "Login with Valid Credentials", 
+            "POST", 
+            "api/auth/login", 
+            200,  # Expecting success
+            data={"username": "admin", "password": "admin", "companyCode": "apextime"}
+        )
+        
+        if success and response.get('token'):
+            self.token = response['token']
+            print(f"✅ Login successful - token obtained")
+            return True
+        else:
+            print(f"❌ Login failed or token not received")
+            return False
 
     def test_attendance_endpoints(self):
         """Test attendance-related endpoints"""
