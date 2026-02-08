@@ -279,6 +279,69 @@ export const Reports = () => {
 
   return (
     <div data-testid="reports-page" className="min-h-screen pb-20" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {/* Recalculate Modal */}
+      {showRecalculateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Recalculate Attendance</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              This will recalculate attendance data using First In / Last Out logic for the selected date range.
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={recalcStartDate}
+                  onChange={(e) => setRecalcStartDate(e.target.value)}
+                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={recalcEndDate}
+                  onChange={(e) => setRecalcEndDate(e.target.value)}
+                  className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowRecalculateModal(false)}
+                className="flex-1 h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (recalcStartDate && recalcEndDate) {
+                    if (new Date(recalcStartDate) > new Date(recalcEndDate)) {
+                      alert('Start date must be before or equal to end date');
+                      return;
+                    }
+                    handleRecalculate(recalcStartDate, recalcEndDate);
+                  } else {
+                    alert('Please select both start and end dates');
+                  }
+                }}
+                className="flex-1 h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 transition-colors text-white text-sm font-semibold"
+              >
+                Recalculate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Print View */}
       {showPrint && (
         <MonthlyPrintView
