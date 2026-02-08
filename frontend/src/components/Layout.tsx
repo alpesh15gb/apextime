@@ -355,7 +355,91 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </nav>
 
         {/* Bottom Actions */}
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t border-gray-800 space-y-2">
+          {/* CSV Upload Section - Only show for admin/superadmin */}
+          {(user?.role === 'admin' || user?.role === 'superadmin') && sidebarOpen && (
+            <div className="space-y-2 mb-3">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+                Import Attendance
+              </div>
+              
+              {/* Hikvision Upload */}
+              <input
+                ref={hikvisionInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'hikvision')}
+                disabled={uploading}
+              />
+              <button
+                onClick={() => hikvisionInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center w-full px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                <span>{uploading ? 'Uploading...' : 'Upload Hikvision CSV'}</span>
+              </button>
+              
+              {/* ESSL Upload */}
+              <input
+                ref={esslInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'essl')}
+                disabled={uploading}
+              />
+              <button
+                onClick={() => esslInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center w-full px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                <span>{uploading ? 'Uploading...' : 'Upload ESSL CSV'}</span>
+              </button>
+            </div>
+          )}
+          
+          {/* Collapsed upload buttons */}
+          {(user?.role === 'admin' || user?.role === 'superadmin') && !sidebarOpen && (
+            <div className="space-y-2 mb-3">
+              <input
+                ref={hikvisionInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'hikvision')}
+                disabled={uploading}
+              />
+              <button
+                onClick={() => hikvisionInputRef.current?.click()}
+                disabled={uploading}
+                title="Upload Hikvision CSV"
+                className="flex items-center justify-center w-full px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-5 h-5" />
+              </button>
+              
+              <input
+                ref={esslInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'essl')}
+                disabled={uploading}
+              />
+              <button
+                onClick={() => esslInputRef.current?.click()}
+                disabled={uploading}
+                title="Upload ESSL CSV"
+                className="flex items-center justify-center w-full px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+          
           <button
             onClick={handleLogout}
             className={`flex items-center w-full px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors ${!sidebarOpen && 'justify-center'}`}
