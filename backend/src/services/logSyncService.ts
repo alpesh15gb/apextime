@@ -1356,7 +1356,6 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     console.log(`Found ${logs.length} raw logs to analyze.`);
 
     const affectedPairs = new Set<string>();
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
     for (const log of logs) {
       const uId = log.deviceUserId || log.userId;
@@ -1365,20 +1364,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
       const punchT = log.punchTime || log.timestamp;
       if (!punchT) continue;
 
-      const istTime = new Date(punchT.getTime() + IST_OFFSET);
-      const hour = istTime.getUTCHours();
-      let y = istTime.getUTCFullYear();
-      let m = istTime.getUTCMonth();
-      let d = istTime.getUTCDate();
-
-      if (hour < 5) {
-        const p = new Date(Date.UTC(y, istTime.getUTCMonth(), istTime.getUTCDate() - 1));
-        y = p.getUTCFullYear();
-        m = p.getUTCMonth();
-        d = p.getUTCDate();
-      }
-
-      const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      // Use centralized function - server is IST, punchTime is IST
+      const { dateKey: dStr } = getLogicalDateFromPunch(punchT);
       affectedPairs.add(`${uId}|${dStr}`);
     }
 
@@ -1392,8 +1379,8 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
         const [uId, dStr] = pair.split('|');
         // Create a window around the target date to catch night shift logs
         const targetDate = new Date(dStr + 'T00:00:00Z'); // UTC midnight for @db.Date
-        const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000); // 8 hours before
-        const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);  // 32 hours after
+        const windowStart = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000); // 12 hours before
+        const windowEnd = new Date(targetDate.getTime() + 36 * 60 * 60 * 1000);   // 36 hours after
 
         const dayLogs = await prisma.rawDeviceLog.findMany({
           where: {
