@@ -113,6 +113,7 @@ export const attendanceAPI = {
   downloadMatrixExcel: (params: any) => api.get('/attendance/monthly-report', { params: { ...params, format: 'excel' }, responseType: 'blob' }),
   reprocess: (data: { startDate?: string; endDate?: string; employeeId?: string }) => api.post('/attendance/reprocess', data),
   recalculate: (data: { startDate?: string; endDate?: string; employeeId?: string }) => api.post('/attendance/recalculate', data),
+  getDateRangeReport: (params: any) => api.get('/attendance/date-range-report', { params }),
   import: (data: FormData) => api.post('/attendance/import', data, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
