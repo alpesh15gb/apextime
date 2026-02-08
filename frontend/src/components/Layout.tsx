@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -34,9 +34,11 @@ import {
   BookOpenCheck,
   LifeBuoy,
   UserPlus,
-  Clock
+  Clock,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { attendanceAPI } from '../services/api';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
