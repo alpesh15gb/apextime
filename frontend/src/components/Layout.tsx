@@ -55,6 +55,39 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     navigate('/login');
   };
 
+  const handleCSVUpload = async (file: File, deviceType: 'hikvision' | 'essl') => {
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('deviceType', deviceType);
+      
+      const response = await attendanceAPI.import(formData);
+      
+      alert(`CSV uploaded successfully! ${response.data.imported || response.data.processed || 0} records processed.`);
+    } catch (error: any) {
+      console.error('CSV upload error:', error);
+      alert(`Upload failed: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (hikvisionInputRef.current) hikvisionInputRef.current.value = '';
+      if (esslInputRef.current) esslInputRef.current.value = '';
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, deviceType: 'hikvision' | 'essl') => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        alert('Please upload a CSV file');
+        return;
+      }
+      handleCSVUpload(file, deviceType);
+    }
+  };
+
   const navItems = user?.role === 'employee'
     ? (user?.tenantType === 'SCHOOL'
       ? [
