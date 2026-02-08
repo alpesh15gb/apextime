@@ -38,7 +38,9 @@ export const Reports = () => {
   const [activeTab, setActiveTab] = useState<TabType>('daily');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+  const [showPrint, setShowPrint] = useState(false);
 
   // Filters
   const [departments, setDepartments] = useState<any[]>([]);
