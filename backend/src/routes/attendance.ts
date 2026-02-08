@@ -954,6 +954,15 @@ router.post('/import', upload.single('file'), async (req, res) => {
     });
     const empMap = new Map(employees.map(e => [e.employeeCode.toLowerCase().trim(), e.id]));
 
+    // Update status
+    importStatus.set(tenantId, {
+      status: 'processing',
+      progress: 0,
+      total: worksheet.rowCount - 1,
+      message: `Processing ${worksheet.rowCount - 1} rows...`,
+      startedAt: importStatus.get(tenantId)!.startedAt
+    });
+
     // Group punches by employee and date
     const punchGroups: Map<string, { employeeId: string; date: Date; punches: Date[] }> = new Map();
 
