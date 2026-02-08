@@ -12,6 +12,28 @@ const router = express.Router();
 
 router.use(authenticate);
 
+// Import status tracking
+const importStatus = new Map<string, {
+  status: 'processing' | 'completed' | 'failed';
+  progress: number;
+  total: number;
+  message: string;
+  startedAt: Date;
+  completedAt?: Date;
+}>();
+
+// Status endpoint to check import progress
+router.get('/import/status/:tenantId', async (req, res) => {
+  const { tenantId } = req.params;
+  const status = importStatus.get(tenantId);
+  
+  if (!status) {
+    return res.json({ status: 'idle', message: 'No active import' });
+  }
+  
+  res.json(status);
+});
+
 // Get attendance logs
 router.get('/', async (req, res) => {
   try {
