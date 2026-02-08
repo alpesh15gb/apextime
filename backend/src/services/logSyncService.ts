@@ -1097,31 +1097,23 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 /**
  * Triggered by real-time protocols (iClock, Hikvision) when a single punch is received.
  * It identifies the logical date and recalculates attendance for that user-day.
+ * 
+ * IMPORTANT: Server runs in IST and punch times are in IST.
+ * NO timezone offset needed.
  */
 export async function triggerRealtimeAttendanceSync(tenantId: string, userId: string, punchTime: Date): Promise<void> {
   try {
-    // 1. Determine Logical Date for the punch in IST
-    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
-    const istTime = new Date(punchTime.getTime() + IST_OFFSET);
-    const hour = istTime.getUTCHours();
-
-    let logicalYear = istTime.getUTCFullYear();
-    let logicalMonth = istTime.getUTCMonth();
-    let logicalDay = istTime.getUTCDate();
-
-    if (hour < 5) {
-      const prev = new Date(istTime.getTime() - 12 * 60 * 60 * 1000);
-      logicalYear = prev.getUTCFullYear();
-      logicalMonth = prev.getUTCMonth();
-      logicalDay = prev.getUTCDate();
-    }
-
-    const dStr = `${logicalYear}-${String(logicalMonth + 1).padStart(2, '0')}-${String(logicalDay).padStart(2, '0')}`;
+    // 1. Determine Logical Date for the punch (server is IST, punchTime is IST)
+    const { year: logicalYear, month: logicalMonth, day: logicalDay, dateKey: dStr } = getLogicalDateFromPunch(punchTime);
+    
     const targetDate = new Date(dStr + 'T00:00:00Z');
 
     logger.debug(`Real-time sync triggered for ${userId} on ${dStr} (calculated from ${punchTime.toISOString()})`);
-    const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
-    const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
+    
+    // Create a window to fetch all punches for this logical day
+    // Window: 12 hours before to 36 hours after to catch night shift punches
+    const windowStart = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000);
+    const windowEnd = new Date(targetDate.getTime() + 36 * 60 * 60 * 1000);
 
     const logs = await prisma.rawDeviceLog.findMany({
       where: {
