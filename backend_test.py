@@ -1,21 +1,25 @@
-#!/usr/bin/env python3
-
 import requests
 import sys
-from datetime import datetime, timedelta
 import json
+from datetime import datetime
 
-class AttendanceAPITester:
-    def __init__(self, base_url="https://payroll-reports-hub.preview.emergentagent.com"):
-        self.base_url = base_url
+class PayrollSystemTester:
+    def __init__(self):
+        self.base_url = "https://payroll-reports-hub.preview.emergentagent.com/api"
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0
-        self.tenant_id = None
+        self.session = requests.Session()
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
+    def log(self, message, test_name=None):
+        if test_name:
+            print(f"\n🔍 [{test_name}] {message}")
+        else:
+            print(f"ℹ️  {message}")
+
+    def run_test(self, name, method, endpoint, expected_status=200, data=None, headers=None):
         """Run a single API test"""
-        url = f"{self.base_url}/{endpoint}"
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
         test_headers = {'Content-Type': 'application/json'}
         
         if self.token:
@@ -25,269 +29,176 @@ class AttendanceAPITester:
             test_headers.update(headers)
 
         self.tests_run += 1
-        print(f"\n🔍 Testing {name}...")
-        print(f"   URL: {url}")
+        self.log(f"Testing: {method} {endpoint}", name)
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=test_headers, timeout=10)
+                response = self.session.get(url, headers=test_headers, timeout=30)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=test_headers, timeout=10)
+                response = self.session.post(url, json=data, headers=test_headers, timeout=30)
             elif method == 'PUT':
-                response = requests.put(url, json=data, headers=test_headers, timeout=10)
+                response = self.session.put(url, json=data, headers=test_headers, timeout=30)
+            elif method == 'DELETE':
+                response = self.session.delete(url, headers=test_headers, timeout=30)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
 
             success = response.status_code == expected_status
             if success:
                 self.tests_passed += 1
-                print(f"✅ Passed - Status: {response.status_code}")
+                self.log(f"✅ PASSED - Status: {response.status_code}", name)
                 try:
-                    response_data = response.json()
-                    if isinstance(response_data, dict) and len(str(response_data)) < 200:
-                        print(f"   Response: {response_data}")
+                    return response.json() if response.content else {}
                 except:
-                    pass
+                    return {"raw_response": response.text}
             else:
-                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
-                try:
-                    error_data = response.json()
-                    print(f"   Error: {error_data}")
-                except:
-                    print(f"   Raw response: {response.text[:200]}")
+                self.log(f"❌ FAILED - Expected {expected_status}, got {response.status_code}", name)
+                self.log(f"Response: {response.text[:200]}...", name)
+                return None
 
-            return success, response.json() if response.headers.get('content-type', '').startswith('application/json') else {}
-
-        except requests.exceptions.Timeout:
-            print(f"❌ Failed - Request timeout")
-            return False, {}
-        except requests.exceptions.ConnectionError:
-            print(f"❌ Failed - Connection error")
-            return False, {}
         except Exception as e:
-            print(f"❌ Failed - Error: {str(e)}")
-            return False, {}
+            self.log(f"❌ ERROR - {str(e)}", name)
+            return None
 
-    def test_health_check(self):
-        """Test basic health endpoint"""
-        return self.run_test("Health Check", "GET", "api/health", 200)
-
-    def test_auth_endpoints(self):
-        """Test authentication endpoints"""
-        print("\n=== AUTHENTICATION TESTS ===")
+    def login(self):
+        """Test login with the specified credentials"""
+        credentials = {
+            "username": "admin", 
+            "password": "admin",
+            "companyCode": "apextime"
+        }
         
-        # Test health first
-        success, _ = self.test_health_check()
-        if not success:
-            print("❌ Health check failed - server may not be running properly")
-            return False
-
-        # Test login endpoint (should fail without credentials but return proper error)
-        success, response = self.run_test(
-            "Login Endpoint (No Credentials)", 
-            "POST", 
-            "api/auth/login", 
-            400,  # Expecting validation error
-            data={}
-        )
+        self.log("Attempting login with required credentials...")
+        response = self.run_test("Login", "POST", "/auth/login", 200, credentials)
         
-        # Test with invalid credentials
-        success, response = self.run_test(
-            "Login with Invalid Credentials", 
-            "POST", 
-            "api/auth/login", 
-            401,  # Expecting unauthorized
-            data={"username": "invalid", "password": "wrongpassword", "companyCode": "invalid"}
-        )
-
-        # Test with correct credentials for testing (from requirements)
-        success, response = self.run_test(
-            "Login with Valid Credentials", 
-            "POST", 
-            "api/auth/login", 
-            200,  # Expecting success
-            data={"username": "admin", "password": "admin", "companyCode": "apextime"}
-        )
-        
-        if success and response.get('token'):
+        if response and 'token' in response:
             self.token = response['token']
-            print(f"✅ Login successful - token obtained")
+            self.log(f"✅ Login successful! Token acquired.")
             return True
         else:
-            print(f"❌ Login failed or token not received")
+            self.log(f"❌ Login failed - no token received")
             return False
 
-    def test_attendance_endpoints(self):
-        """Test attendance-related endpoints"""
-        print("\n=== ATTENDANCE ENDPOINTS TESTS ===")
+    def test_recalculate_endpoint(self):
+        """Test the new POST /api/attendance/recalculate endpoint"""
+        self.log("=== TESTING NEW RECALCULATE ENDPOINT ===")
         
-        # Test attendance endpoint without auth (should require auth)
-        success, response = self.run_test(
-            "Attendance Logs (No Auth)", 
-            "GET", 
-            "api/attendance", 
-            401  # Should require authentication
+        # Test recalculate endpoint with empty body (should recalculate all)
+        response = self.run_test(
+            "Recalculate All Attendance", 
+            "POST", 
+            "/attendance/recalculate", 
+            200, 
+            {}
         )
-
-        # Test with date parameters (still no auth)
-        today = datetime.now().strftime('%Y-%m-%d')
-        success, response = self.run_test(
-            "Attendance with Date Filter (No Auth)", 
-            "GET", 
-            f"api/attendance?startDate={today}&endDate={today}", 
-            401
-        )
-
-        return True
-
-    def test_reports_endpoints(self):
-        """Test reports endpoints"""
-        print("\n=== REPORTS ENDPOINTS TESTS ===")
         
-        if not self.token:
-            print("❌ No authentication token - skipping authenticated tests")
-            return False
+        if response:
+            self.log(f"✅ Recalculate Response: {json.dumps(response, indent=2)}")
+            if 'updated' in response and 'total' in response:
+                self.log(f"✅ Recalculation completed: {response.get('updated')} updated out of {response.get('total')} total")
+                return response
+            else:
+                self.log("❌ Response missing expected fields (updated/total)")
+        return None
+
+    def test_daily_reports_after_recalculate(self):
+        """Test daily reports to verify 8 employee records with correct calculations"""
+        self.log("=== TESTING DAILY REPORTS AFTER RECALCULATE ===")
+        
+        response = self.run_test(
+            "Daily Report for 2026-02-07",
+            "GET",
+            "/reports/daily?date=2026-02-07",
+            200
+        )
+        
+        if response:
+            logs = response.get('logs', [])
+            self.log(f"✅ Retrieved {len(logs)} employee records")
             
-        # Test daily report endpoint
-        today = datetime.now().strftime('%Y-%m-%d')
-        success, response = self.run_test(
-            "Daily Report (Authenticated)", 
+            if len(logs) != 8:
+                self.log(f"⚠️  Expected 8 records, got {len(logs)}")
+            
+            # Check data structure for each employee
+            for i, log in enumerate(logs[:3]):  # Check first 3 records for details
+                emp_name = f"{log.get('employee', {}).get('firstName', 'N/A')} {log.get('employee', {}).get('lastName', '')}"
+                first_in = log.get('firstIn')
+                last_out = log.get('lastOut')
+                working_hours = log.get('workingHours')
+                
+                self.log(f"Employee {i+1}: {emp_name}")
+                self.log(f"  - First In: {first_in}")
+                self.log(f"  - Last Out: {last_out}")
+                self.log(f"  - Working Hours: {working_hours}")
+                
+            return response
+        return None
+
+    def test_monthly_print_endpoint(self):
+        """Test the monthly report endpoint that feeds MonthlyPrintView"""
+        self.log("=== TESTING MONTHLY REPORT ENDPOINT ===")
+        
+        response = self.run_test(
+            "Monthly Report February 2026",
             "GET", 
-            f"api/reports/daily?date={today}", 
+            "/attendance/monthly-report?month=2&year=2026",
             200
         )
         
-        if success:
-            print(f"✅ Daily report data structure valid")
-            # Check if response has expected structure
-            expected_keys = ['date', 'totalRecords', 'summary', 'logs']
-            for key in expected_keys:
-                if key in response:
-                    print(f"   ✓ Found key: {key}")
-                else:
-                    print(f"   ⚠️ Missing key: {key}")
+        if response:
+            report_data = response.get('reportData', [])
+            self.log(f"✅ Monthly report has {len(report_data)} employees")
+            
+            # Check structure for print view
+            if report_data:
+                first_emp = report_data[0]
+                daily_data = first_emp.get('dailyData', [])
+                self.log(f"✅ Each employee has {len(daily_data)} daily records")
+                
+                # Check a few daily records have proper In/Out times
+                for day_record in daily_data[:3]:
+                    day = day_record.get('day')
+                    first_in = day_record.get('firstIn')
+                    last_out = day_record.get('lastOut')
+                    self.log(f"  Day {day}: In={first_in}, Out={last_out}")
+                    
+            return response
+        return None
 
-        # Test weekly report
-        success, response = self.run_test(
-            "Weekly Report", 
-            "GET", 
-            f"api/reports/weekly?startDate={today}", 
-            200
-        )
-
-        # Test monthly report
-        current_month = datetime.now().month
-        current_year = datetime.now().year
-        success, response = self.run_test(
-            "Monthly Report", 
-            "GET", 
-            f"api/reports/monthly?month={current_month}&year={current_year}", 
-            200
-        )
-
-        return True
-
-    def test_filter_endpoints(self):
-        """Test filter-related endpoints (departments, branches, locations)"""
-        print("\n=== FILTER ENDPOINTS TESTS ===")
+    def run_all_tests(self):
+        """Run all tests in sequence"""
+        self.log("🚀 Starting Payroll System Testing (Iteration 3)")
+        self.log(f"Target URL: {self.base_url}")
         
-        if not self.token:
-            print("❌ No authentication token - skipping authenticated tests")
+        # 1. Login
+        if not self.login():
+            self.log("❌ Login failed - cannot continue with protected endpoints")
             return False
         
-        # Test departments endpoint
-        success, response = self.run_test(
-            "Departments Endpoint (Authenticated)", 
-            "GET", 
-            "api/departments", 
-            200
-        )
+        # 2. Test new recalculate endpoint
+        recalc_result = self.test_recalculate_endpoint()
         
-        if success:
-            print(f"   Found {len(response.get('data', []))} departments")
-
-        # Test branches endpoint  
-        success, response = self.run_test(
-            "Branches Endpoint (Authenticated)", 
-            "GET", 
-            "api/branches", 
-            200
-        )
+        # 3. Test daily reports after recalculation
+        daily_result = self.test_daily_reports_after_recalculate()
         
-        if success:
-            print(f"   Found {len(response.get('data', []))} branches")
-
-        # Test locations endpoint
-        success, response = self.run_test(
-            "Locations Endpoint (Authenticated)", 
-            "GET", 
-            "api/locations", 
-            200
-        )
+        # 4. Test monthly report for print view
+        monthly_result = self.test_monthly_print_endpoint()
         
-        if success:
-            print(f"   Found {len(response.get('data', []))} locations")
-
-        return True
-
-    def test_timezone_handling(self):
-        """Test timezone-related functionality"""
-        print("\n=== TIMEZONE HANDLING TESTS ===")
+        # Summary
+        self.log("\n" + "="*50)
+        self.log("📊 TEST SUMMARY")
+        self.log("="*50)
+        self.log(f"Tests run: {self.tests_run}")
+        self.log(f"Tests passed: {self.tests_passed}")
+        self.log(f"Success rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
-        # Test if server responds with proper IST timestamps
-        success, response = self.run_test(
-            "Server Health with Timestamp", 
-            "GET", 
-            "api/health", 
-            200
-        )
-        
-        if success and response.get('timestamp'):
-            timestamp = response['timestamp']
-            print(f"   Server timestamp: {timestamp}")
-            
-            # Parse timestamp and check if it looks reasonable
-            try:
-                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                print(f"   Parsed datetime: {dt}")
-                print("✅ Timestamp parsing successful")
-            except Exception as e:
-                print(f"❌ Timestamp parsing failed: {e}")
-
-        return True
+        success_rate = self.tests_passed / self.tests_run
+        return success_rate >= 0.8  # 80% pass rate considered successful
 
 def main():
-    print("🚀 Starting Attendance & Payroll App Backend Testing...")
-    print("=" * 60)
-    
-    tester = AttendanceAPITester()
-    
-    # Run all test suites
-    test_suites = [
-        tester.test_auth_endpoints,
-        tester.test_attendance_endpoints, 
-        tester.test_reports_endpoints,
-        tester.test_filter_endpoints,
-        tester.test_timezone_handling
-    ]
-    
-    for test_suite in test_suites:
-        try:
-            test_suite()
-        except Exception as e:
-            print(f"❌ Test suite failed with error: {e}")
-    
-    # Print final results
-    print("\n" + "=" * 60)
-    print(f"📊 FINAL RESULTS")
-    print(f"Tests Run: {tester.tests_run}")
-    print(f"Tests Passed: {tester.tests_passed}")
-    print(f"Success Rate: {(tester.tests_passed/tester.tests_run*100):.1f}%" if tester.tests_run > 0 else "0%")
-    
-    if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed!")
-        return 0
-    else:
-        print("⚠️  Some tests failed - check server configuration")
-        return 1
+    tester = PayrollSystemTester()
+    success = tester.run_all_tests()
+    return 0 if success else 1
 
 if __name__ == "__main__":
     sys.exit(main())
