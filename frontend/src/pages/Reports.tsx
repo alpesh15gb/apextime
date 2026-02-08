@@ -302,7 +302,7 @@ export const Reports = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             data-testid="recalculate-btn"
-            onClick={handleRecalculate}
+            onClick={() => setShowRecalculateModal(true)}
             disabled={recalculating}
             className="h-10 px-4 flex items-center gap-2 rounded-xl bg-amber-50 hover:bg-amber-100 transition-colors text-amber-700 text-sm font-semibold border border-amber-200"
           >
@@ -323,22 +323,6 @@ export const Reports = () => {
             className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            data-testid="download-pdf-btn"
-            onClick={() => handleDownload('pdf')}
-            disabled={generating}
-            className="h-10 px-4 flex items-center gap-2 rounded-xl bg-red-50 hover:bg-red-100 transition-colors text-red-600 text-sm font-semibold"
-          >
-            <FilePdf className="w-4 h-4" /> PDF
-          </button>
-          <button
-            data-testid="download-excel-btn"
-            onClick={() => handleDownload('excel')}
-            disabled={generating}
-            className="h-10 px-4 flex items-center gap-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors text-emerald-600 text-sm font-semibold"
-          >
-            <FileSpreadsheet className="w-4 h-4" /> Excel
           </button>
         </div>
       </div>
