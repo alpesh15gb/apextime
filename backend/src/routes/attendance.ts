@@ -1009,55 +1009,71 @@ router.post('/import', upload.single('file'), async (req, res) => {
       }
     });
 
-    // Now process each group and create/update attendance logs
+    // Now process each group and create/update attendance logs using batch operations
     let processedCount = 0;
-    for (const [groupKey, group] of punchGroups.entries()) {
+    const batchSize = 50;
+    const groupEntries = Array.from(punchGroups.entries());
+    
+    console.log(`[CSV IMPORT] Processing ${groupEntries.length} employee-date groups...`);
+
+    for (let i = 0; i < groupEntries.length; i += batchSize) {
+      const batch = groupEntries.slice(i, i + batchSize);
+      
       try {
-        // Sort punches chronologically
-        group.punches.sort((a, b) => a.getTime() - b.getTime());
+        // Process batch in parallel with Promise.all
+        await Promise.all(batch.map(async ([groupKey, group]) => {
+          try {
+            // Sort punches chronologically
+            group.punches.sort((a, b) => a.getTime() - b.getTime());
 
-        const firstIn = group.punches[0];
-        const lastOut = group.punches.length > 1 ? group.punches[group.punches.length - 1] : null;
+            const firstIn = group.punches[0];
+            const lastOut = group.punches.length > 1 ? group.punches[group.punches.length - 1] : null;
 
-        // Calculate working hours
-        let workingHours: number | null = null;
-        if (lastOut && lastOut.getTime() - firstIn.getTime() > 60000) {
-          workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
-        }
+            // Calculate working hours
+            let workingHours: number | null = null;
+            if (lastOut && lastOut.getTime() - firstIn.getTime() > 60000) {
+              workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
+            }
 
-        // Store all punches as JSON
-        const logsJSON = JSON.stringify(group.punches.map(p => p.toISOString()));
+            // Store all punches as JSON
+            const logsJSON = JSON.stringify(group.punches.map(p => p.toISOString()));
 
-        await prisma.attendanceLog.upsert({
-          where: {
-            employeeId_date_tenantId: {
-              employeeId: group.employeeId,
-              date: group.date,
-              tenantId,
-            },
-          },
-          update: {
-            firstIn,
-            lastOut,
-            workingHours,
-            logs: logsJSON,
-            status: 'present',
-          },
-          create: {
-            tenantId,
-            employeeId: group.employeeId,
-            date: group.date,
-            firstIn,
-            lastOut,
-            workingHours,
-            logs: logsJSON,
-            status: 'present',
-          },
-        });
+            await prisma.attendanceLog.upsert({
+              where: {
+                employeeId_date_tenantId: {
+                  employeeId: group.employeeId,
+                  date: group.date,
+                  tenantId,
+                },
+              },
+              update: {
+                firstIn,
+                lastOut,
+                workingHours,
+                logs: logsJSON,
+                status: 'present',
+              },
+              create: {
+                tenantId,
+                employeeId: group.employeeId,
+                date: group.date,
+                firstIn,
+                lastOut,
+                workingHours,
+                logs: logsJSON,
+                status: 'present',
+              },
+            });
 
-        processedCount++;
-      } catch (error) {
-        console.error(`Error processing group ${groupKey}:`, error);
+            processedCount++;
+          } catch (error) {
+            console.error(`Error processing group ${groupKey}:`, error);
+          }
+        }));
+        
+        console.log(`[CSV IMPORT] Processed ${Math.min(i + batchSize, groupEntries.length)}/${groupEntries.length} groups`);
+      } catch (batchError) {
+        console.error('Batch processing error:', batchError);
       }
     }
 
