@@ -163,13 +163,40 @@ router.get('/daily', async (req, res) => {
       });
     }
 
+    const present = logs.filter(l => l.status?.toLowerCase() === 'present').length;
+    const absent = logs.filter(l => l.status?.toLowerCase() === 'absent').length;
+    const late = logs.filter(l => (l.lateArrival || 0) > 0).length;
+    const earlyDep = logs.filter(l => (l.earlyDeparture || 0) > 0).length;
+    const halfDay = logs.filter(l => l.status?.toLowerCase() === 'half day').length;
+    const incomplete = logs.filter(l => l.status?.toLowerCase() === 'shift incomplete').length;
+    
+    // Department breakdown
+    const deptBreakdown: Record<string, any> = {};
+    for (const log of logs) {
+      const dName = log.employee?.department?.name || 'Unassigned';
+      if (!deptBreakdown[dName]) {
+        deptBreakdown[dName] = { present: 0, absent: 0, late: 0, total: 0 };
+      }
+      deptBreakdown[dName].total++;
+      if (log.status?.toLowerCase() === 'present') deptBreakdown[dName].present++;
+      if (log.status?.toLowerCase() === 'absent') deptBreakdown[dName].absent++;
+      if ((log.lateArrival || 0) > 0) deptBreakdown[dName].late++;
+    }
+
     res.json({
       date: reportDate,
       totalRecords: logs.length,
-      present: logs.filter(l => l.status?.toLowerCase() === 'present').length,
-      absent: logs.filter(l => l.status?.toLowerCase() === 'absent').length,
-      late: logs.filter(l => (l.lateArrival || 0) > 0).length,
-      earlyDeparture: logs.filter(l => (l.earlyDeparture || 0) > 0).length,
+      summary: {
+        present,
+        absent,
+        late,
+        earlyDeparture: earlyDep,
+        halfDay,
+        incomplete,
+        totalWorkingHours: Math.round(logs.reduce((acc, l) => acc + (l.workingHours || 0), 0) * 100) / 100,
+        avgWorkingHours: logs.length > 0 ? Math.round((logs.reduce((acc, l) => acc + (l.workingHours || 0), 0) / logs.length) * 100) / 100 : 0
+      },
+      departmentBreakdown: Object.entries(deptBreakdown).map(([name, stats]) => ({ name, ...stats as any })),
       logs,
     });
   } catch (error) {
