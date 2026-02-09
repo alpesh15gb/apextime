@@ -902,15 +902,34 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
     if (detectedType === 'hikvision') {
       // Hikvision Format: Employee Code, Employee Name, Employee Code In Device, LogDate, Company, Department
+      console.log('[CSV IMPORT] Detecting Hikvision columns...');
+      
       headerRow.eachCell((cell: any, colNumber: any) => {
-        const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
-        if (val === 'employee code' || val === 'employeecode') headers.code = colNumber;
-        else if (val === 'employee name' || val === 'employeename') headers.name = colNumber;
-        else if (val === 'logdate' || val === 'log date') headers.logDate = colNumber;
+        const val = cell.value ? cell.value.toString().toLowerCase().trim().replace(/\s+/g, '') : '';
+        console.log(`[CSV IMPORT] Column ${colNumber}: "${cell.value}" -> normalized: "${val}"`);
+        
+        // More flexible matching
+        if (val.includes('employeecode') || val.includes('empcode') || val === 'code' || val === 'id') {
+          headers.code = colNumber;
+          console.log(`[CSV IMPORT] ✓ Found employee code at column ${colNumber}`);
+        } else if (val.includes('employeename') || val.includes('name')) {
+          headers.name = colNumber;
+        } else if (val.includes('logdate') || val.includes('date') || val.includes('datetime') || val.includes('timestamp')) {
+          headers.logDate = colNumber;
+          console.log(`[CSV IMPORT] ✓ Found logDate at column ${colNumber}`);
+        }
       });
 
+      console.log(`[CSV IMPORT] Headers found: code=${headers.code}, logDate=${headers.logDate}`);
+
       if (!headers.code || !headers.logDate) {
-        const errorMsg = 'Missing required Hikvision columns: Employee Code, LogDate';
+        // Log all available headers for debugging
+        const availableHeaders: string[] = [];
+        headerRow.eachCell((cell: any) => {
+          if (cell.value) availableHeaders.push(cell.value.toString());
+        });
+        
+        const errorMsg = `Missing required Hikvision columns. Found: [${availableHeaders.join(', ')}]. Need: Employee Code and LogDate`;
         console.error(`[CSV IMPORT] ${errorMsg}`);
         importStatus.set(tenantId, {
           status: 'failed',
