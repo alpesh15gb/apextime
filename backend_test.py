@@ -643,7 +643,7 @@ class Form16LocationPayrollTester:
         return success_rate >= 0.6  # 60% pass rate considered successful for new features
 
 def main():
-    tester = PayrollAdjustmentsTester()
+    tester = Form16LocationPayrollTester()
     success = tester.run_all_tests()
     return 0 if success else 1
 
