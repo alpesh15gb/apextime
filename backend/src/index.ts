@@ -41,6 +41,7 @@ import loanRoutes from './routes/loans';
 import assetRoutes from './routes/assets';
 import attendanceAdvancedRoutes from './routes/attendanceAdvanced';
 import deviceCommandsRoutes from './routes/deviceCommands';
+import payrollAdjustmentsRoutes from './routes/payrollAdjustments';
 import schoolRoutes from './routes/school';
 import schoolFinanceRoutes from './routes/schoolFinance';
 import schoolAttendanceRoutes from './routes/schoolAttendance';
