@@ -369,7 +369,7 @@ class PayrollAdjustmentsTester:
         return success_rate >= 0.8  # 80% pass rate considered successful
 
 def main():
-    tester = AttendanceCountingTester()
+    tester = PayrollAdjustmentsTester()
     success = tester.run_all_tests()
     return 0 if success else 1
 
