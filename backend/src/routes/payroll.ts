@@ -486,4 +486,301 @@ router.get('/runs/:id/export-review', authenticate, async (req, res) => {
     }
 });
 
+// ============================================
+// LOCATION-WISE PAYROLL PROCESSING
+// ============================================
+
+// Create location-wise payroll run
+router.post('/runs/location', authenticate, async (req, res) => {
+    const { month, year, batchName, periodStart, periodEnd, branchId, locationId } = req.body;
+    try {
+        const tenantId = (req as any).user.tenantId;
+        
+        // Get location/branch name for batch naming
+        let locationName = '';
+        if (branchId) {
+            const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+            locationName = branch?.name || '';
+        } else if (locationId) {
+            const location = await prisma.location.findUnique({ where: { id: locationId } });
+            locationName = location?.name || '';
+        }
+
+        const run = await prisma.payrollRun.create({
+            data: {
+                tenantId,
+                month,
+                year,
+                batchName: batchName || `${locationName} Payroll ${month}/${year}`,
+                periodStart: new Date(periodStart),
+                periodEnd: new Date(periodEnd),
+                status: 'draft',
+                // Store location filter in name for reference
+                name: locationName ? `${locationName}` : undefined
+            }
+        });
+
+        res.json({ ...run, branchId, locationId, locationName });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Process payroll for specific branch/location
+router.post('/runs/:id/process-location', authenticate, async (req, res) => {
+    const { id } = req.params;
+    const { branchId, locationId } = req.body;
+    
+    try {
+        const run = await prisma.payrollRun.findUnique({ where: { id } });
+        if (!run) return res.status(404).json({ error: 'Run not found' });
+
+        // Build employee filter based on location
+        const whereClause: any = {
+            tenantId: (req as any).user.tenantId,
+            isActive: true
+        };
+
+        if (branchId) {
+            whereClause.branchId = branchId;
+        }
+        if (locationId) {
+            whereClause.locationId = locationId;
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: whereClause,
+            select: { id: true, firstName: true, lastName: true, branchId: true }
+        });
+
+        if (employees.length === 0) {
+            return res.status(400).json({ error: 'No employees found for the selected location' });
+        }
+
+        const results = [];
+        for (const emp of employees) {
+            const result = await PayrollEngine.calculateEmployeePayroll(emp.id, run.month, run.year, run.id);
+            if (result.success) {
+                results.push(result.data);
+            }
+        }
+
+        // Update run stats
+        const allPayrolls = await prisma.payroll.findMany({
+            where: { payrollRunId: run.id }
+        });
+
+        const totalGross = allPayrolls.reduce((sum, p) => sum + p.grossSalary, 0);
+        const totalNet = allPayrolls.reduce((sum, p) => sum + p.netSalary, 0);
+
+        await prisma.payrollRun.update({
+            where: { id },
+            data: {
+                status: 'review',
+                totalEmployees: allPayrolls.length,
+                totalGross,
+                totalNet,
+                processedAt: new Date(),
+                processedBy: (req as any).user.username
+            }
+        });
+
+        res.json({ 
+            message: 'Location-wise payroll processed successfully', 
+            employeeCount: employees.length,
+            branchId,
+            locationId
+        });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get payroll summary by location
+router.get('/summary/by-location', authenticate, async (req, res) => {
+    const { month, year } = req.query;
+    
+    try {
+        const tenantId = (req as any).user.tenantId;
+        
+        // Get all branches with payroll stats
+        const branches = await prisma.branch.findMany({
+            where: { tenantId },
+            include: {
+                employees: {
+                    select: { id: true }
+                }
+            }
+        });
+
+        const summary = [];
+        
+        for (const branch of branches) {
+            const employeeIds = branch.employees.map(e => e.id);
+            
+            if (employeeIds.length === 0) {
+                summary.push({
+                    branchId: branch.id,
+                    branchName: branch.name,
+                    branchCode: branch.code,
+                    employeeCount: 0,
+                    totalGross: 0,
+                    totalNet: 0,
+                    totalTDS: 0,
+                    totalPF: 0,
+                    totalESI: 0
+                });
+                continue;
+            }
+
+            const payrollStats = await prisma.payroll.aggregate({
+                where: {
+                    employeeId: { in: employeeIds },
+                    month: month ? parseInt(month as string) : undefined,
+                    year: year ? parseInt(year as string) : undefined
+                },
+                _sum: {
+                    grossSalary: true,
+                    netSalary: true,
+                    tdsDeduction: true,
+                    pfDeduction: true,
+                    esiDeduction: true
+                },
+                _count: true
+            });
+
+            summary.push({
+                branchId: branch.id,
+                branchName: branch.name,
+                branchCode: branch.code,
+                employeeCount: employeeIds.length,
+                processedCount: payrollStats._count,
+                totalGross: payrollStats._sum.grossSalary || 0,
+                totalNet: payrollStats._sum.netSalary || 0,
+                totalTDS: payrollStats._sum.tdsDeduction || 0,
+                totalPF: payrollStats._sum.pfDeduction || 0,
+                totalESI: payrollStats._sum.esiDeduction || 0
+            });
+        }
+
+        res.json(summary);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// FORM 16 GENERATION
+// ============================================
+
+import { Form16Service } from '../services/form16Service';
+
+// Get list of employees eligible for Form 16
+router.get('/form16/eligible', authenticate, async (req, res) => {
+    const { financialYear } = req.query;
+    
+    try {
+        const tenantId = (req as any).user.tenantId;
+        const fy = (financialYear as string) || getCurrentFinancialYear();
+        
+        const employees = await Form16Service.getEligibleEmployees(tenantId, fy);
+        res.json({ financialYear: fy, employees });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get Form 16 data (JSON)
+router.get('/form16/:employeeId/data', authenticate, async (req, res) => {
+    const { employeeId } = req.params;
+    const { financialYear } = req.query;
+    
+    try {
+        const fy = (financialYear as string) || getCurrentFinancialYear();
+        const data = await Form16Service.generateForm16Data(employeeId, fy);
+        
+        if (!data) {
+            return res.status(404).json({ error: 'No payroll data found for this employee and financial year' });
+        }
+        
+        res.json(data);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Download Form 16 PDF
+router.get('/form16/:employeeId/download', authenticate, async (req, res) => {
+    const { employeeId } = req.params;
+    const { financialYear } = req.query;
+    
+    try {
+        const fy = (financialYear as string) || getCurrentFinancialYear();
+        const pdfBuffer = await Form16Service.generateForm16PDF(employeeId, fy);
+        
+        // Get employee name for filename
+        const employee = await prisma.employee.findUnique({
+            where: { id: employeeId },
+            select: { firstName: true, lastName: true, employeeCode: true }
+        });
+        
+        const filename = `Form16_${employee?.employeeCode || employeeId}_${fy}.pdf`;
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+        res.send(pdfBuffer);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Bulk download Form 16 (ZIP)
+router.post('/form16/bulk-download', authenticate, async (req, res) => {
+    const { employeeIds, financialYear } = req.body;
+    
+    try {
+        const fy = financialYear || getCurrentFinancialYear();
+        const archiver = require('archiver');
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename=Form16_Bulk_${fy}.zip`);
+        
+        archive.pipe(res);
+        
+        for (const empId of employeeIds) {
+            try {
+                const pdfBuffer = await Form16Service.generateForm16PDF(empId, fy);
+                const employee = await prisma.employee.findUnique({
+                    where: { id: empId },
+                    select: { firstName: true, lastName: true, employeeCode: true }
+                });
+                
+                const filename = `Form16_${employee?.employeeCode || empId}_${fy}.pdf`;
+                archive.append(pdfBuffer, { name: filename });
+            } catch (e) {
+                console.error(`Error generating Form 16 for ${empId}:`, e);
+            }
+        }
+        
+        await archive.finalize();
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Helper function to get current financial year
+function getCurrentFinancialYear(): string {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    
+    // Financial year in India is April to March
+    if (month >= 4) {
+        return `${year}-${(year + 1).toString().slice(-2)}`;
+    } else {
+        return `${year - 1}-${year.toString().slice(-2)}`;
+    }
+}
+
 export default router;
