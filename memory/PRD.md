@@ -6,6 +6,8 @@ User requested:
 2. Review payroll system and fix what's missing
 3. Industry-grade robust payroll with: Arrears, Reimbursements, Incentives
 4. Multiple bank export formats
+5. Form 16 generation
+6. Location-wise payroll generation
 
 ## Architecture & Tech Stack
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
@@ -38,12 +40,9 @@ User requested:
 
 2. **Payroll Engine Backward Compatibility** ✅
    - Updated `payrollEngine.ts`: Now counts `shift_incomplete` status as full paid day
-   - Added proper industry-grade status handling comments
 
 3. **Attendance Page UI** ✅
-   - Updated badge logic to show "Checked In" for single-punch records (firstIn && !lastOut)
-   - Added "Half Day" status badge
-   - Improved late/early departure time display
+   - Updated badge logic to show "Checked In" for single-punch records
 
 ### Session 2 - Payroll Enhancements
 4. **Reimbursements Module** ✅
@@ -62,26 +61,37 @@ User requested:
    - Auto-adds to next payroll run
 
 7. **Multiple Bank Export Formats** ✅
-   - Generic CSV
-   - HDFC Bank format
-   - ICICI Bank format
-   - SBI CMP format
-   - Axis Bank format
-   - Kotak Mahindra format
-   - Yes Bank format
-   - IDFC First Bank format
+   - Generic CSV, HDFC, ICICI, SBI CMP, Axis, Kotak, Yes Bank, IDFC
+
+### Session 3 - Form 16 & Location Payroll
+8. **Form 16 Generation** ✅
+   - Full Form 16 PDF generation (Part A & Part B)
+   - Quarterly TDS breakdown
+   - Salary components & deductions (80C, 80D, etc.)
+   - Single employee download
+   - Bulk download as ZIP
+   - Financial year selection
+
+9. **Location-wise Payroll** ✅
+   - Process payroll filtered by branch/location
+   - Location-wise summary dashboard with totals
+   - Per-location gross, net, TDS, PF, ESI breakdown
+   - Create location-specific payroll runs
 
 ### Files Created/Modified
+**Backend:**
+- `/app/backend/src/services/form16Service.ts` (NEW)
+- `/app/backend/src/routes/payroll.ts` (Updated - Form 16 & Location endpoints)
 - `/app/backend/src/routes/payrollAdjustments.ts` (NEW)
-- `/app/backend/src/index.ts` (Updated - new route)
+- `/app/backend/src/index.ts` (Updated - new routes)
+
+**Frontend:**
+- `/app/frontend/src/pages/Form16.tsx` (NEW)
+- `/app/frontend/src/pages/LocationPayroll.tsx` (NEW)
 - `/app/frontend/src/pages/PayrollAdjustments.tsx` (NEW)
-- `/app/frontend/src/App.tsx` (Updated - new route)
+- `/app/frontend/src/App.tsx` (Updated - routes)
 - `/app/frontend/src/components/Layout.tsx` (Updated - navigation)
-- `/app/frontend/src/services/api.ts` (Updated - new API methods)
-- `/app/backend/src/services/logSyncService.ts`
-- `/app/backend/src/services/attendanceCalculationService.ts`
-- `/app/backend/src/services/payrollEngine.ts`
-- `/app/frontend/src/pages/Attendance.tsx`
+- `/app/frontend/src/services/api.ts` (Updated - API methods)
 
 ## Prioritized Backlog
 
@@ -93,12 +103,15 @@ User requested:
 - [x] Arrears management
 - [x] Incentives management
 - [x] Bank export formats (8 banks)
+- [x] Form 16 generation (Part A & Part B)
+- [x] Location-wise payroll processing
 
 ### P1 - High Priority
 - [ ] Payroll review sheet improvements
 - [ ] Overtime calculation refinements
 - [ ] Leave balance integration with payroll
 - [ ] Bulk arrears upload via Excel
+- [ ] Form 16 email distribution
 
 ### P2 - Medium Priority  
 - [ ] Attendance regularization workflow
@@ -111,7 +124,15 @@ User requested:
 - [ ] Advanced reporting dashboards
 - [ ] Shift scheduling optimization
 
+## Navigation Structure (Payroll Module)
+- Payroll → Main payroll runs
+- Location Payroll → Process by branch
+- Adjustments → Reimbursements, Arrears, Incentives, Bank Export
+- Form 16 → TDS certificates
+- Payroll Config → Settings
+- Loans → Loan management
+
 ## Next Tasks
-1. Test payroll run with arrears/incentives to verify amounts flow correctly
-2. Add reimbursement approval workflow with email notifications
-3. Consider adding bulk import for arrears (Excel upload)
+1. Run payroll for employees with TDS to test Form 16 generation
+2. Configure branches to test location-wise payroll
+3. Test bulk Form 16 download with multiple employees
