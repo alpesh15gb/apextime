@@ -306,7 +306,7 @@ router.get('/chart-data', async (req, res) => {
         prisma.attendanceLog.count({
           where: {
             date: { gte: targetDate, lt: nextDate },
-            status: { in: ['Present', 'present', 'Half Day', 'half day'] },
+            status: { in: ['Present', 'present', 'Half Day', 'half day', 'Shift Incomplete', 'shift incomplete'] },
           },
         }),
         prisma.attendanceLog.count({
