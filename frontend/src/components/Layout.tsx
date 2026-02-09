@@ -18,6 +18,7 @@ import {
   Briefcase,
   MapPin,
   Building2,
+  Building,
   Award,
   Database,
   FolderKanban,
@@ -35,7 +36,8 @@ import {
   LifeBuoy,
   UserPlus,
   Clock,
-  Upload
+  Upload,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { attendanceAPI } from '../services/api';
