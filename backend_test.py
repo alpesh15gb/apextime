@@ -171,7 +171,7 @@ class Form16LocationPayrollTester:
             200
         )
         
-        if response:
+        if response is not None:
             self.log(f"✅ Location payroll summary retrieved successfully")
             
             if isinstance(response, list):
@@ -196,6 +196,8 @@ class Form16LocationPayrollTester:
             else:
                 self.log("❌ Response is not a list")
                 self.log(f"Response type: {type(response)}, content: {str(response)[:200]}")
+        else:
+            self.log("❌ Location summary endpoint failed")
         return None
 
     def test_create_location_run_endpoint(self):
