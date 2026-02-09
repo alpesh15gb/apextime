@@ -96,9 +96,10 @@ const PayrollAdjustments = () => {
     const loadEmployees = async () => {
         try {
             const res = await employeesAPI.getAll();
-            setEmployees(res.data);
+            setEmployees(res.data.employees || []);
         } catch (error) {
             console.error('Error loading employees:', error);
+            setEmployees([]);
         }
     };
 
@@ -246,8 +247,8 @@ const PayrollAdjustments = () => {
                             onClick={() => setActiveTab(tab.id)}
                             data-testid={`tab-${tab.id}`}
                             className={`flex items-center px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === tab.id
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                ? 'border-blue-600 text-blue-600 bg-blue-50'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 }`}
                         >
                             <Icon size={16} className="mr-2" />
@@ -484,8 +485,8 @@ const PayrollAdjustments = () => {
                             disabled={!selectedRun || !selectedFormat}
                             data-testid="export-bank-btn"
                             className={`px-6 py-2 rounded-md font-medium flex items-center ${selectedRun && selectedFormat
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                 }`}
                         >
                             <Download size={16} className="mr-2" />
