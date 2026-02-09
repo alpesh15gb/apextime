@@ -125,13 +125,13 @@ export class Form16Service {
         });
 
         // Calculate quarterly TDS
-        const q1Payrolls = payrolls.filter(p => 
+        const q1Payrolls = payrolls.filter(p =>
             (p.year === fyStartYear && p.month >= 4 && p.month <= 6));
-        const q2Payrolls = payrolls.filter(p => 
+        const q2Payrolls = payrolls.filter(p =>
             (p.year === fyStartYear && p.month >= 7 && p.month <= 9));
-        const q3Payrolls = payrolls.filter(p => 
+        const q3Payrolls = payrolls.filter(p =>
             (p.year === fyStartYear && p.month >= 10 && p.month <= 12));
-        const q4Payrolls = payrolls.filter(p => 
+        const q4Payrolls = payrolls.filter(p =>
             (p.year === fyEndYear && p.month >= 1 && p.month <= 3));
 
         const sumTDS = (ps: typeof payrolls) => ps.reduce((sum, p) => sum + (p.tdsDeduction || 0), 0);
@@ -143,9 +143,9 @@ export class Form16Service {
         const section80C = Math.min(150000, totals.pfDeduction * 12);
 
         // Calculate taxable income
-        const taxableIncome = Math.max(0, 
-            totals.gross - standardDeduction - section80C - 
-            (tdsDeclaration?.section80D || 0) - 
+        const taxableIncome = Math.max(0,
+            totals.gross - standardDeduction - section80C -
+            (tdsDeclaration?.section80D || 0) -
             (tdsDeclaration?.section80E || 0)
         );
 
@@ -154,14 +154,14 @@ export class Form16Service {
                 name: `${employee.firstName} ${employee.lastName}`,
                 pan: employee.panNumber || 'XXXXX0000X',
                 employeeCode: employee.employeeCode,
-                designation: employee.designation?.title || 'Employee',
-                address: employee.currentAddress || employee.permanentAddress || 'N/A'
+                designation: employee.designation?.name || 'Employee',
+                address: employee.address || 'N/A'
             },
             employer: {
-                name: companyProfile?.companyName || employee.tenant?.name || 'Company',
+                name: companyProfile?.name || employee.tenant?.name || 'Company',
                 tan: companyProfile?.tan || 'XXXXXXXXXX',
                 pan: companyProfile?.pan || 'XXXXXXXXXX',
-                address: companyProfile?.registeredAddress || 'N/A'
+                address: companyProfile?.address || 'N/A'
             },
             financialYear: `${fyStartYear}-${fyEndYear.toString().slice(-2)}`,
             assessmentYear: `${fyEndYear}-${(fyEndYear + 1).toString().slice(-2)}`,
@@ -182,7 +182,7 @@ export class Form16Service {
                 section80D: tdsDeclaration?.section80D || 0,
                 section80E: tdsDeclaration?.section80E || 0,
                 section80G: tdsDeclaration?.section80G || 0,
-                hraExemption: tdsDeclaration?.hraExemption || 0,
+                hraExemption: 0, // Calculated from rentPaid if needed
                 otherExemptions: 0
             },
             tax: {
@@ -207,7 +207,7 @@ export class Form16Service {
      */
     static async generateForm16PDF(employeeId: string, financialYear: string): Promise<Buffer> {
         const data = await this.generateForm16Data(employeeId, financialYear);
-        
+
         if (!data) {
             throw new Error('No payroll data found for this employee and financial year');
         }
@@ -222,17 +222,17 @@ export class Form16Service {
 
             // Header
             doc.fontSize(16).font('Helvetica-Bold')
-               .text('FORM NO. 16', { align: 'center' });
+                .text('FORM NO. 16', { align: 'center' });
             doc.fontSize(10).font('Helvetica')
-               .text('[See rule 31(1)(a)]', { align: 'center' });
+                .text('[See rule 31(1)(a)]', { align: 'center' });
             doc.moveDown(0.5);
             doc.fontSize(11)
-               .text('Certificate under section 203 of the Income-tax Act, 1961 for tax deducted at source on salary', { align: 'center' });
+                .text('Certificate under section 203 of the Income-tax Act, 1961 for tax deducted at source on salary', { align: 'center' });
             doc.moveDown();
 
             // Part A Header
             doc.fontSize(12).font('Helvetica-Bold')
-               .text('PART A', { align: 'center' });
+                .text('PART A', { align: 'center' });
             doc.moveDown(0.5);
 
             // Employer & Employee Info Box
@@ -329,9 +329,9 @@ export class Form16Service {
             // Part B
             doc.addPage();
             doc.fontSize(12).font('Helvetica-Bold')
-               .text('PART B (Annexure)', { align: 'center' });
+                .text('PART B (Annexure)', { align: 'center' });
             doc.fontSize(10)
-               .text('Details of Salary Paid and any other income and tax deducted', { align: 'center' });
+                .text('Details of Salary Paid and any other income and tax deducted', { align: 'center' });
             doc.moveDown();
 
             // Salary Breakdown Table
@@ -369,7 +369,7 @@ export class Form16Service {
             doc.font('Helvetica-Bold').fontSize(10);
             doc.text('4. Deductions under Chapter VI-A', 50);
             doc.font('Helvetica').fontSize(9);
-            
+
             const deductionItems = [
                 ['(a) Standard Deduction u/s 16(ia)', data.deductions.standardDeduction],
                 ['(b) Section 80C (PF, PPF, etc.)', data.deductions.section80C],

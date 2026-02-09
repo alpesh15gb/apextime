@@ -495,7 +495,7 @@ router.post('/runs/location', authenticate, async (req, res) => {
     const { month, year, batchName, periodStart, periodEnd, branchId, locationId } = req.body;
     try {
         const tenantId = (req as any).user.tenantId;
-        
+
         // Get location/branch name for batch naming
         let locationName = '';
         if (branchId) {
@@ -514,9 +514,7 @@ router.post('/runs/location', authenticate, async (req, res) => {
                 batchName: batchName || `${locationName} Payroll ${month}/${year}`,
                 periodStart: new Date(periodStart),
                 periodEnd: new Date(periodEnd),
-                status: 'draft',
-                // Store location filter in name for reference
-                name: locationName ? `${locationName}` : undefined
+                status: 'draft'
             }
         });
 
@@ -530,7 +528,7 @@ router.post('/runs/location', authenticate, async (req, res) => {
 router.post('/runs/:id/process-location', authenticate, async (req, res) => {
     const { id } = req.params;
     const { branchId, locationId } = req.body;
-    
+
     try {
         const run = await prisma.payrollRun.findUnique({ where: { id } });
         if (!run) return res.status(404).json({ error: 'Run not found' });
@@ -585,8 +583,8 @@ router.post('/runs/:id/process-location', authenticate, async (req, res) => {
             }
         });
 
-        res.json({ 
-            message: 'Location-wise payroll processed successfully', 
+        res.json({
+            message: 'Location-wise payroll processed successfully',
             employeeCount: employees.length,
             branchId,
             locationId
@@ -599,10 +597,10 @@ router.post('/runs/:id/process-location', authenticate, async (req, res) => {
 // Get payroll summary by location
 router.get('/summary/by-location', authenticate, async (req, res) => {
     const { month, year } = req.query;
-    
+
     try {
         const tenantId = (req as any).user.tenantId;
-        
+
         // Get all branches with payroll stats
         const branches = await prisma.branch.findMany({
             where: { tenantId },
@@ -614,10 +612,10 @@ router.get('/summary/by-location', authenticate, async (req, res) => {
         });
 
         const summary = [];
-        
+
         for (const branch of branches) {
             const employeeIds = branch.employees.map(e => e.id);
-            
+
             if (employeeIds.length === 0) {
                 summary.push({
                     branchId: branch.id,
@@ -678,11 +676,11 @@ import { Form16Service } from '../services/form16Service';
 // Get list of employees eligible for Form 16
 router.get('/form16/eligible', authenticate, async (req, res) => {
     const { financialYear } = req.query;
-    
+
     try {
         const tenantId = (req as any).user.tenantId;
         const fy = (financialYear as string) || getCurrentFinancialYear();
-        
+
         const employees = await Form16Service.getEligibleEmployees(tenantId, fy);
         res.json({ financialYear: fy, employees });
     } catch (error: any) {
@@ -694,15 +692,15 @@ router.get('/form16/eligible', authenticate, async (req, res) => {
 router.get('/form16/:employeeId/data', authenticate, async (req, res) => {
     const { employeeId } = req.params;
     const { financialYear } = req.query;
-    
+
     try {
         const fy = (financialYear as string) || getCurrentFinancialYear();
         const data = await Form16Service.generateForm16Data(employeeId, fy);
-        
+
         if (!data) {
             return res.status(404).json({ error: 'No payroll data found for this employee and financial year' });
         }
-        
+
         res.json(data);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -713,19 +711,19 @@ router.get('/form16/:employeeId/data', authenticate, async (req, res) => {
 router.get('/form16/:employeeId/download', authenticate, async (req, res) => {
     const { employeeId } = req.params;
     const { financialYear } = req.query;
-    
+
     try {
         const fy = (financialYear as string) || getCurrentFinancialYear();
         const pdfBuffer = await Form16Service.generateForm16PDF(employeeId, fy);
-        
+
         // Get employee name for filename
         const employee = await prisma.employee.findUnique({
             where: { id: employeeId },
             select: { firstName: true, lastName: true, employeeCode: true }
         });
-        
+
         const filename = `Form16_${employee?.employeeCode || employeeId}_${fy}.pdf`;
-        
+
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
         res.send(pdfBuffer);
@@ -737,17 +735,17 @@ router.get('/form16/:employeeId/download', authenticate, async (req, res) => {
 // Bulk download Form 16 (ZIP)
 router.post('/form16/bulk-download', authenticate, async (req, res) => {
     const { employeeIds, financialYear } = req.body;
-    
+
     try {
         const fy = financialYear || getCurrentFinancialYear();
         const archiver = require('archiver');
         const archive = archiver('zip', { zlib: { level: 9 } });
-        
+
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=Form16_Bulk_${fy}.zip`);
-        
+
         archive.pipe(res);
-        
+
         for (const empId of employeeIds) {
             try {
                 const pdfBuffer = await Form16Service.generateForm16PDF(empId, fy);
@@ -755,14 +753,14 @@ router.post('/form16/bulk-download', authenticate, async (req, res) => {
                     where: { id: empId },
                     select: { firstName: true, lastName: true, employeeCode: true }
                 });
-                
+
                 const filename = `Form16_${employee?.employeeCode || empId}_${fy}.pdf`;
                 archive.append(pdfBuffer, { name: filename });
             } catch (e) {
                 console.error(`Error generating Form 16 for ${empId}:`, e);
             }
         }
-        
+
         await archive.finalize();
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -774,7 +772,7 @@ function getCurrentFinancialYear(): string {
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
-    
+
     // Financial year in India is April to March
     if (month >= 4) {
         return `${year}-${(year + 1).toString().slice(-2)}`;
