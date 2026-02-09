@@ -1,43 +1,55 @@
-# ApexTime Payroll - PRD
+# ApexTime Attendance System - PRD
 
 ## Original Problem Statement
-- Punches not showing properly - need First In & Last Out logic
-- Wrong calculations in attendance  
-- Complete revamp of Reports section
-- Monthly report printout matching physical register format
-- Custom date range with department/branch grouping
+Today attendance black card showing wrong numbers - should be above 300, showing 4.
 
 ## Architecture
-- **Backend**: Node.js/Express + Prisma ORM + PostgreSQL
-- **Frontend**: React + Vite + TypeScript + Tailwind CSS + Chart.js
-- **Proxy**: Python FastAPI on port 8001 → Node.js on port 5001
-- **Database**: PostgreSQL (3 departments, 8 employees, 30 days data)
+- **Frontend**: React/TypeScript with Vite, Tailwind CSS
+- **Backend**: Node.js/TypeScript with Express, Prisma ORM
+- **Database**: PostgreSQL
+- **Proxy**: FastAPI Python server proxying to Node.js backend
 
-## What's Been Implemented
+## Core Requirements
+- Multi-tenant attendance management system
+- Real-time attendance tracking
+- Dashboard with employee counts, attendance stats, pending leaves
 
-### Session 1 (Feb 8, 2026)
-1. **Fixed Punch Logic** - First In / Last Out with robust edge case handling
-2. **Reports Revamp** - Daily/Weekly/Monthly tabs with charts, filters, export
-3. **Recalculate Endpoint** - POST /api/attendance/recalculate
+## What's Been Implemented (2026-02-09)
 
-### Session 2 (Feb 8, 2026)  
-4. **Custom Date Range Report** - GET /api/attendance/date-range-report
-   - Accepts startDate, endDate, groupBy (department|branch)
-   - Returns employees grouped by department or branch with daily In/Out data
-5. **Horizontal Print Register**
-   - Days 1-31 as horizontal columns, employees as rows
-   - Department-wise / Branch-wise grouping (separate table per group)
-   - Custom From/To date picker + Generate button
-   - Summary: P (Present), A (Absent), Hrs per employee
-   - Sunday highlighting, A4 Landscape, auto-pagination
-   - Print/Save PDF button
-6. **Department Setup** - Engineering, Human Resources, Finance with employee assignments
+### Bug Fix: Today Attendance Count
+**Issue**: The "Today Attendance" card was showing only 4 employees as present instead of 300+.
 
-## Testing Status
-- All tests passed (100% backend, 100% frontend) across 3 iterations
+**Root Cause**: The dashboard query was filtering attendance logs by status `['Present', 'present', 'Half Day', 'half day', 'Late', 'late']` but was NOT including `'Shift Incomplete'` status.
 
-## Backlog
-- P1: Add overtime and leave columns to register printout
-- P1: Branch data assignment for branch-wise reports
-- P2: Scheduled auto-email reports
-- P2: Mobile responsive optimization
+Employees who have:
+- Checked IN but not checked OUT yet
+- Have only one punch for the day
+
+...are marked with status `'Shift Incomplete'` in the system. These employees were being excluded from the "present" count, causing the number to be artificially low.
+
+**Fix Applied**:
+1. Updated `/app/backend/src/routes/dashboard.ts` to include `'Shift Incomplete'` status in present count
+2. Applied fix to:
+   - Today's attendance count (line ~118-127)
+   - Yesterday's attendance count (line ~101-113)
+   - Chart data present count (line ~290-340)
+
+**Files Modified**:
+- `/app/backend/src/routes/dashboard.ts`
+
+## Prioritized Backlog
+
+### P0 (Critical)
+- ✅ Fix Today Attendance count (COMPLETED)
+
+### P1 (High)
+- Validate attendance data sync with biometric devices
+- Test with production data to confirm fix works with real employee counts
+
+### P2 (Medium)
+- Add better status normalization (case-insensitive matching)
+- Add dashboard data caching for performance
+
+## Next Tasks
+1. Deploy to production and verify fix with real data
+2. Monitor attendance counts to ensure accuracy
