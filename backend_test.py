@@ -208,6 +208,7 @@ class Form16LocationPayrollTester:
         
         if not branches_response:
             self.log("❌ Cannot get branches API response")
+            self.log(f"Response: {branches_response}")
             return None
             
         # Handle different response structures
