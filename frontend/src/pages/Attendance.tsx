@@ -167,24 +167,44 @@ export const Attendance = () => {
   };
 
   const getStatusBadge = (log: AttendanceLog) => {
-    if (log.status?.toLowerCase() === 'absent') {
+    const status = log.status?.toLowerCase() || '';
+    
+    if (status === 'absent') {
       return (
         <div className="badge border border-red-100 bg-red-50 text-red-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
           Absent
         </div>
       );
     }
-    if (log.lateArrival > 0) {
+    
+    // Single punch - employee came but only one punch recorded
+    if (log.firstIn && !log.lastOut) {
       return (
-        <div className="badge border border-orange-100 bg-orange-50 text-orange-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
-          Late ({log.lateArrival}m)
+        <div className="badge border border-blue-100 bg-blue-50 text-blue-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+          Checked In
         </div>
       );
     }
-    if (log.earlyDeparture > 0) {
+    
+    if (status === 'half_day' || status === 'half day') {
+      return (
+        <div className="badge border border-amber-100 bg-amber-50 text-amber-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+          Half Day
+        </div>
+      );
+    }
+    
+    if (log.lateArrival && log.lateArrival > 0) {
+      return (
+        <div className="badge border border-orange-100 bg-orange-50 text-orange-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
+          Late ({Math.round(log.lateArrival * 60)}m)
+        </div>
+      );
+    }
+    if (log.earlyDeparture && log.earlyDeparture > 0) {
       return (
         <div className="badge border border-yellow-100 bg-yellow-50 text-yellow-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
-          Left Early ({log.earlyDeparture}m)
+          Left Early ({Math.round(log.earlyDeparture * 60)}m)
         </div>
       );
     }
