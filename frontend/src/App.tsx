@@ -20,6 +20,8 @@ import { Holidays } from './pages/Holidays';
 import { Payroll } from './pages/Payroll';
 import PayrollSettings from './pages/PayrollSettings';
 import PayrollAdjustments from './pages/PayrollAdjustments';
+import Form16 from './pages/Form16';
+import LocationPayroll from './pages/LocationPayroll';
 import { Leaves } from './pages/Leaves';
 import { EmployeePortal } from './pages/EmployeePortal';
 import { Settings } from './pages/Settings';
