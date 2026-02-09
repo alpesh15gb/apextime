@@ -319,8 +319,8 @@ class PayrollAdjustmentsTester:
         return None
 
     def run_all_tests(self):
-        """Run all tests in sequence"""
-        self.log("🚀 Starting Attendance Counting Test (Today Attendance Black Card Fix)")
+        """Run all payroll adjustments tests in sequence"""
+        self.log("🚀 Starting Payroll Adjustments API Tests")
         self.log(f"Target URL: {self.base_url}")
         
         # 1. Login
@@ -328,30 +328,42 @@ class PayrollAdjustmentsTester:
             self.log("❌ Login failed - cannot continue with protected endpoints")
             return False
         
-        # 2. Test dashboard stats for correct attendance counting
-        dashboard_result = self.test_dashboard_stats_attendance_counting()
+        # 2. Test bank formats endpoint
+        bank_formats_result = self.test_bank_formats_endpoint()
         
-        # 3. Test attendance logs to verify shift incomplete status
-        logs_result = self.test_attendance_logs_with_shift_incomplete()
+        # 3. Test get reimbursements endpoint
+        get_reimbursements_result = self.test_get_reimbursements_endpoint()
+        
+        # 4. Test create reimbursement endpoint
+        create_reimbursement_result = self.test_create_reimbursement_endpoint()
+        
+        # 5. Test add arrears endpoint
+        add_arrears_result = self.test_add_arrears_endpoint()
+        
+        # 6. Test add incentive endpoint
+        add_incentive_result = self.test_add_incentive_endpoint()
         
         # Summary
         self.log("\n" + "="*60)
-        self.log("📊 ATTENDANCE COUNTING TEST SUMMARY")
+        self.log("📊 PAYROLL ADJUSTMENTS API TEST SUMMARY")
         self.log("="*60)
         self.log(f"Tests run: {self.tests_run}")
         self.log(f"Tests passed: {self.tests_passed}")
         self.log(f"Success rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
         # Specific validation
-        if dashboard_result:
-            self.log("\n✅ Dashboard Stats API working - 'Shift Incomplete' should be included in present count")
-        else:
-            self.log("\n❌ Dashboard Stats API failed")
-            
-        if logs_result:
-            self.log("✅ Attendance logs accessible")
-        else:
-            self.log("❌ Attendance logs failed")
+        results = {
+            "Bank Formats": bank_formats_result is not None,
+            "Get Reimbursements": get_reimbursements_result is not None,
+            "Create Reimbursement": create_reimbursement_result is not None,
+            "Add Arrears": add_arrears_result is not None,
+            "Add Incentive": add_incentive_result is not None
+        }
+        
+        self.log("\n📋 Feature Test Results:")
+        for feature, passed in results.items():
+            status = "✅ PASSED" if passed else "❌ FAILED"
+            self.log(f"  {feature}: {status}")
         
         success_rate = self.tests_passed / self.tests_run
         return success_rate >= 0.8  # 80% pass rate considered successful
