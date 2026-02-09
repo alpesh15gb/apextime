@@ -1,55 +1,79 @@
-# ApexTime Attendance System - PRD
+# ApexTime - HRMS & Payroll System PRD
 
 ## Original Problem Statement
-Today attendance black card showing wrong numbers - should be above 300, showing 4.
+User requested:
+1. "Black Card In Dashboard Should attendance even one punch" - Dashboard's Today Attendance count should include employees who have only one punch
+2. Review payroll system and fix what's missing
+3. Industry-grade robust payroll
 
-## Architecture
-- **Frontend**: React/TypeScript with Vite, Tailwind CSS
-- **Backend**: Node.js/TypeScript with Express, Prisma ORM
+## Architecture & Tech Stack
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS
+- **Backend**: Node.js + Express + TypeScript + Prisma ORM
 - **Database**: PostgreSQL
-- **Proxy**: FastAPI Python server proxying to Node.js backend
+- **Proxy**: Python FastAPI proxy layer
 
-## Core Requirements
-- Multi-tenant attendance management system
-- Real-time attendance tracking
-- Dashboard with employee counts, attendance stats, pending leaves
+## User Personas
+1. **HR Admin**: Manages employees, payroll, attendance configuration
+2. **Manager**: Views reports, approves leaves
+3. **Employee**: Views own attendance and payslips
+4. **Super Admin**: Multi-tenant management
 
-## What's Been Implemented (2026-02-09)
+## Core Requirements (Static)
+- Multi-tenant SaaS architecture
+- Biometric device integration (iClock, Hikvision)
+- Real-time attendance sync
+- Payroll calculation with Indian statutory compliance (PF, ESI, PT, TDS)
+- Leave management
+- Employee management
+- Reports & exports
 
-### Bug Fix: Today Attendance Count
-**Issue**: The "Today Attendance" card was showing only 4 employees as present instead of 300+.
+## What's Been Implemented (Feb 9, 2026)
 
-**Root Cause**: The dashboard query was filtering attendance logs by status `['Present', 'present', 'Half Day', 'half day', 'Late', 'late']` but was NOT including `'Shift Incomplete'` status.
+### Bug Fixes
+1. **Single Punch Attendance Counting** ✅
+   - Changed `logSyncService.ts`: Single punch now marks status as "Present" instead of "Shift Incomplete"
+   - Changed `attendanceCalculationService.ts`: Same fix for calculation service
+   - Dashboard already included "Shift Incomplete" in status array for counting
 
-Employees who have:
-- Checked IN but not checked OUT yet
-- Have only one punch for the day
+2. **Payroll Engine Backward Compatibility** ✅
+   - Updated `payrollEngine.ts`: Now counts `shift_incomplete` status as full paid day
+   - Added proper industry-grade status handling comments
 
-...are marked with status `'Shift Incomplete'` in the system. These employees were being excluded from the "present" count, causing the number to be artificially low.
+3. **Attendance Page UI** ✅
+   - Updated badge logic to show "Checked In" for single-punch records (firstIn && !lastOut)
+   - Added "Half Day" status badge
+   - Improved late/early departure time display
 
-**Fix Applied**:
-1. Updated `/app/backend/src/routes/dashboard.ts` to include `'Shift Incomplete'` status in present count
-2. Applied fix to:
-   - Today's attendance count (line ~118-127)
-   - Yesterday's attendance count (line ~101-113)
-   - Chart data present count (line ~290-340)
-
-**Files Modified**:
-- `/app/backend/src/routes/dashboard.ts`
+### Files Modified
+- `/app/backend/src/services/logSyncService.ts`
+- `/app/backend/src/services/attendanceCalculationService.ts`
+- `/app/backend/src/services/payrollEngine.ts`
+- `/app/frontend/src/pages/Attendance.tsx`
+- `/app/backend/prisma/schema.prisma` (binary targets)
 
 ## Prioritized Backlog
 
-### P0 (Critical)
-- ✅ Fix Today Attendance count (COMPLETED)
+### P0 - Critical (Done)
+- [x] Single punch counts as Present for attendance
+- [x] Dashboard counts single punch employees
+- [x] Payroll counts all present/shift_incomplete statuses
 
-### P1 (High)
-- Validate attendance data sync with biometric devices
-- Test with production data to confirm fix works with real employee counts
+### P1 - High Priority
+- [ ] Payroll review sheet improvements
+- [ ] Overtime calculation refinements
+- [ ] Leave balance integration with payroll
 
-### P2 (Medium)
-- Add better status normalization (case-insensitive matching)
-- Add dashboard data caching for performance
+### P2 - Medium Priority  
+- [ ] Attendance regularization workflow
+- [ ] Bulk payroll reprocessing for historical data
+- [ ] Mobile app for employee self-service
+
+### P3 - Nice to Have
+- [ ] WhatsApp integration for payslip delivery
+- [ ] Advanced reporting dashboards
+- [ ] Shift scheduling optimization
 
 ## Next Tasks
-1. Deploy to production and verify fix with real data
-2. Monitor attendance counts to ensure accuracy
+1. Test with production data to verify single-punch employees now show in Dashboard count
+2. Run payroll processing and verify single-punch days count as paid
+3. Review any existing "Shift Incomplete" records and potentially batch-update them to "Present"
