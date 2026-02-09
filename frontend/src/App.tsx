@@ -140,6 +140,8 @@ function App() {
                     <Route path="/tenants" element={<Tenants />} />
                     <Route path="/payroll/settings" element={<ModuleRoute module="payroll"><PayrollSettings /></ModuleRoute>} />
                     <Route path="/payroll/adjustments" element={<ModuleRoute module="payroll"><PayrollAdjustments /></ModuleRoute>} />
+                    <Route path="/payroll/form16" element={<ModuleRoute module="payroll"><Form16 /></ModuleRoute>} />
+                    <Route path="/payroll/location" element={<ModuleRoute module="payroll"><LocationPayroll /></ModuleRoute>} />
 
                   </Routes>
                 </Layout>
