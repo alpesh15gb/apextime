@@ -3,13 +3,14 @@ import sys
 import json
 from datetime import datetime
 
-class AttendanceCountingTester:
+class PayrollAdjustmentsTester:
     def __init__(self):
         self.base_url = "https://payroll-attendance-3.preview.emergentagent.com/api"
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.session = requests.Session()
+        self.created_reimbursement_id = None
 
     def log(self, message, test_name=None):
         if test_name:
