@@ -235,6 +235,23 @@ export const payrollSettingsAPI = {
   saveConfig: (settings: any) => api.post('/payroll-settings/config', { settings }),
 };
 
+// Payroll Adjustments API (Arrears, Reimbursements, Incentives)
+export const payrollAdjustmentsAPI = {
+  // Reimbursements
+  getReimbursements: (params?: any) => api.get('/payroll-adjustments/reimbursements', { params }),
+  createReimbursement: (data: any) => api.post('/payroll-adjustments/reimbursements', data),
+  updateReimbursementStatus: (id: string, status: string, rejectedReason?: string) =>
+    api.put(`/payroll-adjustments/reimbursements/${id}/status`, { status, rejectedReason }),
+  
+  // Arrears
+  getArrears: (params?: any) => api.get('/payroll-adjustments/arrears', { params }),
+  addArrears: (data: any) => api.post('/payroll-adjustments/arrears', data),
+  
+  // Incentives
+  getIncentives: (params?: any) => api.get('/payroll-adjustments/incentives', { params }),
+  addIncentive: (data: any) => api.post('/payroll-adjustments/incentives', data),
+};
+
 
 // Tenants API (Superadmin only)
 export const tenantsAPI = {
