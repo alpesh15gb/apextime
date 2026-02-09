@@ -5,7 +5,7 @@ from datetime import datetime
 
 class AttendanceCountingTester:
     def __init__(self):
-        self.base_url = "https://card-accuracy.preview.emergentagent.com/api"
+        self.base_url = "https://payroll-attendance-3.preview.emergentagent.com/api"
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0
