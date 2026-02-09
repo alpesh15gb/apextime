@@ -944,18 +944,41 @@ router.post('/import', upload.single('file'), async (req, res) => {
       }
     } else if (detectedType === 'essl') {
       // ESSL Format: First Name, Last Name, ID, Department, Date, Week, Time, ...
+      console.log('[CSV IMPORT] Detecting ESSL columns...');
+      
       headerRow.eachCell((cell: any, colNumber: any) => {
-        const val = cell.value ? cell.value.toString().toLowerCase().trim() : '';
-        if (val === 'id' || val === 'employee code') headers.code = colNumber;
-        else if (val === 'first name' || val === 'firstname') headers.firstName = colNumber;
-        else if (val === 'last name' || val === 'lastname') headers.lastName = colNumber;
-        else if (val === 'date') headers.date = colNumber;
-        else if (val === 'time') headers.time = colNumber;
-        else if (val === 'logdate' || val === 'log date') headers.logDate = colNumber;
+        const val = cell.value ? cell.value.toString().toLowerCase().trim().replace(/\s+/g, '') : '';
+        console.log(`[CSV IMPORT] Column ${colNumber}: "${cell.value}" -> normalized: "${val}"`);
+        
+        if (val.includes('id') || val.includes('employeecode') || val.includes('code')) {
+          headers.code = colNumber;
+          console.log(`[CSV IMPORT] ✓ Found employee code at column ${colNumber}`);
+        } else if (val.includes('firstname')) {
+          headers.firstName = colNumber;
+        } else if (val.includes('lastname')) {
+          headers.lastName = colNumber;
+        } else if (val === 'date' || val.includes('attendancedate')) {
+          headers.date = colNumber;
+          console.log(`[CSV IMPORT] ✓ Found date at column ${colNumber}`);
+        } else if (val.includes('time') && !val.includes('datetime')) {
+          headers.time = colNumber;
+          console.log(`[CSV IMPORT] ✓ Found time at column ${colNumber}`);
+        } else if (val.includes('logdate') || val.includes('datetime')) {
+          headers.logDate = colNumber;
+          console.log(`[CSV IMPORT] ✓ Found logDate at column ${colNumber}`);
+        }
       });
 
+      console.log(`[CSV IMPORT] Headers found: code=${headers.code}, date=${headers.date}, logDate=${headers.logDate}`);
+
       if (!headers.code || (!headers.date && !headers.logDate)) {
-        const errorMsg = 'Missing required ESSL columns: ID, Date';
+        // Log all available headers for debugging
+        const availableHeaders: string[] = [];
+        headerRow.eachCell((cell: any) => {
+          if (cell.value) availableHeaders.push(cell.value.toString());
+        });
+        
+        const errorMsg = `Missing required ESSL columns. Found: [${availableHeaders.join(', ')}]. Need: ID/Code and Date`;
         console.error(`[CSV IMPORT] ${errorMsg}`);
         importStatus.set(tenantId, {
           status: 'failed',
