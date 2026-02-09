@@ -1054,9 +1054,16 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
         workingHours = (lastOut.getTime() - firstIn.getTime()) / (1000 * 60 * 60);
       }
 
+      // INDUSTRY-GRADE STATUS LOGIC:
+      // - Single punch = Present (employee came to work, system counts it)
+      // - Multiple punches with 4.5+ hours = Present (full day)
+      // - Multiple punches with < 4.5 hours = Half Day
+      // - No punches = Absent (handled elsewhere)
       let status = 'Present';
       if (dayLogs.length === 1) {
-        status = 'Shift Incomplete';
+        // Single punch counts as PRESENT - employee showed up to work
+        // Working hours will be 0, but attendance is marked
+        status = 'Present';
       } else if (workingHours >= 4.5) {
         status = 'Present';
       } else if (workingHours > 0) {

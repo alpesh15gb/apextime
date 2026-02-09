@@ -180,9 +180,12 @@ export class AttendanceCalculationService {
         // Working hours = same as total hours (First IN to Last OUT as per user requirement)
         workingHours = totalHours;
 
-        // Status determination
+        // INDUSTRY-GRADE STATUS DETERMINATION:
+        // Single punch = Present (employee came to work)
+        // Multiple punches determine full/half day based on hours
         if (!lastOut) {
-            status = 'Shift Incomplete';
+            // Single punch - employee showed up, count as Present
+            status = 'Present';
         } else if (workingHours < 4) {
             status = 'Half Day';
         }
