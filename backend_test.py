@@ -3,7 +3,7 @@ import sys
 import json
 from datetime import datetime
 
-class PayrollAdjustmentsTester:
+class Form16LocationPayrollTester:
     def __init__(self):
         self.base_url = "https://payroll-attendance-3.preview.emergentagent.com/api"
         self.token = None
