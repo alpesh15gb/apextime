@@ -80,93 +80,242 @@ class PayrollAdjustmentsTester:
             self.log(f"❌ Login failed - no token received")
             return False
 
-    def test_dashboard_stats_attendance_counting(self):
-        """Test dashboard stats API to verify 'Shift Incomplete' employees are counted as present"""
-        self.log("=== TESTING DASHBOARD STATS ATTENDANCE COUNTING ===")
+    def test_bank_formats_endpoint(self):
+        """Test GET /api/payroll-adjustments/bank-formats"""
+        self.log("=== TESTING BANK FORMATS ENDPOINT ===")
         
         response = self.run_test(
-            "Dashboard Stats", 
+            "Bank Formats", 
             "GET", 
-            "/dashboard/stats", 
+            "/payroll-adjustments/bank-formats", 
             200
         )
         
         if response:
-            self.log(f"✅ Dashboard Stats Response received")
+            self.log(f"✅ Bank formats retrieved successfully")
             
-            # Check if response has the expected structure
-            if 'today' in response:
-                today_stats = response['today']
-                present_count = today_stats.get('present', 0)
-                absent_count = today_stats.get('absent', 0)
+            # Validate response structure
+            if isinstance(response, list):
+                self.log(f"Found {len(response)} bank formats")
                 
-                self.log(f"Today's Attendance Stats:")
-                self.log(f"  - Present: {present_count}")
-                self.log(f"  - Absent: {absent_count}")
+                # Check for required bank formats
+                expected_banks = ['HDFC', 'ICICI', 'SBI', 'AXIS', 'KOTAK']
+                found_banks = [fmt.get('id', '') for fmt in response]
                 
-                # Check for additional stats
-                if 'counts' in response:
-                    counts = response['counts']
-                    total_employees = counts.get('totalEmployees', 0)
-                    active_employees = counts.get('activeEmployees', 0)
-                    
-                    self.log(f"Employee Counts:")
-                    self.log(f"  - Total Employees: {total_employees}")
-                    self.log(f"  - Active Employees: {active_employees}")
-                    
-                    # Validate that present + absent <= active employees
-                    if present_count + absent_count <= active_employees:
-                        self.log(f"✅ Attendance count validation passed")
+                for bank in expected_banks:
+                    if bank in found_banks:
+                        self.log(f"  ✅ {bank} format available")
                     else:
-                        self.log(f"❌ Attendance count validation failed: present({present_count}) + absent({absent_count}) > active({active_employees})")
+                        self.log(f"  ❌ {bank} format missing")
                 
-                # Check for attendance rate calculation
-                attendance_rate = today_stats.get('attendanceRate', 0)
-                self.log(f"  - Attendance Rate: {attendance_rate}%")
+                # Validate format structure
+                for fmt in response[:3]:  # Check first 3 formats
+                    if all(key in fmt for key in ['id', 'name', 'description']):
+                        self.log(f"  ✅ Format structure valid: {fmt['name']}")
+                    else:
+                        self.log(f"  ❌ Invalid format structure: {fmt}")
                 
                 return response
             else:
-                self.log("❌ Response missing 'today' section")
+                self.log("❌ Response is not a list")
         return None
 
-    def test_attendance_logs_with_shift_incomplete(self):
-        """Test if attendance logs include employees with 'Shift Incomplete' status"""
-        self.log("=== TESTING ATTENDANCE LOGS FOR SHIFT INCOMPLETE STATUS ===")
-        
-        # Get today's date in the expected format
-        today = datetime.now().strftime('%Y-%m-%d')
+    def test_get_reimbursements_endpoint(self):
+        """Test GET /api/payroll-adjustments/reimbursements"""
+        self.log("=== TESTING GET REIMBURSEMENTS ENDPOINT ===")
         
         response = self.run_test(
-            "Daily Attendance Report",
-            "GET",
-            f"/reports/daily?date={today}",
+            "Get Reimbursements", 
+            "GET", 
+            "/payroll-adjustments/reimbursements", 
             200
         )
         
         if response:
-            logs = response.get('logs', [])
-            self.log(f"✅ Retrieved {len(logs)} attendance records for {today}")
+            self.log(f"✅ Reimbursements retrieved successfully")
             
-            shift_incomplete_count = 0
-            present_count = 0
+            if isinstance(response, list):
+                self.log(f"Found {len(response)} reimbursement records")
+                
+                # Check structure of first few records
+                for i, reimb in enumerate(response[:2]):
+                    if isinstance(reimb, dict):
+                        required_fields = ['id', 'employeeId', 'type', 'amount', 'status']
+                        missing_fields = [field for field in required_fields if field not in reimb]
+                        
+                        if not missing_fields:
+                            self.log(f"  ✅ Reimbursement {i+1} structure valid")
+                        else:
+                            self.log(f"  ❌ Reimbursement {i+1} missing fields: {missing_fields}")
+                
+                return response
+            else:
+                self.log("❌ Response is not a list")
+        return None
+
+    def test_create_reimbursement_endpoint(self):
+        """Test POST /api/payroll-adjustments/reimbursements"""
+        self.log("=== TESTING CREATE REIMBURSEMENT ENDPOINT ===")
+        
+        # First get employees to use a valid employeeId
+        employees_response = self.run_test(
+            "Get Employees", 
+            "GET", 
+            "/employees", 
+            200
+        )
+        
+        if not employees_response or not employees_response.get('data'):
+            self.log("❌ Cannot get employees for reimbursement test")
+            return None
+        
+        employees = employees_response['data']
+        if not employees:
+            self.log("❌ No employees found for reimbursement test")
+            return None
+        
+        employee_id = employees[0]['id']
+        self.log(f"Using employee ID: {employee_id}")
+        
+        # Create test reimbursement
+        reimbursement_data = {
+            "employeeId": employee_id,
+            "type": "TRAVEL",
+            "amount": 1500.00,
+            "billDate": "2025-01-15",
+            "billNumber": "TEST001",
+            "description": "Test travel reimbursement"
+        }
+        
+        response = self.run_test(
+            "Create Reimbursement", 
+            "POST", 
+            "/payroll-adjustments/reimbursements", 
+            200,
+            reimbursement_data
+        )
+        
+        if response:
+            self.log(f"✅ Reimbursement created successfully")
             
-            for log in logs:
-                status = log.get('status', '').lower()
-                if 'shift incomplete' in status:
-                    shift_incomplete_count += 1
-                    emp_name = f"{log.get('employee', {}).get('firstName', 'N/A')} {log.get('employee', {}).get('lastName', '')}"
-                    first_in = log.get('firstIn')
-                    last_out = log.get('lastOut')
-                    self.log(f"  Shift Incomplete: {emp_name} - In: {first_in}, Out: {last_out}")
-                elif status in ['present', 'late', 'half day']:
-                    present_count += 1
+            # Validate response structure
+            if isinstance(response, dict) and 'id' in response:
+                self.created_reimbursement_id = response['id']
+                self.log(f"  Created reimbursement ID: {self.created_reimbursement_id}")
+                
+                # Validate created data
+                if response.get('amount') == 1500.0 and response.get('type') == 'TRAVEL':
+                    self.log(f"  ✅ Reimbursement data matches input")
+                else:
+                    self.log(f"  ❌ Reimbursement data mismatch")
+                
+                return response
+            else:
+                self.log("❌ Invalid response structure")
+        return None
+
+    def test_add_arrears_endpoint(self):
+        """Test POST /api/payroll-adjustments/arrears"""
+        self.log("=== TESTING ADD ARREARS ENDPOINT ===")
+        
+        # Get employees for arrears test
+        employees_response = self.run_test(
+            "Get Employees for Arrears", 
+            "GET", 
+            "/employees", 
+            200
+        )
+        
+        if not employees_response or not employees_response.get('data'):
+            self.log("❌ Cannot get employees for arrears test")
+            return None
+        
+        employees = employees_response['data']
+        if not employees:
+            self.log("❌ No employees found for arrears test")
+            return None
+        
+        employee_id = employees[0]['id']
+        self.log(f"Using employee ID: {employee_id}")
+        
+        # Create test arrears
+        arrears_data = {
+            "employeeId": employee_id,
+            "amount": 5000.00,
+            "reason": "Salary revision with retrospective effect from Dec 2024",
+            "forMonth": 12,
+            "forYear": 2024
+        }
+        
+        response = self.run_test(
+            "Add Arrears", 
+            "POST", 
+            "/payroll-adjustments/arrears", 
+            200,
+            arrears_data
+        )
+        
+        if response:
+            self.log(f"✅ Arrears added successfully")
             
-            self.log(f"Status Summary:")
-            self.log(f"  - Shift Incomplete: {shift_incomplete_count}")
-            self.log(f"  - Other Present Status: {present_count}")
-            self.log(f"  - Total Present (including Shift Incomplete): {shift_incomplete_count + present_count}")
+            # Validate response
+            if isinstance(response, dict) and response.get('success'):
+                total_arrears = response.get('totalArrears', 0)
+                self.log(f"  Total arrears for employee: ₹{total_arrears}")
+                return response
+            else:
+                self.log("❌ Invalid arrears response structure")
+        return None
+
+    def test_add_incentive_endpoint(self):
+        """Test POST /api/payroll-adjustments/incentives"""
+        self.log("=== TESTING ADD INCENTIVE ENDPOINT ===")
+        
+        # Get employees for incentive test
+        employees_response = self.run_test(
+            "Get Employees for Incentive", 
+            "GET", 
+            "/employees", 
+            200
+        )
+        
+        if not employees_response or not employees_response.get('data'):
+            self.log("❌ Cannot get employees for incentive test")
+            return None
+        
+        employees = employees_response['data']
+        if not employees:
+            self.log("❌ No employees found for incentive test")
+            return None
+        
+        employee_id = employees[0]['id']
+        self.log(f"Using employee ID: {employee_id}")
+        
+        # Create test incentive
+        incentive_data = {
+            "employeeId": employee_id,
+            "amount": 10000.00,
+            "reason": "Q4 Performance Bonus - Exceeded targets"
+        }
+        
+        response = self.run_test(
+            "Add Incentive", 
+            "POST", 
+            "/payroll-adjustments/incentives", 
+            200,
+            incentive_data
+        )
+        
+        if response:
+            self.log(f"✅ Incentive added successfully")
             
-            return response
+            # Validate response
+            if isinstance(response, dict) and response.get('success'):
+                total_incentives = response.get('totalIncentives', 0)
+                self.log(f"  Total incentives for employee: ₹{total_incentives}")
+                return response
+            else:
+                self.log("❌ Invalid incentive response structure")
         return None
 
     def run_all_tests(self):
