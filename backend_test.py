@@ -283,7 +283,7 @@ class AttendanceCountingTester:
 
     def run_all_tests(self):
         """Run all tests in sequence"""
-        self.log("🚀 Starting Payroll System Testing (Iteration 3)")
+        self.log("🚀 Starting Attendance Counting Test (Today Attendance Black Card Fix)")
         self.log(f"Target URL: {self.base_url}")
         
         # 1. Login
@@ -291,25 +291,30 @@ class AttendanceCountingTester:
             self.log("❌ Login failed - cannot continue with protected endpoints")
             return False
         
-        # 2. Test new date range report endpoint (key for MonthlyPrintView)
-        date_range_result = self.test_date_range_report_endpoint()
+        # 2. Test dashboard stats for correct attendance counting
+        dashboard_result = self.test_dashboard_stats_attendance_counting()
         
-        # 3. Test branch wise grouping
-        branch_result = self.test_branch_wise_grouping()
-        
-        # 4. Test recalculate endpoint
-        recalc_result = self.test_recalculate_endpoint()
-        
-        # 5. Test daily reports after recalculation
-        daily_result = self.test_daily_reports_after_recalculate()
+        # 3. Test attendance logs to verify shift incomplete status
+        logs_result = self.test_attendance_logs_with_shift_incomplete()
         
         # Summary
-        self.log("\n" + "="*50)
-        self.log("📊 TEST SUMMARY")
-        self.log("="*50)
+        self.log("\n" + "="*60)
+        self.log("📊 ATTENDANCE COUNTING TEST SUMMARY")
+        self.log("="*60)
         self.log(f"Tests run: {self.tests_run}")
         self.log(f"Tests passed: {self.tests_passed}")
         self.log(f"Success rate: {(self.tests_passed/self.tests_run*100):.1f}%")
+        
+        # Specific validation
+        if dashboard_result:
+            self.log("\n✅ Dashboard Stats API working - 'Shift Incomplete' should be included in present count")
+        else:
+            self.log("\n❌ Dashboard Stats API failed")
+            
+        if logs_result:
+            self.log("✅ Attendance logs accessible")
+        else:
+            self.log("❌ Attendance logs failed")
         
         success_rate = self.tests_passed / self.tests_run
         return success_rate >= 0.8  # 80% pass rate considered successful
