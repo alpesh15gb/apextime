@@ -18,7 +18,9 @@
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
+    "@types/archiver": "^7.0.0",
     "@types/node-fetch": "^2.6.13",
+    "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "date-fns": "^3.0.0",
@@ -43,7 +45,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.10.0",
     "@types/node-cron": "^3.0.11",
-    "@types/pdfkit": "^0.13.3",
+    "@types/pdfkit": "^0.13.9",
     "@types/ws": "^8.18.1",
     "node-fetch": "2",
     "prisma": "^5.7.0",
