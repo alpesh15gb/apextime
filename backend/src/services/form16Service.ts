@@ -445,7 +445,7 @@ export class Form16Service {
         const employeesWithTDS = await prisma.payroll.findMany({
             where: {
                 tenantId,
-                tdsDeduction: { gt: 0 },
+                // tdsDeduction: { gt: 0 }, // Allow all employees to be searchable
                 OR: [
                     { year: fyStartYear, month: { gte: 4, lte: 12 } },
                     { year: fyEndYear, month: { gte: 1, lte: 3 } }

@@ -245,11 +245,10 @@ const PayrollAdjustments = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             data-testid={`tab-${tab.id}`}
-                            className={`flex items-center px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
-                                activeTab === tab.id
+                            className={`flex items-center px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === tab.id
                                     ? 'border-blue-600 text-blue-600 bg-blue-50'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                            }`}
+                                }`}
                         >
                             <Icon size={16} className="mr-2" />
                             {tab.label}
@@ -297,8 +296,8 @@ const PayrollAdjustments = () => {
                                     ) : reimbursements.map((r) => (
                                         <tr key={r.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3 text-sm">
-                                                <div className="font-medium text-gray-900">{r.employee.firstName} {r.employee.lastName}</div>
-                                                <div className="text-gray-500 text-xs">{r.employee.employeeCode}</div>
+                                                <div className="font-medium text-gray-900">{r.employee?.firstName} {r.employee?.lastName}</div>
+                                                <div className="text-gray-500 text-xs">{r.employee?.employeeCode}</div>
                                             </td>
                                             <td className="px-4 py-3 text-sm text-gray-600">{r.type}</td>
                                             <td className="px-4 py-3 text-sm text-right font-medium">₹{r.amount.toLocaleString()}</td>
@@ -484,11 +483,10 @@ const PayrollAdjustments = () => {
                             onClick={handleBankExport}
                             disabled={!selectedRun || !selectedFormat}
                             data-testid="export-bank-btn"
-                            className={`px-6 py-2 rounded-md font-medium flex items-center ${
-                                selectedRun && selectedFormat
+                            className={`px-6 py-2 rounded-md font-medium flex items-center ${selectedRun && selectedFormat
                                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            }`}
+                                }`}
                         >
                             <Download size={16} className="mr-2" />
                             Download Bank File
