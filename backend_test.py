@@ -382,15 +382,28 @@ class PayrollAdjustmentsTester:
         results = {
             "Bank Formats": bank_formats_result is not None,
             "Get Reimbursements": get_reimbursements_result is not None,
-            "Create Reimbursement": create_reimbursement_result is not None,
-            "Add Arrears": add_arrears_result is not None,
-            "Add Incentive": add_incentive_result is not None
+            "Create Reimbursement": create_reimbursement_result is not None and not create_reimbursement_result.get('skipped', False),
+            "Add Arrears": add_arrears_result is not None and not add_arrears_result.get('skipped', False),
+            "Add Incentive": add_incentive_result is not None and not add_incentive_result.get('skipped', False)
         }
         
         self.log("\n📋 Feature Test Results:")
         for feature, passed in results.items():
             status = "✅ PASSED" if passed else "❌ FAILED"
             self.log(f"  {feature}: {status}")
+        
+        # Check for skipped tests
+        skipped_tests = []
+        if create_reimbursement_result and create_reimbursement_result.get('skipped'):
+            skipped_tests.append("Create Reimbursement")
+        if add_arrears_result and add_arrears_result.get('skipped'):
+            skipped_tests.append("Add Arrears")
+        if add_incentive_result and add_incentive_result.get('skipped'):
+            skipped_tests.append("Add Incentive")
+            
+        if skipped_tests:
+            self.log(f"\n⚠️  Skipped Tests (No employees available): {', '.join(skipped_tests)}")
+            self.log("   These tests require employee data to function properly")
         
         success_rate = self.tests_passed / self.tests_run
         return success_rate >= 0.8  # 80% pass rate considered successful
