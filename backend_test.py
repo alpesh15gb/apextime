@@ -191,6 +191,7 @@ class Form16LocationPayrollTester:
                 return response
             else:
                 self.log("❌ Response is not a list")
+                self.log(f"Response type: {type(response)}, content: {str(response)[:200]}")
         return None
 
     def test_create_location_run_endpoint(self):
