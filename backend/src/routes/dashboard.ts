@@ -114,17 +114,18 @@ router.get('/stats', async (req, res) => {
 
     try {
       // Today's Status: Count unique ACTIVE employees who have a log for today
-      // Using groupBy to ensure we count unique employees even if duplicate logs exist
-      const todayLogs = await prisma.attendanceLog.groupBy({
-        by: ['employeeId'],
+      // First get today's attendance logs with Present/Late/Half Day status
+      const todayLogs = await prisma.attendanceLog.findMany({
         where: {
           date: {
-            gte: today, // Exactly 2026-02-07 00:00:00 UTC
-            lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) // Before 2026-02-08 00:00:00 UTC
+            gte: today,
+            lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
           },
           status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late'] },
           employee: { status: 'active' }
-        }
+        },
+        select: { employeeId: true },
+        distinct: ['employeeId']
       });
 
       const presentCount = todayLogs.length;
