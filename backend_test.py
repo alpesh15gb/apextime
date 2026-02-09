@@ -3,7 +3,7 @@ import sys
 import json
 from datetime import datetime
 
-class PayrollSystemTester:
+class AttendanceCountingTester:
     def __init__(self):
         self.base_url = "https://card-accuracy.preview.emergentagent.com/api"
         self.token = None
