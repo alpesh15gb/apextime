@@ -122,6 +122,7 @@ app.use('/api/update-names', updateNamesRoutes);
 app.use('/api/manual-update-names', manualUpdateNamesRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/payroll-settings', payrollSettingsRoutes);
+app.use('/api/payroll-adjustments', payrollAdjustmentsRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/ceo', ceoRoutes);
 app.use('/api/field-logs', fieldLogRoutes);
