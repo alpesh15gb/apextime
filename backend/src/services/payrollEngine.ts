@@ -163,11 +163,22 @@ export class PayrollEngine {
                 });
 
                 if (dayLog) {
-                    // Normalize status: logSyncService stores 'Present', 'Half Day', 'Absent'
+                    // INDUSTRY-GRADE STATUS HANDLING:
+                    // Normalize status and count all work-related statuses towards paid days
                     const status = (dayLog.status || '').toLowerCase().replace(/\s+/g, '_').trim();
-                    if (status === 'present' || status === 'late') matrixPresent++;
-                    else if (status === 'half_day') matrixHalfDay++;
-                    else if (status === 'leave_paid') matrixPaidLeave++;
+                    
+                    // Present, Late, Shift Incomplete (single punch) = FULL DAY
+                    // Shift Incomplete means employee showed up but only has one punch - still counts as present
+                    if (status === 'present' || status === 'late' || status === 'shift_incomplete') {
+                        matrixPresent++;
+                    }
+                    else if (status === 'half_day') {
+                        matrixHalfDay++;
+                    }
+                    else if (status === 'leave_paid' || status === 'paid_leave') {
+                        matrixPaidLeave++;
+                    }
+                    // 'absent' status is NOT counted - employee didn't show up
                 }
             }
 
