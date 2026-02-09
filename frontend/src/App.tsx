@@ -137,6 +137,7 @@ function App() {
                     <Route path="/onboarding" element={<ModuleRoute module="onboarding"><Onboarding /></ModuleRoute>} />
                     <Route path="/tenants" element={<Tenants />} />
                     <Route path="/payroll/settings" element={<ModuleRoute module="payroll"><PayrollSettings /></ModuleRoute>} />
+                    <Route path="/payroll/adjustments" element={<ModuleRoute module="payroll"><PayrollAdjustments /></ModuleRoute>} />
 
                   </Routes>
                 </Layout>
