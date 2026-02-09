@@ -131,13 +131,13 @@ class PayrollAdjustmentsTester:
             200
         )
         
-        if response:
+        if response is not None:
             self.log(f"✅ Reimbursements retrieved successfully")
             
             if isinstance(response, list):
                 self.log(f"Found {len(response)} reimbursement records")
                 
-                # Check structure of first few records
+                # Check structure of first few records if any exist
                 for i, reimb in enumerate(response[:2]):
                     if isinstance(reimb, dict):
                         required_fields = ['id', 'employeeId', 'type', 'amount', 'status']
