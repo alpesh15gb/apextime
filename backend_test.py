@@ -177,6 +177,10 @@ class Form16LocationPayrollTester:
             if isinstance(response, list):
                 self.log(f"Found {len(response)} branches/locations")
                 
+                if len(response) == 0:
+                    self.log("  ⚠️  No location data found - this is expected if no branches are configured")
+                    return response
+                
                 # Check structure of first few locations
                 for i, loc in enumerate(response[:2]):
                     required_fields = ['branchId', 'branchName', 'branchCode', 'employeeCount', 'totalGross', 'totalNet']
