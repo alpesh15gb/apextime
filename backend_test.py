@@ -213,15 +213,16 @@ class Form16LocationPayrollTester:
             
         # Handle different response structures
         branches = []
-        if 'branches' in branches_response:
+        if isinstance(branches_response, list):
+            branches = branches_response
+        elif 'branches' in branches_response:
             branches = branches_response['branches']
         elif 'data' in branches_response:
             branches = branches_response['data']
-        elif isinstance(branches_response, list):
-            branches = branches_response
         
         if not branches:
             self.log("⚠️  No branches found - skipping location run creation test")
+            self.log("   This is expected if the system has no branch data yet")
             return {"skipped": True, "reason": "No branches available"}
         
         branch_id = branches[0]['id']
