@@ -7,16 +7,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
     strictPort: false,
-    allowedHosts: [
-      'all',
-      'payroll-reports-hub.preview.emergentagent.com',
-      '542fce52-fcdd-4fc9-9f47-a0b52af1ab6c.preview.emergentagent.com',
-      'localhost',
-      '127.0.0.1',
-      '10.208.130.101'
-    ],
+    allowedHosts: true,
     hmr: {
-      host: '542fce52-fcdd-4fc9-9f47-a0b52af1ab6c.preview.emergentagent.com',
+      host: 'card-accuracy.preview.emergentagent.com',
     },
     proxy: {
       '/api': {
