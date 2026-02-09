@@ -197,6 +197,10 @@ export const payrollAPI = {
   updateSalary: (employeeId: string, data: any) => api.put(`/payroll/salary/${employeeId}`, data),
   processPay: (data: any) => api.post('/payroll/process-pay', data),
   exportReview: (id: string) => api.get(`/payroll/runs/${id}/export-review`, { responseType: 'blob' }),
+  // Bank format exports
+  getBankFormats: () => api.get('/payroll-adjustments/bank-formats'),
+  exportBankFormat: (runId: string, format: string) => 
+    api.get(`/payroll-adjustments/runs/${runId}/export-bank/${format}`, { responseType: 'blob' }),
 };
 
 export const reportsAPI = {
