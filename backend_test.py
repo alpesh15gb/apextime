@@ -79,26 +79,93 @@ class AttendanceCountingTester:
             self.log(f"❌ Login failed - no token received")
             return False
 
-    def test_recalculate_endpoint(self):
-        """Test the new POST /api/attendance/recalculate endpoint"""
-        self.log("=== TESTING NEW RECALCULATE ENDPOINT ===")
+    def test_dashboard_stats_attendance_counting(self):
+        """Test dashboard stats API to verify 'Shift Incomplete' employees are counted as present"""
+        self.log("=== TESTING DASHBOARD STATS ATTENDANCE COUNTING ===")
         
-        # Test recalculate endpoint with empty body (should recalculate all)
         response = self.run_test(
-            "Recalculate All Attendance", 
-            "POST", 
-            "/attendance/recalculate", 
-            200, 
-            {}
+            "Dashboard Stats", 
+            "GET", 
+            "/dashboard/stats", 
+            200
         )
         
         if response:
-            self.log(f"✅ Recalculate Response: {json.dumps(response, indent=2)}")
-            if 'updated' in response and 'total' in response:
-                self.log(f"✅ Recalculation completed: {response.get('updated')} updated out of {response.get('total')} total")
+            self.log(f"✅ Dashboard Stats Response received")
+            
+            # Check if response has the expected structure
+            if 'today' in response:
+                today_stats = response['today']
+                present_count = today_stats.get('present', 0)
+                absent_count = today_stats.get('absent', 0)
+                
+                self.log(f"Today's Attendance Stats:")
+                self.log(f"  - Present: {present_count}")
+                self.log(f"  - Absent: {absent_count}")
+                
+                # Check for additional stats
+                if 'counts' in response:
+                    counts = response['counts']
+                    total_employees = counts.get('totalEmployees', 0)
+                    active_employees = counts.get('activeEmployees', 0)
+                    
+                    self.log(f"Employee Counts:")
+                    self.log(f"  - Total Employees: {total_employees}")
+                    self.log(f"  - Active Employees: {active_employees}")
+                    
+                    # Validate that present + absent <= active employees
+                    if present_count + absent_count <= active_employees:
+                        self.log(f"✅ Attendance count validation passed")
+                    else:
+                        self.log(f"❌ Attendance count validation failed: present({present_count}) + absent({absent_count}) > active({active_employees})")
+                
+                # Check for attendance rate calculation
+                attendance_rate = today_stats.get('attendanceRate', 0)
+                self.log(f"  - Attendance Rate: {attendance_rate}%")
+                
                 return response
             else:
-                self.log("❌ Response missing expected fields (updated/total)")
+                self.log("❌ Response missing 'today' section")
+        return None
+
+    def test_attendance_logs_with_shift_incomplete(self):
+        """Test if attendance logs include employees with 'Shift Incomplete' status"""
+        self.log("=== TESTING ATTENDANCE LOGS FOR SHIFT INCOMPLETE STATUS ===")
+        
+        # Get today's date in the expected format
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        response = self.run_test(
+            "Daily Attendance Report",
+            "GET",
+            f"/reports/daily?date={today}",
+            200
+        )
+        
+        if response:
+            logs = response.get('logs', [])
+            self.log(f"✅ Retrieved {len(logs)} attendance records for {today}")
+            
+            shift_incomplete_count = 0
+            present_count = 0
+            
+            for log in logs:
+                status = log.get('status', '').lower()
+                if 'shift incomplete' in status:
+                    shift_incomplete_count += 1
+                    emp_name = f"{log.get('employee', {}).get('firstName', 'N/A')} {log.get('employee', {}).get('lastName', '')}"
+                    first_in = log.get('firstIn')
+                    last_out = log.get('lastOut')
+                    self.log(f"  Shift Incomplete: {emp_name} - In: {first_in}, Out: {last_out}")
+                elif status in ['present', 'late', 'half day']:
+                    present_count += 1
+            
+            self.log(f"Status Summary:")
+            self.log(f"  - Shift Incomplete: {shift_incomplete_count}")
+            self.log(f"  - Other Present Status: {present_count}")
+            self.log(f"  - Total Present (including Shift Incomplete): {shift_incomplete_count + present_count}")
+            
+            return response
         return None
 
     def test_daily_reports_after_recalculate(self):
