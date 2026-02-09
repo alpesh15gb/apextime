@@ -115,13 +115,14 @@ router.get('/stats', async (req, res) => {
     try {
       // Today's Status: Count unique ACTIVE employees who have a log for today
       // First get today's attendance logs with Present/Late/Half Day status
+      // Include 'Shift Incomplete' as it means employee checked in but hasn't checked out yet
       const todayLogs = await prisma.attendanceLog.findMany({
         where: {
           date: {
             gte: today,
             lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
           },
-          status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late'] },
+          status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late', 'Shift Incomplete', 'shift incomplete'] },
           employee: { status: 'active' }
         },
         select: { employeeId: true },
