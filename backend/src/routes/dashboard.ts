@@ -98,16 +98,17 @@ router.get('/stats', async (req, res) => {
     } catch (e) { console.error('Org count error', e); }
 
     try {
-      const yesterdayLogs = await prisma.attendanceLog.groupBy({
-        by: ['employeeId'],
+      const yesterdayLogs = await prisma.attendanceLog.findMany({
         where: {
           date: {
             gte: yesterday,
             lt: today
           },
-          status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late'] },
+          status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late', 'Shift Incomplete', 'shift incomplete'] },
           employee: { status: 'active' }
-        }
+        },
+        select: { employeeId: true },
+        distinct: ['employeeId']
       });
       yesterdayAttendance = yesterdayLogs.length;
     } catch (e) { console.error('Yesterday att error', e); }
