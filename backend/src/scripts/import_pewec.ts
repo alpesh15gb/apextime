@@ -50,7 +50,7 @@ async function main() {
     console.log(`✅ Using Device: ${legacyDevice.name} (${legacyDevice.id})`);
 
     // 1c. CLEANUP: Delete previous import attempts to correct date format errors
-    console.log('🧹 Clearing previous import data to ensure clean stats...');
+    console.log('🧹 Clearing previous import log data to ensure clean stats...');
     const deleted = await prisma.rawDeviceLog.deleteMany({
         where: {
             deviceId: legacyDevice.id,
@@ -78,6 +78,7 @@ async function main() {
     let skippedCount = 0; // Invalid Format
     let duplicateCount = 0; // DB Duplicates
     let errorCount = 0; // Other DB Errors
+    let createdEmployeeCount = 0; // New Employees
 
     console.log('Reading CSV...');
 
@@ -97,15 +98,60 @@ async function main() {
 
         // Mapping:
         // Index 2: UserId
+        // Index 3: Name (New!)
         // Index 9: DateTime (MM/DD/YYYY H:MM)
 
         if (cols.length < 10) { skippedCount++; continue; }
 
         const userId = cols[2];
+        const name = cols[3];
         const punchTypeStr = cols[6];
         const dateTimeStr = cols[9];
 
         if (!userId || !dateTimeStr) { skippedCount++; continue; }
+
+        // --- NEW: Create Employee if missing ---
+        if (name) {
+            let employee = await prisma.employee.findFirst({
+                where: {
+                    tenantId: tenant.id,
+                    OR: [
+                        { deviceUserId: userId },
+                        { employeeCode: userId }
+                    ]
+                }
+            });
+
+            if (!employee) {
+                const nameParts = name.trim().split(' ');
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(' ') || '';
+
+                // Only log sparingly
+                if (createdEmployeeCount < 5) console.log(`Creating missing employee: ${name} (ID: ${userId})`);
+
+                try {
+                    await prisma.employee.create({
+                        data: {
+                            tenantId: tenant.id,
+                            firstName: firstName,
+                            lastName: lastName,
+                            employeeCode: userId,
+                            deviceUserId: userId,
+                            status: 'active',
+                            gender: 'Male', // Default
+                            joiningDate: new Date(),
+                            isActive: true
+                        }
+                    });
+                    createdEmployeeCount++;
+                } catch (e: any) {
+                    // Ignore if created by parallel process or race condition
+                }
+            }
+        }
+        // ----------------------------------------
+
 
         const punchTime = parseDateTime(dateTimeStr);
 
@@ -127,7 +173,7 @@ async function main() {
                     deviceId: legacyDevice.id,
                     deviceUserId: userId,
                     userId: userId,
-                    userName: cols[3],
+                    userName: name,
                     timestamp: punchTime,
                     punchTime: punchTime,
                     punchType: punchType,
@@ -139,7 +185,6 @@ async function main() {
         } catch (e: any) {
             if (e.code === 'P2002') {
                 duplicateCount++;
-                if (duplicateCount <= 3) console.log(`\nDUPLICATE: User ${userId} at ${dateTimeStr}`);
             } else {
                 console.error(`Error importing ${userId}:`, e.message);
                 errorCount++;
@@ -151,6 +196,7 @@ async function main() {
 
     console.log(`\n\n✅ Import Complete.`);
     console.log(`   Total Lines Processed: ${lineCount}`);
+    console.log(`   New Employees Created: ${createdEmployeeCount}`);
     console.log(`   Imported (Success):   ${importedCount}`);
     console.log(`   Duplicates (Skipped): ${duplicateCount}`);
     console.log(`   Format Errors:        ${skippedCount}`);
