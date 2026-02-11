@@ -32,8 +32,8 @@ services:
       # SQL_SERVER_USER: ${SQL_SERVER_USER:-essl}
       # SQL_SERVER_PASSWORD: ${SQL_SERVER_PASSWORD:-Keystone@456}
       # SQL_SERVER_DATABASE: ${SQL_SERVER_DATABASE:-etimetracklite1}
-    expose:
-      - "5001"
+    ports:
+      - "5001:5001"
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backups:/app/backups
