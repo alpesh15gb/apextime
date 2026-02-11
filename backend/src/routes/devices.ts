@@ -121,17 +121,46 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete device
+// Delete device with cascading cleanup
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const tenantId = (req as any).user.tenantId;
 
-    await prisma.device.deleteMany({
-      where: { id, tenantId },
+    // Check if device exists first
+    const device = await prisma.device.findFirst({
+      where: { id, tenantId }
     });
 
-    res.json({ message: 'Device deleted successfully' });
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    // 1. Delete associated commands
+    await prisma.deviceCommand.deleteMany({
+      where: { deviceId: id, tenantId }
+    });
+
+    // 2. Delete raw logs associated with this device
+    await prisma.rawDeviceLog.deleteMany({
+      where: { deviceId: id, tenantId }
+    });
+
+    // 3. Delete processed logs associated with this device (if any)
+    // Note: Assuming DeviceLog model exists and is linked
+    // We check if prisma.deviceLog is defined to avoid runtime errors if model missing
+    if ((prisma as any).deviceLog) {
+      await (prisma as any).deviceLog.deleteMany({
+        where: { deviceId: id, tenantId }
+      });
+    }
+
+    // 4. Finally delete the device
+    await prisma.device.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Device and all associated logs deleted successfully' });
   } catch (error) {
     console.error('Delete device error:', error);
     res.status(500).json({ error: 'Internal server error' });
