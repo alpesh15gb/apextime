@@ -77,6 +77,19 @@ async function findEmployeeId(uId: string, tenantId?: string): Promise<string | 
   return null;
 }
 
+/**
+ * Check if a device is designated for STUDENTS based on its config.
+ */
+function isStudentDevice(device: any): boolean {
+  if (!device.config) return false;
+  try {
+    const cfg = JSON.parse(device.config);
+    return (cfg.type || '').toUpperCase() === 'STUDENT';
+  } catch (e) {
+    return false;
+  }
+}
+
 
 export async function startLogSync(fullSync: boolean = false): Promise<void> {
   const activeTenants = await prisma.tenant.findMany({ where: { isActive: true } });
@@ -572,13 +585,16 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
           const windowStart = new Date(targetDate.getTime() - 8 * 60 * 60 * 1000);
           const windowEnd = new Date(targetDate.getTime() + 32 * 60 * 60 * 1000);
 
+          const studentDeviceIds = existingDevices.filter(d => isStudentDevice(d)).map(d => d.id);
+
           const allRawLogsMatch = await prisma.rawDeviceLog.findMany({
             where: {
               userId: uId,
               punchTime: {
                 gte: windowStart,
                 lt: windowEnd
-              }
+              },
+              deviceId: { notIn: studentDeviceIds }
             },
             orderBy: { punchTime: 'asc' }
           });
@@ -595,7 +611,7 @@ async function syncForTenant(tenant: Tenant, fullSync: boolean = false): Promise
           }));
 
           // Process this specific day for this specific employee
-          const processingResults = await processAttendanceLogs(formattedLogs);
+          const processingResults = await processAttendanceLogs(formattedLogs, tenant.id);
 
           for (const attendance of processingResults) {
             await prisma.attendanceLog.upsert({
@@ -993,11 +1009,11 @@ async function createEmployeeFromDeviceLog(deviceUserId: string, tenantId: strin
 function getLogicalDateFromPunch(punchTime: Date): { year: number; month: number; day: number; dateKey: string } {
   // Get local hour (server is IST, punch time is IST)
   const hour = punchTime.getHours();
-  
+
   let year = punchTime.getFullYear();
   let month = punchTime.getMonth();
   let day = punchTime.getDate();
-  
+
   // If punch is before 5 AM, it belongs to previous day's shift
   if (hour < 5) {
     const prevDay = new Date(year, month, day - 1);
@@ -1005,13 +1021,13 @@ function getLogicalDateFromPunch(punchTime: Date): { year: number; month: number
     month = prevDay.getMonth();
     day = prevDay.getDate();
   }
-  
+
   const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  
+
   return { year, month, day, dateKey };
 }
 
-export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAttendance[]> {
+export async function processAttendanceLogs(logs: RawLog[], tenantId?: string): Promise<ProcessedAttendance[]> {
   const employeeLogs = new Map<string, RawLog[]>();
 
   for (const log of logs) {
@@ -1023,7 +1039,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
   const processedResults: ProcessedAttendance[] = [];
 
   for (const [deviceUserId, userLogs] of employeeLogs) {
-    const employeeId = await findEmployeeId(deviceUserId);
+    const employeeId = await findEmployeeId(deviceUserId, tenantId);
     if (!employeeId) continue;
 
     // 1. Sort all punches for this user by time
@@ -1031,10 +1047,10 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
 
     // 2. Group punches by logical date
     const dateGroups = new Map<string, RawLog[]>();
-    
+
     for (const log of userLogs) {
       const { dateKey } = getLogicalDateFromPunch(log.LogDate);
-      
+
       if (!dateGroups.has(dateKey)) {
         dateGroups.set(dateKey, []);
       }
@@ -1045,7 +1061,7 @@ export async function processAttendanceLogs(logs: RawLog[]): Promise<ProcessedAt
     for (const [dateKey, dayLogs] of dateGroups) {
       // Sort by time
       dayLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
-      
+
       const firstIn = dayLogs[0].LogDate;
       const lastOut = dayLogs.length > 1 ? dayLogs[dayLogs.length - 1].LogDate : null;
 
@@ -1103,15 +1119,19 @@ export async function triggerRealtimeAttendanceSync(tenantId: string, userId: st
   try {
     // 1. Determine Logical Date for the punch (server is IST, punchTime is IST)
     const { year: logicalYear, month: logicalMonth, day: logicalDay, dateKey: dStr } = getLogicalDateFromPunch(punchTime);
-    
+
     const targetDate = new Date(dStr + 'T00:00:00Z');
 
     logger.debug(`Real-time sync triggered for ${userId} on ${dStr} (calculated from ${punchTime.toISOString()})`);
-    
+
     // Create a window to fetch all punches for this logical day
     // Window: 12 hours before to 36 hours after to catch night shift punches
     const windowStart = new Date(targetDate.getTime() - 12 * 60 * 60 * 1000);
     const windowEnd = new Date(targetDate.getTime() + 36 * 60 * 60 * 1000);
+
+    // Exclude student devices
+    const tenantDevices = await prisma.device.findMany({ where: { tenantId } });
+    const studentDeviceIds = tenantDevices.filter(d => isStudentDevice(d)).map(d => d.id);
 
     const logs = await prisma.rawDeviceLog.findMany({
       where: {
@@ -1120,7 +1140,8 @@ export async function triggerRealtimeAttendanceSync(tenantId: string, userId: st
           { userId: userId }
         ],
         tenantId: tenantId,
-        punchTime: { gte: windowStart, lt: windowEnd }
+        punchTime: { gte: windowStart, lt: windowEnd },
+        deviceId: { notIn: studentDeviceIds }
       },
       orderBy: { punchTime: 'asc' }
     });
@@ -1135,7 +1156,7 @@ export async function triggerRealtimeAttendanceSync(tenantId: string, userId: st
       LogDate: rl.punchTime!
     }));
 
-    const results = await processAttendanceLogs(formattedLogs);
+    const results = await processAttendanceLogs(formattedLogs, tenantId);
 
     // 4. Upsert AttendanceLog
     for (const attendance of results) {
@@ -1356,7 +1377,7 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     // Get unique deviceUserId + Date pairs from RawDeviceLog
     const logs = await prisma.rawDeviceLog.findMany({
       where,
-      select: { deviceUserId: true, userId: true, punchTime: true, timestamp: true },
+      select: { deviceUserId: true, userId: true, punchTime: true, timestamp: true, device: { select: { config: true } } },
       orderBy: { punchTime: 'asc' }
     });
 
@@ -1365,6 +1386,9 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
     const affectedPairs = new Set<string>();
 
     for (const log of logs) {
+      // SKIP STUDENT DEVICES
+      if (log.device && isStudentDevice(log.device)) continue;
+
       const uId = log.deviceUserId || log.userId;
       if (!uId) continue;
 
@@ -1409,7 +1433,16 @@ export async function reprocessHistoricalLogs(startDate?: Date, endDate?: Date, 
           LogDate: rl.punchTime || rl.timestamp
         }));
 
-        const results = await processAttendanceLogs(formattedLogs);
+        // Try to identify tenant from employee cache if possible to guide processing
+        let tenantIdHint: string | undefined = undefined;
+        const hintEmpId = employeeCache.get(uId);
+
+        if (hintEmpId) {
+          const emp = await prisma.employee.findUnique({ where: { id: hintEmpId }, select: { tenantId: true } });
+          if (emp) tenantIdHint = emp.tenantId;
+        }
+
+        const results = await processAttendanceLogs(formattedLogs, tenantIdHint);
         if (results.length === 0) continue;
 
         // ROBUST LINKING LOGIC FOR REPROCESSING

@@ -15,16 +15,33 @@ export class StudentAttendanceService {
         const end = endOfDay(date);
 
         // 1. Fetch Logs for the day (Optimized: Get unique UserIDs involved)
-        const logs = await prisma.deviceLog.findMany({
+        // Ensure we only process logs from STUDENT devices
+        // @ts-ignore
+        const rawLogs = await prisma.rawDeviceLog.findMany({
             where: {
                 tenantId,
                 punchTime: {
                     gte: start,
                     lte: end
+                },
+                device: {
+                    // Primitive check: We'll filter in JS as JSON filtering is complex
                 }
             },
+            include: { device: true },
             orderBy: { punchTime: 'asc' }
         });
+
+        const logs = rawLogs.filter((l: any) => {
+            if (!l.device?.config) return false;
+            try {
+                const cfg = JSON.parse(l.device.config);
+                return (cfg.type || '').toUpperCase() === 'STUDENT';
+            } catch { return false; }
+        }).map((l: any) => ({
+            ...l,
+            punchTime: l.punchTime || l.timestamp
+        }));
 
         // 2. Fetch Active Students with Biometric IDs
         const students = await prisma.student.findMany({
