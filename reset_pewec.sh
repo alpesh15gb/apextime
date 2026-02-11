@@ -26,9 +26,9 @@ BEGIN
     -- 1. Unlink Users (Set employeeId to NULL so we can delete employees)
     UPDATE "User" SET "employeeId" = NULL WHERE "tenantId" = t_id;
     
-    -- 2. Clean up self-referencing Employee/Dept/Leave constraints
+    -- 2. Clean up self-referencing Employee constraints
+    -- (Removed incorrect update on Department table)
     UPDATE "Employee" SET "reportToId" = NULL, "managerOfDeptId" = NULL WHERE "tenantId" = t_id;
-    UPDATE "Department" SET "managerOfDeptId" = NULL WHERE "tenantId" = t_id;
     UPDATE "LeaveEntry" SET "managerId" = NULL, "ceoId" = NULL WHERE "tenantId" = t_id;
 
     -- 3. Delete Logs & Transactions (Reverse dependency order)
