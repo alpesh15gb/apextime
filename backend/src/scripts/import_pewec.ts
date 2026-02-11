@@ -29,6 +29,27 @@ async function main() {
 
     console.log(`✅ Found Tenant: ${tenant.name} (${tenant.id})`);
 
+    // 1b. Create/Find Legacy Device (Required for Foreign Key)
+    let legacyDevice = await prisma.device.findFirst({
+        where: { deviceId: 'LEGACY_IMPORT', tenantId: tenant.id }
+    });
+
+    if (!legacyDevice) {
+        console.log('Creating virtual device for legacy import...');
+        legacyDevice = await prisma.device.create({
+            data: {
+                tenantId: tenant.id,
+                name: 'Legacy Import Device',
+                deviceId: 'LEGACY_IMPORT', // The logical ID
+                status: 'offline',
+                ipAddress: '0.0.0.0',
+                port: 0
+            }
+        });
+    }
+    console.log(`✅ Using Device: ${legacyDevice.name} (${legacyDevice.id})`);
+
+
     // 2. Read File
     const filePath = path.resolve(process.cwd(), csvFile);
     if (!fs.existsSync(filePath)) {
@@ -108,7 +129,7 @@ async function main() {
             await prisma.rawDeviceLog.create({
                 data: {
                     tenantId: tenant.id,
-                    deviceId: 'LEGACY_IMPORT',
+                    deviceId: legacyDevice.id, // MUST be the UUID of the device row
                     deviceUserId: userId,
                     userId: userId, // Duplicate for safety
                     userName: cols[3], // Name is usually col 3
