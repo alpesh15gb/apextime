@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { devicesAPI } from '../services/api';
+import { devicesAPI, default as api } from '../services/api';
 import {
     Cpu,
     Plus,

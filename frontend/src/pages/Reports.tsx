@@ -31,11 +31,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler);
 
-type TabType = 'daily' | 'weekly' | 'monthly';
+
+type TabType = 'daily' | 'weekly' | 'monthly' | 'student';
 
 export const Reports = () => {
   const { user } = useAuth();
-  
+
   const getISTToday = () => {
     const IST_OFFSET = 5.5 * 60 * 60 * 1000;
     return new Date(Date.now() + IST_OFFSET).toISOString().split('T')[0];
@@ -50,6 +51,10 @@ export const Reports = () => {
   const [showRecalculateModal, setShowRecalculateModal] = useState(false);
   const [recalcStartDate, setRecalcStartDate] = useState(getISTToday());
   const [recalcEndDate, setRecalcEndDate] = useState(getISTToday());
+
+  // Student Report Date Range
+  const [studentStartDate, setStudentStartDate] = useState(getISTToday());
+  const [studentEndDate, setStudentEndDate] = useState(getISTToday());
 
   // Filters
   const [departments, setDepartments] = useState<any[]>([]);
@@ -99,8 +104,11 @@ export const Reports = () => {
         res = await reportsAPI.getDaily({ ...baseParams, date: selectedDate });
       } else if (activeTab === 'weekly') {
         res = await reportsAPI.getWeekly({ ...baseParams, startDate: weekStart });
-      } else {
+      } else if (activeTab === 'monthly') {
         res = await reportsAPI.getMonthly({ ...baseParams, month: selectedMonth, year: selectedYear });
+      } else {
+        // Student Report
+        res = await reportsAPI.getStudentReport({ startDate: studentStartDate, endDate: studentEndDate });
       }
       setReportData(res.data);
     } catch (e) {
@@ -109,7 +117,7 @@ export const Reports = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, selectedDate, weekStart, selectedMonth, selectedYear, filters]);
+  }, [activeTab, selectedDate, weekStart, selectedMonth, selectedYear, filters, studentStartDate, studentEndDate]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
@@ -121,26 +129,36 @@ export const Reports = () => {
       if (filters.branchId) params.branchId = filters.branchId;
       if (filters.locationId) params.locationId = filters.locationId;
 
-      let reportType = 'daily_detailed';
-      if (activeTab === 'daily') {
-        params.date = selectedDate;
-        params.startDate = selectedDate;
-        params.endDate = selectedDate;
-      } else if (activeTab === 'weekly') {
-        params.startDate = weekStart;
-        const end = new Date(weekStart);
-        end.setDate(end.getDate() + 6);
-        params.endDate = end.toISOString().split('T')[0];
-        reportType = 'monthly_detailed';
-      } else {
-        params.month = selectedMonth.toString();
-        params.year = selectedYear.toString();
-        reportType = 'monthly_detailed';
-      }
+      let response;
 
-      const response = format === 'excel'
-        ? await reportsAPI.downloadExcel(reportType, params)
-        : await reportsAPI.downloadPDF(reportType, params);
+      if (activeTab === 'student') {
+        response = await reportsAPI.downloadStudentReport({
+          startDate: studentStartDate,
+          endDate: studentEndDate,
+          format
+        });
+      } else {
+        let reportType = 'daily_detailed';
+        if (activeTab === 'daily') {
+          params.date = selectedDate;
+          params.startDate = selectedDate;
+          params.endDate = selectedDate;
+        } else if (activeTab === 'weekly') {
+          params.startDate = weekStart;
+          const end = new Date(weekStart);
+          end.setDate(end.getDate() + 6);
+          params.endDate = end.toISOString().split('T')[0];
+          reportType = 'monthly_detailed';
+        } else if (activeTab === 'monthly') {
+          params.month = selectedMonth.toString();
+          params.year = selectedYear.toString();
+          reportType = 'monthly_detailed';
+        }
+
+        response = format === 'excel'
+          ? await reportsAPI.downloadExcel(reportType, params)
+          : await reportsAPI.downloadPDF(reportType, params);
+      }
 
       const blob = new Blob([response.data], {
         type: format === 'excel'
@@ -276,6 +294,7 @@ export const Reports = () => {
     { key: 'daily', label: 'Daily', icon: Calendar },
     { key: 'weekly', label: 'Weekly', icon: TrendingUp },
     { key: 'monthly', label: 'Monthly', icon: BarChart3 },
+    { key: 'student', label: 'Student Attendance', icon: Users },
   ];
 
   return (
@@ -288,7 +307,7 @@ export const Reports = () => {
             <p className="text-sm text-slate-500 mb-6">
               This will recalculate attendance data using First In / Last Out logic for the selected date range.
             </p>
-            
+
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
@@ -301,7 +320,7 @@ export const Reports = () => {
                   className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
                   End Date
@@ -398,11 +417,10 @@ export const Reports = () => {
             key={tab.key}
             data-testid={`tab-${tab.key}`}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === tab.key
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.key
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             <tab.icon className="w-4 h-4" />
             {tab.label}
@@ -465,6 +483,28 @@ export const Reports = () => {
                 >
                   {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
+              </div>
+            </div>
+          )}
+          {activeTab === 'student' && (
+            <div className="flex gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">Start Date</label>
+                <input
+                  type="date"
+                  value={studentStartDate}
+                  onChange={(e) => setStudentStartDate(e.target.value)}
+                  className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">End Date</label>
+                <input
+                  type="date"
+                  value={studentEndDate}
+                  onChange={(e) => setStudentEndDate(e.target.value)}
+                  className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
               </div>
             </div>
           )}
@@ -770,6 +810,49 @@ export const Reports = () => {
                           <span className="text-sm font-bold text-blue-600">
                             {stat.present > 0 ? ((stat.totalWorkingHours || 0) / stat.present).toFixed(1) : '0.0'}
                           </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {activeTab === 'student' && (
+                <table data-testid="student-table" className="w-full">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Student</th>
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Class</th>
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Section</th>
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {Array.isArray(reportData) && reportData.map((rec: any) => (
+                      <tr key={rec.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">{rec.student?.firstName} {rec.student?.lastName}</p>
+                              <p className="text-[10px] text-slate-400 font-medium">{rec.student?.admissionNo}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center text-sm font-medium text-slate-600">
+                          {new Date(rec.date).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3.5 text-center text-sm font-medium text-slate-600">
+                          {rec.student?.batch?.course?.name || '-'}
+                        </td>
+                        <td className="px-4 py-3.5 text-center text-sm font-medium text-slate-600">
+                          {rec.student?.batch?.name || '-'}
+                        </td>
+                        <td className="px-6 py-3.5 text-center">
+                          <StatusBadge status={rec.status} />
+                        </td>
+                        <td className="px-6 py-3.5 text-sm text-slate-500">
+                          {rec.remarks || '-'}
                         </td>
                       </tr>
                     ))}

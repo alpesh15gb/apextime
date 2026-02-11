@@ -199,7 +199,7 @@ export const payrollAPI = {
   exportReview: (id: string) => api.get(`/payroll/runs/${id}/export-review`, { responseType: 'blob' }),
   // Bank format exports
   getBankFormats: () => api.get('/payroll-adjustments/bank-formats'),
-  exportBankFormat: (runId: string, format: string) => 
+  exportBankFormat: (runId: string, format: string) =>
     api.get(`/payroll-adjustments/runs/${runId}/export-bank/${format}`, { responseType: 'blob' }),
   // Location-wise payroll
   createLocationRun: (data: any) => api.post('/payroll/runs/location', data),
@@ -207,9 +207,9 @@ export const payrollAPI = {
   getSummaryByLocation: (params: any) => api.get('/payroll/summary/by-location', { params }),
   // Form 16
   getForm16Eligible: (financialYear: string) => api.get('/payroll/form16/eligible', { params: { financialYear } }),
-  getForm16Data: (employeeId: string, financialYear: string) => 
+  getForm16Data: (employeeId: string, financialYear: string) =>
     api.get(`/payroll/form16/${employeeId}/data`, { params: { financialYear } }),
-  downloadForm16: (employeeId: string, financialYear: string) => 
+  downloadForm16: (employeeId: string, financialYear: string) =>
     api.get(`/payroll/form16/${employeeId}/download`, { params: { financialYear }, responseType: 'blob' }),
   downloadForm16Bulk: (employeeIds: string[], financialYear: string) =>
     api.post('/payroll/form16/bulk-download', { employeeIds, financialYear }, { responseType: 'blob' }),
@@ -223,6 +223,10 @@ export const reportsAPI = {
     api.get(`/reports/${type}/download/excel`, { params, responseType: 'blob' }),
   downloadPDF: (type: string, params: any) =>
     api.get(`/reports/${type}/download/pdf`, { params, responseType: 'blob' }),
+  getStudentReport: (params: any) => api.get('/reports/student_attendance', { params }),
+
+  downloadStudentReport: (params: any) =>
+    api.get('/reports/student_attendance', { params, responseType: 'blob' }),
 };
 
 export const fieldLogsAPI = {
@@ -254,11 +258,11 @@ export const payrollAdjustmentsAPI = {
   createReimbursement: (data: any) => api.post('/payroll-adjustments/reimbursements', data),
   updateReimbursementStatus: (id: string, status: string, rejectedReason?: string) =>
     api.put(`/payroll-adjustments/reimbursements/${id}/status`, { status, rejectedReason }),
-  
+
   // Arrears
   getArrears: (params?: any) => api.get('/payroll-adjustments/arrears', { params }),
   addArrears: (data: any) => api.post('/payroll-adjustments/arrears', data),
-  
+
   // Incentives
   getIncentives: (params?: any) => api.get('/payroll-adjustments/incentives', { params }),
   addIncentive: (data: any) => api.post('/payroll-adjustments/incentives', data),
