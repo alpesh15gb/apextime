@@ -50,7 +50,7 @@ async function main() {
     console.log(`✅ Using Device: ${legacyDevice.name} (${legacyDevice.id})`);
 
     // 1c. CLEANUP: Delete previous import attempts to correct date format errors
-    console.log('🧹 Clearing previous import data to ensure date accuracy...');
+    console.log('🧹 Clearing previous import data to ensure clean stats...');
     const deleted = await prisma.rawDeviceLog.deleteMany({
         where: {
             deviceId: legacyDevice.id,
@@ -75,7 +75,9 @@ async function main() {
 
     let lineCount = 0;
     let importedCount = 0;
-    let skippedCount = 0;
+    let skippedCount = 0; // Invalid Format
+    let duplicateCount = 0; // DB Duplicates
+    let errorCount = 0; // Other DB Errors
 
     console.log('Reading CSV...');
 
@@ -95,8 +97,7 @@ async function main() {
 
         // Mapping:
         // Index 2: UserId
-        // Index 6: In/Out
-        // Index 9: DateTime (MM/DD/YYYY H:MM) - CONFIRMED MM/DD
+        // Index 9: DateTime (MM/DD/YYYY H:MM)
 
         if (cols.length < 10) { skippedCount++; continue; }
 
@@ -136,22 +137,29 @@ async function main() {
             importedCount++;
             if (importedCount % 100 === 0) process.stdout.write(`\rImported ${importedCount} records...`);
         } catch (e: any) {
-            if (e.code !== 'P2002') console.error(`Error importing ${userId}:`, e.message);
+            if (e.code === 'P2002') {
+                duplicateCount++;
+                if (duplicateCount <= 3) console.log(`\nDUPLICATE: User ${userId} at ${dateTimeStr}`);
+            } else {
+                console.error(`Error importing ${userId}:`, e.message);
+                errorCount++;
+            }
         }
 
         lineCount++;
     }
 
     console.log(`\n\n✅ Import Complete.`);
-    console.log(`   Total Lines: ${lineCount}`);
-    console.log(`   Imported: ${importedCount}`);
-    console.log(`   Skipped: ${skippedCount}`);
+    console.log(`   Total Lines Processed: ${lineCount}`);
+    console.log(`   Imported (Success):   ${importedCount}`);
+    console.log(`   Duplicates (Skipped): ${duplicateCount}`);
+    console.log(`   Format Errors:        ${skippedCount}`);
+    console.log(`   DB Errors:            ${errorCount}`);
 }
 
 // Helper: Parse MM/DD/YYYY HH:MM to Date (IST Aware)
 function parseDateTime(str: string): Date | null {
     try {
-        // Expected format: 1/31/2026 19:26 or 9/11/2025 8:25
         const [datePart, timePart] = str.split(' ');
         if (!datePart || !timePart) return null;
 
@@ -164,21 +172,19 @@ function parseDateTime(str: string): Date | null {
             month = parseInt(dateParts[1]);
             day = parseInt(dateParts[2]);
         } else {
-            // MM/DD/YYYY (US Format confirmed)
-            month = parseInt(dateParts[0]); // First part is Month
-            day = parseInt(dateParts[1]);   // Second part is Day
+            // MM/DD/YYYY
+            month = parseInt(dateParts[0]);
+            day = parseInt(dateParts[1]);
             year = parseInt(dateParts[2]);
         }
 
-        // Basic validation
         if (month > 12) {
-            // Maybe it WAS DD/MM? Swap fallback
+            // Fallback swap
             const temp = month; month = day; day = temp;
         }
 
         const [hour, minute] = timePart.split(':').map(n => parseInt(n));
 
-        // Construct ISO string with IST Offset (+05:30)
         const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`;
 
         const d = new Date(iso);
