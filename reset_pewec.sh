@@ -11,10 +11,10 @@ fi
 docker exec -i apextime-postgres psql -U apextime -d apextime <<'EOF'
 DO $$
 DECLARE
-    t_id UUID;
+    t_id TEXT;
 BEGIN
-    -- Find Tenant ID for PEWEC
-    SELECT id INTO t_id FROM "Tenant" WHERE code = 'pewec' OR name ILIKE '%Princess Esin%';
+    -- Find Tenant ID for PEWEC (Cast to text just in case)
+    SELECT id::text INTO t_id FROM "Tenant" WHERE code = 'pewec' OR name ILIKE '%Princess Esin%';
     
     IF t_id IS NULL THEN
         RAISE NOTICE 'Tenant PEWEC not found!';
