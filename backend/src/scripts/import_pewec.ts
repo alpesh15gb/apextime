@@ -98,7 +98,7 @@ async function main() {
 
         // Mapping:
         // Index 2: UserId
-        // Index 3: Name (New!)
+        // Index 3: Name
         // Index 9: DateTime (MM/DD/YYYY H:MM)
 
         if (cols.length < 10) { skippedCount++; continue; }
@@ -110,7 +110,7 @@ async function main() {
 
         if (!userId || !dateTimeStr) { skippedCount++; continue; }
 
-        // --- NEW: Create Employee if missing ---
+        // --- Create Employee if missing ---
         if (name) {
             let employee = await prisma.employee.findFirst({
                 where: {
@@ -127,7 +127,6 @@ async function main() {
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(' ') || '';
 
-                // Only log sparingly
                 if (createdEmployeeCount < 5) console.log(`Creating missing employee: ${name} (ID: ${userId})`);
 
                 try {
@@ -140,13 +139,13 @@ async function main() {
                             deviceUserId: userId,
                             status: 'active',
                             gender: 'Male', // Default
-                            joiningDate: new Date(),
+                            dateOfJoining: new Date(), // Corrected Field Name
                             isActive: true
                         }
                     });
                     createdEmployeeCount++;
                 } catch (e: any) {
-                    // Ignore if created by parallel process or race condition
+                    // Ignore errors
                 }
             }
         }
