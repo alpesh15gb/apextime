@@ -29,7 +29,7 @@ async function main() {
 
     console.log(`✅ Found Tenant: ${tenant.name} (${tenant.id})`);
 
-    // 1b. Create/Find Legacy Device (Required for Foreign Key)
+    // 1b. Create/Find Legacy Device
     let legacyDevice = await prisma.device.findFirst({
         where: { deviceId: 'LEGACY_IMPORT', tenantId: tenant.id }
     });
@@ -40,7 +40,7 @@ async function main() {
             data: {
                 tenantId: tenant.id,
                 name: 'Legacy Import Device',
-                deviceId: 'LEGACY_IMPORT', // The logical ID
+                deviceId: 'LEGACY_IMPORT',
                 status: 'offline',
                 ipAddress: '0.0.0.0',
                 port: 0
@@ -49,12 +49,21 @@ async function main() {
     }
     console.log(`✅ Using Device: ${legacyDevice.name} (${legacyDevice.id})`);
 
+    // 1c. CLEANUP: Delete previous import attempts to correct date format errors
+    console.log('🧹 Clearing previous import data to ensure date accuracy...');
+    const deleted = await prisma.rawDeviceLog.deleteMany({
+        where: {
+            deviceId: legacyDevice.id,
+            tenantId: tenant.id
+        }
+    });
+    console.log(`   Removed ${deleted.count} old records.`);
+
 
     // 2. Read File
     const filePath = path.resolve(process.cwd(), csvFile);
     if (!fs.existsSync(filePath)) {
         console.error(`❌ File not found: ${filePath}`);
-        console.error(`   Please create a file named 'attendance.csv' in the current folder.`);
         process.exit(1);
     }
 
@@ -74,39 +83,29 @@ async function main() {
         // Skip empty lines
         if (!line.trim()) continue;
 
-        // Detect delimiter (Tab or Comma)
+        // Detect delimiter
         const delimiter = line.includes('\t') ? '\t' : ',';
-        const cols = line.split(delimiter).map(c => c.trim().replace(/^"|"$/g, '')); // Trim quotes
+        const cols = line.split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
 
-        // Assumption: Header row is first line
         if (lineCount === 0) {
             console.log('Headers detected:', cols);
-            // Optional: Verify columns
             lineCount++;
             continue;
         }
 
-        // Mapping based on your screenshot:
-        // Index 2: EnNo (User ID)
-        // Index 6: In/Out (DutyOn/DutyOff)
-        // Index 9: DateTime (9/11/2025 8:25)
+        // Mapping:
+        // Index 2: UserId
+        // Index 6: In/Out
+        // Index 9: DateTime (MM/DD/YYYY H:MM) - CONFIRMED MM/DD
 
-        // Safety check bounds
-        if (cols.length < 10) {
-            skippedCount++;
-            continue;
-        }
+        if (cols.length < 10) { skippedCount++; continue; }
 
         const userId = cols[2];
-        const punchTypeStr = cols[6]; // DutyOn / DutyOff
+        const punchTypeStr = cols[6];
         const dateTimeStr = cols[9];
 
-        if (!userId || !dateTimeStr) {
-            skippedCount++;
-            continue;
-        }
+        if (!userId || !dateTimeStr) { skippedCount++; continue; }
 
-        // Parse Date: DD/MM/YYYY HH:mm
         const punchTime = parseDateTime(dateTimeStr);
 
         if (!punchTime) {
@@ -116,36 +115,28 @@ async function main() {
             continue;
         }
 
-        // Determine In/Out (0=IN, 1=OUT)
-        // "DutyOn" -> IN, "DutyOff" -> OUT. Default to IN (0) if unsure but record the string
         let punchType = '0'; // Default IN
-        if (punchTypeStr && punchTypeStr.toLowerCase().includes('off')) {
-            punchType = '1';
-        } else if (punchTypeStr && punchTypeStr.toLowerCase().includes('out')) {
-            punchType = '1';
-        }
+        if (punchTypeStr && punchTypeStr.toLowerCase().includes('off')) punchType = '1';
+        else if (punchTypeStr && punchTypeStr.toLowerCase().includes('out')) punchType = '1';
 
         try {
             await prisma.rawDeviceLog.create({
                 data: {
                     tenantId: tenant.id,
-                    deviceId: legacyDevice.id, // MUST be the UUID of the device row
+                    deviceId: legacyDevice.id,
                     deviceUserId: userId,
-                    userId: userId, // Duplicate for safety
-                    userName: cols[3], // Name is usually col 3
+                    userId: userId,
+                    userName: cols[3],
                     timestamp: punchTime,
                     punchTime: punchTime,
                     punchType: punchType,
-                    isProcessed: false // Will be picked up by calculation service
+                    isProcessed: false
                 }
             });
             importedCount++;
             if (importedCount % 100 === 0) process.stdout.write(`\rImported ${importedCount} records...`);
         } catch (e: any) {
-            // Ignore duplicate key errors (P2002)
-            if (e.code !== 'P2002') {
-                console.error(`Error importing ${userId} at ${dateTimeStr}:`, e.message);
-            }
+            if (e.code !== 'P2002') console.error(`Error importing ${userId}:`, e.message);
         }
 
         lineCount++;
@@ -155,49 +146,49 @@ async function main() {
     console.log(`   Total Lines: ${lineCount}`);
     console.log(`   Imported: ${importedCount}`);
     console.log(`   Skipped: ${skippedCount}`);
-    console.log(`\nRun the "Recalculate Attendance" from the dashboard to update reports.`);
 }
 
-// Helper: Parse DD/MM/YYYY HH:MM to Date (IST Aware)
+// Helper: Parse MM/DD/YYYY HH:MM to Date (IST Aware)
 function parseDateTime(str: string): Date | null {
     try {
-        // Expected format: 9/11/2025 8:25
+        // Expected format: 1/31/2026 19:26 or 9/11/2025 8:25
         const [datePart, timePart] = str.split(' ');
         if (!datePart || !timePart) return null;
 
-        const dateParts = datePart.split('/'); // [D, M, Y] or [M, D, Y]
-        // Assuming DD/MM/YYYY based on India context
+        const dateParts = datePart.split('/');
         let day, month, year;
 
         if (dateParts[0].length === 4) {
-            // YYYY/MM/DD
+            // YYYY-MM-DD
             year = parseInt(dateParts[0]);
             month = parseInt(dateParts[1]);
             day = parseInt(dateParts[2]);
         } else {
-            // DD/MM/YYYY
-            day = parseInt(dateParts[0]);
-            month = parseInt(dateParts[1]);
+            // MM/DD/YYYY (US Format confirmed)
+            month = parseInt(dateParts[0]); // First part is Month
+            day = parseInt(dateParts[1]);   // Second part is Day
             year = parseInt(dateParts[2]);
+        }
+
+        // Basic validation
+        if (month > 12) {
+            // Maybe it WAS DD/MM? Swap fallback
+            const temp = month; month = day; day = temp;
         }
 
         const [hour, minute] = timePart.split(':').map(n => parseInt(n));
 
-        // Construct ISO string with IST Offset (+05:30) to ensure absolute time correctness
-        // YYYY-MM-DDTHH:mm:00+05:30
+        // Construct ISO string with IST Offset (+05:30)
         const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`;
 
-        return new Date(iso);
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        return d;
     } catch (e) {
         return null;
     }
 }
 
 main()
-    .catch(e => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+    .catch(e => { console.error(e); process.exit(1); })
+    .finally(async () => { await prisma.$disconnect(); });
