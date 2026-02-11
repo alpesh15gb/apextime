@@ -79,6 +79,7 @@ async function main() {
     let duplicateCount = 0; // DB Duplicates
     let errorCount = 0; // Other DB Errors
     let createdEmployeeCount = 0; // New Employees
+    let updatedEmployeeCount = 0; // Updated names
 
     console.log('Reading CSV...');
 
@@ -110,7 +111,7 @@ async function main() {
 
         if (!userId || !dateTimeStr) { skippedCount++; continue; }
 
-        // --- Create Employee if missing ---
+        // --- Create OR Update Employee Name ---
         if (name) {
             let employee = await prisma.employee.findFirst({
                 where: {
@@ -122,11 +123,12 @@ async function main() {
                 }
             });
 
-            if (!employee) {
-                const nameParts = name.trim().split(' ');
-                const firstName = nameParts[0];
-                const lastName = nameParts.slice(1).join(' ') || '';
+            const nameParts = name.trim().split(' ');
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ') || '';
 
+            if (!employee) {
+                // CREATE NEW
                 if (createdEmployeeCount < 5) console.log(`Creating missing employee: ${name} (ID: ${userId})`);
 
                 try {
@@ -139,13 +141,33 @@ async function main() {
                             deviceUserId: userId,
                             status: 'active',
                             gender: 'Male', // Default
-                            dateOfJoining: new Date(), // Corrected Field Name
+                            dateOfJoining: new Date(),
                             isActive: true
                         }
                     });
                     createdEmployeeCount++;
                 } catch (e: any) {
                     // Ignore errors
+                }
+            } else {
+                // UPDATE EXISTING NAME
+                // Check if name is meaningfully different (ignore case/whitespace)
+                const currentFull = (employee.firstName + ' ' + (employee.lastName || '')).trim();
+                if (currentFull.toLowerCase() !== name.trim().toLowerCase()) {
+                    if (updatedEmployeeCount < 5) console.log(`Updating name for ID ${userId}: '${currentFull}' -> '${name}'`);
+
+                    try {
+                        await prisma.employee.update({
+                            where: { id: employee.id },
+                            data: {
+                                firstName: firstName,
+                                lastName: lastName
+                            }
+                        });
+                        updatedEmployeeCount++;
+                    } catch (e) {
+                        // ignore
+                    }
                 }
             }
         }
@@ -196,6 +218,7 @@ async function main() {
     console.log(`\n\n✅ Import Complete.`);
     console.log(`   Total Lines Processed: ${lineCount}`);
     console.log(`   New Employees Created: ${createdEmployeeCount}`);
+    console.log(`   Employees Updated:     ${updatedEmployeeCount}`);
     console.log(`   Imported (Success):   ${importedCount}`);
     console.log(`   Duplicates (Skipped): ${duplicateCount}`);
     console.log(`   Format Errors:        ${skippedCount}`);
