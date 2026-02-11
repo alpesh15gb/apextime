@@ -54,6 +54,8 @@ services:
     environment:
       VITE_APP_API_URL: /api
       REACT_APP_API_URL: /api
+    ports:
+      - "3000:80"
     networks:
       - apextime-network
     restart: unless-stopped
