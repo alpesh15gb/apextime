@@ -98,6 +98,31 @@ const Form16 = () => {
     };
 
     const [syncing, setSyncing] = useState(false);
+    const [activeJobId, setActiveJobId] = useState<string | null>(null);
+    const [jobStatus, setJobStatus] = useState<any>(null);
+
+    useEffect(() => {
+        let interval: any;
+        if (activeJobId) {
+            interval = setInterval(async () => {
+                try {
+                    const res = await payrollAPI.getJobStatus(activeJobId);
+                    setJobStatus(res.data);
+
+                    if (res.data.status === 'SUCCESS' || res.data.status === 'FAILED') {
+                        clearInterval(interval);
+                        setActiveJobId(null);
+                        if (res.data.status === 'SUCCESS') {
+                            alert('TRACES sync completed successfully!');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Job status polling error:', error);
+                }
+            }, 5000);
+        }
+        return () => clearInterval(interval);
+    }, [activeJobId]);
 
     const handleSyncTraces = async () => {
         if (!credentials.username || !credentials.password || !credentials.tan) {
@@ -114,9 +139,8 @@ const Form16 = () => {
             });
 
             if (res.data.job_id) {
-                alert(`TRACES sync job created: ${res.data.job_id}. Sandbox is now connecting to TRACES. This may take a few minutes.`);
-            } else {
-                alert('Sync initiated successfully.');
+                setActiveJobId(res.data.job_id);
+                setJobStatus({ status: 'PENDING', message: 'Connecting to TRACES...' });
             }
         } catch (error: any) {
             alert(error.response?.data?.error || 'Failed to connect to TRACES. Please check credentials or Sandbox credits.');
@@ -242,6 +266,35 @@ const Form16 = () => {
                                 </button>
                             </div>
                         </section>
+
+                        {jobStatus && (
+                            <div className="bg-white border-2 border-blue-600 rounded-3xl p-8 animate-in zoom-in-95 duration-300 shadow-xl shadow-blue-50">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-blue-600 rounded-2xl text-white">
+                                            <RefreshCw className={`w-6 h-6 ${jobStatus.status !== 'SUCCESS' && jobStatus.status !== 'FAILED' ? 'animate-spin' : ''}`} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Job Status: {jobStatus.status}</h4>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID: {activeJobId || 'COMPLETED'}</p>
+                                        </div>
+                                    </div>
+                                    {jobStatus.status === 'SUCCESS' && <CheckCircle2 className="w-8 h-8 text-emerald-500" />}
+                                    {jobStatus.status === 'FAILED' && <AlertCircle className="w-8 h-8 text-rose-500" />}
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-1000 ${jobStatus.status === 'SUCCESS' ? 'bg-emerald-500 w-full' : jobStatus.status === 'FAILED' ? 'bg-rose-500 w-full' : 'bg-blue-600 w-1/2 animate-pulse'}`}
+                                        ></div>
+                                    </div>
+                                    <p className="text-xs font-bold text-gray-600 text-center italic">
+                                        {jobStatus.message || (jobStatus.status === 'PENDING' ? 'Decrypting government portal...' : 'Processing...')}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-8 flex items-center justify-between">
                             <div className="flex items-center gap-6">

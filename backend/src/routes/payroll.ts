@@ -699,6 +699,17 @@ router.post('/form16/sync-traces', authenticate, async (req, res) => {
     }
 });
 
+// Check TRACES Job Status
+router.get('/form16/job-status/:jobId', authenticate, async (req, res) => {
+    const { jobId } = req.params;
+    try {
+        const result = await SandboxService.checkJobStatus(jobId);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Helper function to get current financial year
 function getCurrentFinancialYear(): string {
     const now = new Date();

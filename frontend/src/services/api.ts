@@ -212,6 +212,7 @@ export const payrollAPI = {
   // Sandbox Placeholders
   verifyPAN: (pan: string) => api.post('/payroll/form16/verify-pan', { pan }),
   syncTraces: (credentials: any) => api.post('/payroll/form16/sync-traces', credentials),
+  getJobStatus: (jobId: string) => api.get(`/payroll/form16/job-status/${jobId}`),
 };
 
 export const reportsAPI = {
