@@ -118,7 +118,7 @@ export class Form16Service {
         const totals = payrolls.reduce((acc, p) => ({
             basic: acc.basic + (p.basicPaid || 0),
             hra: acc.hra + (p.hraPaid || 0),
-            allowances: acc.allowances + (p.totalEarnings - (p.basicPaid || 0) - (p.hraPaid || 0)),
+            allowances: acc.allowances + (p.grossSalary - (p.basicPaid || 0) - (p.hraPaid || 0)),
             gross: acc.gross + (p.grossSalary || 0),
             pfDeduction: acc.pfDeduction + (p.pfDeduction || 0),
             tdsDeducted: acc.tdsDeducted + (p.tdsDeduction || 0),
@@ -178,7 +178,14 @@ export class Form16Service {
         const standardDeduction = fyStartYear >= 2024 ? 75000 : 50000;
 
         // Calculate section 80C
-        const section80C = Math.min(150000, (tdsDeclaration?.section80C || 0) + (totals.pfDeduction));
+        const declaration80C = (tdsDeclaration?.ppf || 0) +
+            (tdsDeclaration?.elss || 0) +
+            (tdsDeclaration?.lifeInsurance || 0) +
+            (tdsDeclaration?.homeLoanPrincipal || 0) +
+            (tdsDeclaration?.tuitionFees || 0) +
+            (tdsDeclaration?.nsc || 0);
+
+        const section80C = Math.min(150000, declaration80C + (totals.pfDeduction));
 
         // Calculate taxable income
         const taxableIncome = Math.max(0,
