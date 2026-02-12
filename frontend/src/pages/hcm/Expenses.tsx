@@ -93,7 +93,7 @@ const ExpenseModal: React.FC<{
                                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                             >
                                 <option value="">Select Employee</option>
-                                {employees.map(emp => (
+                                {Array.isArray(employees) && employees.map(emp => (
                                     <option key={emp.id} value={emp.id}>
                                         {emp.firstName} {emp.lastName} ({emp.employeeCode})
                                     </option>
@@ -217,8 +217,10 @@ export const Expenses = () => {
 
     const loadEmployees = async () => {
         try {
-            const res = await employeesAPI.getAll();
-            setEmployees(res.data);
+            const res = await employeesAPI.getAll({ limit: '1000' }); // Fetch more for dropdown
+            // Support both direct array and paginated object responses
+            const data = Array.isArray(res.data) ? res.data : (res.data.employees || []);
+            setEmployees(data);
         } catch (error) {
             console.error('Error loading employees:', error);
         }
@@ -377,7 +379,7 @@ export const Expenses = () => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-2">
                                                 <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-[10px]">
-                                                    {expense.employee?.firstName[0]}
+                                                    {expense.employee?.firstName?.[0] || 'E'}
                                                 </div>
                                                 <div className="text-sm font-medium text-gray-700">
                                                     {expense.employee?.firstName} {expense.employee?.lastName}
