@@ -1063,7 +1063,14 @@ export async function processAttendanceLogs(logs: RawLog[], tenantId?: string): 
       dayLogs.sort((a, b) => a.LogDate.getTime() - b.LogDate.getTime());
 
       const firstIn = dayLogs[0].LogDate;
-      const lastOut = dayLogs.length > 1 ? dayLogs[dayLogs.length - 1].LogDate : null;
+      let lastOut: Date | null = null;
+      if (dayLogs.length > 1) {
+        const lastPunch = dayLogs[dayLogs.length - 1].LogDate;
+        // 5 second safety to distinguish IN and OUT
+        if (lastPunch.getTime() - firstIn.getTime() > 5000) {
+          lastOut = lastPunch;
+        }
+      }
 
       let workingHours = 0;
       if (lastOut) {

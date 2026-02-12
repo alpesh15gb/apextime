@@ -11,7 +11,7 @@ router.use(authenticate);
 
 // Helper to get company branding
 async function getBranding(tenantId?: string) {
-  const profile = tenantId 
+  const profile = tenantId
     ? await prisma.companyProfile.findFirst({ where: { tenantId } })
     : await prisma.companyProfile.findFirst();
   return profile || {
@@ -40,19 +40,19 @@ async function getAttendanceData(filters: any) {
     tenantId,
     isActive: true
   };
-  
+
   if (employeeId) {
     employeeWhere.id = employeeId;
   }
-  
+
   if (departmentId) {
     employeeWhere.departmentId = departmentId;
   }
-  
+
   if (branchId) {
     employeeWhere.branchId = branchId;
   }
-  
+
   // FIXED: Location filter - include employees directly assigned to location
   // OR employees whose branch is assigned to this location
   if (locationId) {
@@ -67,9 +67,9 @@ async function getAttendanceData(filters: any) {
     where: employeeWhere,
     select: { id: true }
   });
-  
+
   const employeeIds = filteredEmployees.map(e => e.id);
-  
+
   if (employeeIds.length === 0) {
     console.log(`[REPORT DEBUG] No employees match the filters`);
     return [];
@@ -102,7 +102,7 @@ async function getAttendanceData(filters: any) {
   });
 
   console.log(`[REPORT DEBUG] Found ${logs.length} logs for range ${startDate} to ${endDate}, ${employeeIds.length} employees`);
-  
+
   return logs;
 }
 
@@ -169,7 +169,7 @@ router.get('/daily', async (req, res) => {
     const earlyDep = logs.filter(l => (l.earlyDeparture || 0) > 0).length;
     const halfDay = logs.filter(l => l.status?.toLowerCase() === 'half day').length;
     const incomplete = logs.filter(l => l.status?.toLowerCase() === 'shift incomplete').length;
-    
+
     // Department breakdown
     const deptBreakdown: Record<string, any> = {};
     for (const log of logs) {
@@ -794,7 +794,7 @@ router.get('/:type/download/:format', async (req, res) => {
         isActive: true,
         ...(departmentId ? { departmentId: departmentId as string } : {}),
         ...(branchId ? { branchId: branchId as string } : {}),
-        ...(locationId ? { 
+        ...(locationId ? {
           OR: [
             { locationId: locationId as string },
             { branch: { locationId: locationId as string } }
@@ -849,13 +849,13 @@ async function fetchYearlyData(year: number, departmentId: string, branchId: str
   const end = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
 
   // Build employee filter
-  const employeeWhere: any = { 
-    tenantId, 
+  const employeeWhere: any = {
+    tenantId,
     isActive: true,
     ...(departmentId ? { departmentId } : {}),
     ...(branchId ? { branchId } : {})
   };
-  
+
   if (locationId) {
     employeeWhere.OR = [
       { locationId },
@@ -947,13 +947,13 @@ async function fetchMatrixData(month: number, year: number, departmentId: string
   const daysInMonth = new Date(year, month, 0).getDate();
 
   // Build employee filter
-  const employeeWhere: any = { 
-    tenantId, 
+  const employeeWhere: any = {
+    tenantId,
     isActive: true,
     ...(departmentId ? { departmentId } : {}),
     ...(branchId ? { branchId } : {})
   };
-  
+
   if (locationId) {
     employeeWhere.OR = [
       { locationId },

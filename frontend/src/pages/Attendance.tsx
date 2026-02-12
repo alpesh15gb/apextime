@@ -168,7 +168,7 @@ export const Attendance = () => {
 
   const getStatusBadge = (log: AttendanceLog) => {
     const status = log.status?.toLowerCase() || '';
-    
+
     if (status === 'absent') {
       return (
         <div className="badge border border-red-100 bg-red-50 text-red-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
@@ -176,7 +176,7 @@ export const Attendance = () => {
         </div>
       );
     }
-    
+
     // Single punch - employee came but only one punch recorded
     if (log.firstIn && !log.lastOut) {
       return (
@@ -185,7 +185,7 @@ export const Attendance = () => {
         </div>
       );
     }
-    
+
     if (status === 'half_day' || status === 'half day') {
       return (
         <div className="badge border border-amber-100 bg-amber-50 text-amber-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
@@ -193,7 +193,7 @@ export const Attendance = () => {
         </div>
       );
     }
-    
+
     if (log.lateArrival && log.lateArrival > 0) {
       return (
         <div className="badge border border-orange-100 bg-orange-50 text-orange-600 uppercase tracking-widest text-[9px] font-black px-3 py-1">
@@ -394,11 +394,11 @@ export const Attendance = () => {
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                          {log.date ? new Date(log.date).toLocaleDateString('en-IN', { 
-                            day: '2-digit', 
-                            month: '2-digit', 
+                          {log.date ? new Date(log.date).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: '2-digit',
                             year: 'numeric',
-                            timeZone: 'Asia/Kolkata' 
+                            timeZone: 'Asia/Kolkata'
                           }) : '--'}
                         </span>
                       </td>
@@ -409,16 +409,16 @@ export const Attendance = () => {
                               <Clock className="w-4 h-4 text-emerald-600 group-hover/time:text-white transition-colors" />
                             </div>
                             <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
-                              {new Date(log.firstIn).toLocaleTimeString('en-IN', { 
-                                hour: '2-digit', 
-                                minute: '2-digit', 
+                              {new Date(log.firstIn).toLocaleTimeString('en-IN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
                                 hour12: false,
                                 timeZone: 'Asia/Kolkata'
                               })}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest px-3 py-1 bg-gray-50 rounded-lg">Null</span>
+                          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest px-3 py-1 bg-gray-50 rounded-lg">—</span>
                         )}
                       </td>
                       <td className="px-6 py-5">
@@ -428,16 +428,18 @@ export const Attendance = () => {
                               <Clock className="w-4 h-4 text-red-600 group-hover/time:text-white transition-colors" />
                             </div>
                             <span className="text-xs font-black text-gray-700 font-mono tracking-tight">
-                              {new Date(log.lastOut).toLocaleTimeString('en-IN', { 
-                                hour: '2-digit', 
-                                minute: '2-digit', 
+                              {new Date(log.lastOut).toLocaleTimeString('en-IN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
                                 hour12: false,
                                 timeZone: 'Asia/Kolkata'
                               })}
                             </span>
                           </div>
+                        ) : log.firstIn ? (
+                          <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest px-3 py-1 bg-orange-50/50 rounded-lg">Punched In</span>
                         ) : (
-                          <span className="text-[10px] font-black text-orange-300 uppercase tracking-widest px-3 py-1 bg-orange-50/50 rounded-lg">Active</span>
+                          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest px-3 py-1 bg-gray-50 rounded-lg">—</span>
                         )}
                       </td>
                       <td className="px-6 py-5">

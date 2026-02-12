@@ -201,8 +201,8 @@ export async function processAttendanceForUser(
       let lastOut: Date | null = null;
       if (dayPunches.length > 1) {
         const lastPunch = dayPunches[dayPunches.length - 1].punchTime;
-        // Ensure lastOut is different from firstIn (at least 1 min apart)
-        if (lastPunch.getTime() - firstIn.getTime() > 60000) {
+        // Ensure lastOut is different from firstIn (at least 5 seconds apart)
+        if (lastPunch.getTime() - firstIn.getTime() > 5000) {
           lastOut = lastPunch;
         }
       }
