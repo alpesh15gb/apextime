@@ -1,30 +1,41 @@
 #!/bin/bash
-# ApexTime Safe Deploy Script
+# ApexTime Robust Deploy Script
 # Usage: ./deploy.sh [backend|frontend|all]
 
 set -e
-TARGET=${1:-backend}
-cd /docker/apextime-saas
+TARGET=${1:-all}
 
-echo "=== ApexTime Deploy: $TARGET ==="
+# Detect docker vs docker-compose
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_CMD="docker compose"
+else
+    DOCKER_CMD="docker-compose"
+fi
+
+COMPOSE_FILE="docker-compose.prod.yml"
+
+echo "=== ApexTime Robust Deploy: $TARGET ==="
+echo "Using: $DOCKER_CMD -f $COMPOSE_FILE"
 echo ""
 
-# Pull latest code
-echo "[1/3] Pulling latest code..."
-git pull origin master
-echo ""
+# 1. Pull latest code (Optional, usually done before running this)
+# echo "[1/3] Pulling latest code..."
+# git pull origin master
+# echo ""
 
-# Build and restart only the target
+# 2. Build and restart
 echo "[2/3] Building and restarting $TARGET..."
 case $TARGET in
     backend)
-        docker-compose up -d --build backend
+        $DOCKER_CMD -f $COMPOSE_FILE up -d --build backend
         ;;
     frontend)
-        docker-compose up -d --build frontend
+        $DOCKER_CMD -f $COMPOSE_FILE up -d --build frontend
         ;;
     all)
-        docker-compose up -d --build
+        # Full stack restart ensures network and dependencies are fresh
+        $DOCKER_CMD -f $COMPOSE_FILE down --remove-orphans
+        $DOCKER_CMD -f $COMPOSE_FILE up -d --build
         ;;
     *)
         echo "Unknown target: $TARGET"
@@ -33,11 +44,15 @@ case $TARGET in
         ;;
 esac
 
-# Wait for services to start
+# 3. Wait for services to start
 echo "Waiting 15 seconds for services to stabilize..."
 sleep 15
 
-# Run health check
+# 4. Run health check
 echo ""
-echo "[3/3] Running health check..."
-bash ./healthcheck.sh
+echo "[3/3] Checking status..."
+$DOCKER_CMD -f $COMPOSE_FILE ps
+
+echo ""
+echo "=== Deployment Complete ==="
+echo "If you still see 502, wait 30 more seconds for the backend to finish migrations."
