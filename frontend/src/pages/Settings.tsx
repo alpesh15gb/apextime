@@ -13,7 +13,9 @@ import {
     TrendingUp,
     Zap,
     Check,
-    Upload
+    Upload,
+    UserCheck,
+    Map
 } from 'lucide-react';
 
 export const Settings = () => {
@@ -21,11 +23,19 @@ export const Settings = () => {
         name: 'Apextime Enterprises',
         legalName: '',
         address: '',
+        city: '',
+        state: '',
+        pincode: '',
         gstin: '',
         pan: '',
         pfCode: '',
         esiCode: '',
         tan: '',
+        citAddress: '',
+        signatoryName: '',
+        signatoryFatherName: '',
+        signatoryDesignation: '',
+        signatoryPlace: '',
         bankName: '',
         accountNumber: '',
         ifscCode: '',
@@ -78,7 +88,7 @@ export const Settings = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Company Settings</h1>
-                    <p className="text-sm font-bold text-gray-400 mt-1">Manage your company profile and configuration</p>
+                    <p className="text-sm font-bold text-gray-400 mt-1">Manage your company profile and compliance info</p>
                 </div>
                 <button
                     onClick={handleSave}
@@ -91,62 +101,110 @@ export const Settings = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Side: General Profile */}
+                {/* Left Side: General Profile & Statutory */}
                 <div className="lg:col-span-2 space-y-8">
+                    {/* General Details */}
                     <section className="app-card overflow-hidden">
                         <div className="p-6 border-b border-gray-50 flex items-center gap-3">
                             <Globe className="w-5 h-5 text-blue-600" />
                             <h3 className="text-sm font-bold text-gray-900">Company Details</h3>
                         </div>
-                        <div className="p-8 space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="col-span-2 space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Company Name</label>
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="col-span-2 space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Company Name</label>
                                     <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-900" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Legal Name</label>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Legal Name</label>
                                     <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-medium text-gray-700" value={profile.legalName} onChange={(e) => setProfile({ ...profile, legalName: e.target.value })} />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">GSTIN</label>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">GSTIN</label>
                                     <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-900 uppercase" value={profile.gstin} onChange={(e) => setProfile({ ...profile, gstin: e.target.value.toUpperCase() })} />
                                 </div>
-                                <div className="col-span-2 space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Registered Address</label>
-                                    <textarea className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-medium text-gray-700 h-24 resize-none" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })}></textarea>
+                                <div className="col-span-2 space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Registered Address</label>
+                                    <textarea className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-medium text-gray-700 h-20 resize-none" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })}></textarea>
+                                </div>
+                                <div className="grid grid-cols-3 col-span-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">City</label>
+                                        <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.city} onChange={(e) => setProfile({ ...profile, city: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">State</label>
+                                        <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.state} onChange={(e) => setProfile({ ...profile, state: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pincode</label>
+                                        <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.pincode} onChange={(e) => setProfile({ ...profile, pincode: e.target.value })} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </section>
 
+                    {/* Authorized Signatory Section */}
+                    <section className="app-card overflow-hidden">
+                        <div className="p-6 border-b border-gray-50 flex items-center gap-3">
+                            <UserCheck className="w-5 h-5 text-indigo-600" />
+                            <h3 className="text-sm font-bold text-gray-900">Authorized Signatory (Form 16)</h3>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Signatory Name</label>
+                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.signatoryName} onChange={(e) => setProfile({ ...profile, signatoryName: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Father's Name</label>
+                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.signatoryFatherName} onChange={(e) => setProfile({ ...profile, signatoryFatherName: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Designation</label>
+                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.signatoryDesignation || profile.signatoryPlace} onChange={(e) => setProfile({ ...profile, signatoryDesignation: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Signed At (Place)</label>
+                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.signatoryPlace} onChange={(e) => setProfile({ ...profile, signatoryPlace: e.target.value })} />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Statutory Info */}
                     <section className="app-card overflow-hidden">
                         <div className="p-6 border-b border-gray-50 flex items-center gap-3">
                             <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                            <h3 className="text-sm font-bold text-gray-900">Statutory Info</h3>
+                            <h3 className="text-sm font-bold text-gray-900">Statutory & TDS Info</h3>
                         </div>
-                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase">PF Code</label>
-                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-700" value={profile.pfCode} onChange={(e) => setProfile({ ...profile, pfCode: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase">ESI Code</label>
-                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-700" value={profile.esiCode} onChange={(e) => setProfile({ ...profile, esiCode: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase">PAN Number</label>
-                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-green-100 outline-none font-black text-gray-700 uppercase" value={profile.pan} onChange={(e) => setProfile({ ...profile, pan: e.target.value.toUpperCase() })} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase">TAN Number</label>
-                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-black text-gray-700 uppercase" value={profile.tan} onChange={(e) => setProfile({ ...profile, tan: e.target.value.toUpperCase() })} />
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">PAN Number</label>
+                                    <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-gray-700 uppercase" value={profile.pan} onChange={(e) => setProfile({ ...profile, pan: e.target.value.toUpperCase() })} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">TAN Number</label>
+                                    <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-gray-700 uppercase" value={profile.tan} onChange={(e) => setProfile({ ...profile, tan: e.target.value.toUpperCase() })} />
+                                </div>
+                                <div className="col-span-2 space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">CIT (TDS) Address</label>
+                                    <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" placeholder="e.g. Income Tax Office, TDS Section, Bangalore" value={profile.citAddress} onChange={(e) => setProfile({ ...profile, citAddress: e.target.value })} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">PF Code</label>
+                                    <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.pfCode} onChange={(e) => setProfile({ ...profile, pfCode: e.target.value })} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ESI Code</label>
+                                    <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.esiCode} onChange={(e) => setProfile({ ...profile, esiCode: e.target.value })} />
+                                </div>
                             </div>
                         </div>
                     </section>
                 </div>
 
-                {/* Right Side: Banking & Assets */}
+                {/* Right Side: Banking \u0026 Logo */}
                 <div className="space-y-8">
                     <section className="app-card p-8 space-y-6">
                         <div className="flex items-center gap-3">
@@ -155,15 +213,15 @@ export const Settings = () => {
                         </div>
                         <div className="space-y-4">
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Bank Name</label>
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Bank Name</label>
                                 <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700" value={profile.bankName} onChange={(e) => setProfile({ ...profile, bankName: e.target.value })} />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Account Number</label>
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Account Number</label>
                                 <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-gray-700 tracking-wider" value={profile.accountNumber} onChange={(e) => setProfile({ ...profile, accountNumber: e.target.value })} />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase">IFSC Code</label>
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-tighter">IFSC Code</label>
                                 <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-700 uppercase" value={profile.ifscCode} onChange={(e) => setProfile({ ...profile, ifscCode: e.target.value })} />
                             </div>
                         </div>
@@ -175,7 +233,7 @@ export const Settings = () => {
                             <Stamp className="w-6 h-6 text-blue-400" />
                             <h3 className="text-lg font-bold">Company Logo</h3>
                         </div>
-                        <p className="text-gray-400 text-xs font-medium relative z-10">This logo will appear on all payslips and reports.</p>
+                        <p className="text-gray-400 text-xs font-medium relative z-10">Appears on payslips and Form 16.</p>
 
                         <div className="pt-2 relative z-10">
                             <input
@@ -200,16 +258,6 @@ export const Settings = () => {
                             </div>
                         </div>
                     </section>
-
-                    <div className="app-card p-6 bg-emerald-50 border border-emerald-100 space-y-2">
-                        <div className="flex items-center space-x-2 text-emerald-700">
-                            <ShieldCheck className="w-4 h-4" />
-                            <span className="text-xs font-black uppercase">Secure Data</span>
-                        </div>
-                        <p className="text-xs text-emerald-800/80">
-                            Your secure identifiers (GSTIN/PAN) are encrypted. Ensure accuracy for compliance.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>

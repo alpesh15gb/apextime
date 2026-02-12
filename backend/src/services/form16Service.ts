@@ -20,6 +20,10 @@ interface Form16Data {
         pan: string;
         address: string;
         citAddress: string;
+        signatoryName: string;
+        signatoryFatherName: string;
+        signatoryDesignation: string;
+        signatoryPlace: string;
     };
     financialYear: string;
     assessmentYear: string;
@@ -88,6 +92,14 @@ export class Form16Service {
             where: { tenantId: employee.tenantId }
         });
 
+        // Get Challan Details
+        const challans = await prisma.tDSChallan.findMany({
+            where: {
+                tenantId: employee.tenantId,
+                financialYear
+            }
+        });
+
         // Get all payroll records for the financial year (April to March)
         const payrolls = await prisma.payroll.findMany({
             where: {
@@ -106,7 +118,7 @@ export class Form16Service {
         const totals = payrolls.reduce((acc, p) => ({
             basic: acc.basic + (p.basicPaid || 0),
             hra: acc.hra + (p.hraPaid || 0),
-            allowances: acc.allowances + (p.allowancesPaid || 0),
+            allowances: acc.allowances + (p.totalEarnings - (p.basicPaid || 0) - (p.hraPaid || 0)),
             gross: acc.gross + (p.grossSalary || 0),
             pfDeduction: acc.pfDeduction + (p.pfDeduction || 0),
             tdsDeducted: acc.tdsDeducted + (p.tdsDeduction || 0),
@@ -136,23 +148,37 @@ export class Form16Service {
             const tds = qPayrolls.reduce((sum, p) => sum + (p.tdsDeduction || 0), 0);
             const paid = qPayrolls.reduce((sum, p) => sum + (p.grossSalary || 0), 0);
 
-            // Mocking Challan details as they aren't in current DB schema
+            // Real Challan details
+            const challan = challans.find(c => c.quarter === qNo);
+
+            if (challan) {
+                return {
+                    receiptNo: challan.receiptNo || 'N/A',
+                    amountPaid: paid,
+                    tdsDeducted: tds,
+                    depositedOn: challan.depositedOn ? challan.depositedOn.toLocaleDateString('en-IN') : 'N/A',
+                    bsrCode: challan.bsrCode || 'N/A',
+                    challanSerialNo: challan.challanSerialNo || 'N/A'
+                };
+            }
+
+            // Fallback to legacy mocking if no challan found (or return empty)
             const mockSuffix = `${employee.employeeCode.slice(-3)}${qNo}${fyStartYear}`;
             return {
-                receiptNo: `REC${mockSuffix}`,
+                receiptNo: `DRAFT-${mockSuffix}`,
                 amountPaid: paid,
                 tdsDeducted: tds,
                 depositedOn: qNo === 4 ? `15-May-${fyEndYear}` : `15-${['Jul', 'Oct', 'Jan'][qNo - 1]}-${qNo === 3 ? fyEndYear : fyStartYear}`,
-                bsrCode: `021${mockSuffix.slice(0, 4)}`,
-                challanSerialNo: `CHL${mockSuffix}`
+                bsrCode: `LEGACY`,
+                challanSerialNo: `PENDING`
             };
         };
 
-        // Standard deduction (as per tax regime)
-        const standardDeduction = 75000; // FY 2025-26 new regime
+        // Standard deduction
+        const standardDeduction = fyStartYear >= 2024 ? 75000 : 50000;
 
-        // Calculate section 80C (PF contribution counts)
-        const section80C = Math.min(150000, totals.pfDeduction * 12);
+        // Calculate section 80C
+        const section80C = Math.min(150000, (tdsDeclaration?.section80C || 0) + (totals.pfDeduction));
 
         // Calculate taxable income
         const taxableIncome = Math.max(0,
@@ -162,7 +188,7 @@ export class Form16Service {
         );
 
         return {
-            certificateNo: `TRACES-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+            certificateNo: `A-${employee.tenantId.slice(0, 4).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
             lastUpdated: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
             employee: {
                 name: `${employee.firstName} ${employee.lastName}`,
@@ -176,7 +202,11 @@ export class Form16Service {
                 tan: companyProfile?.tan || 'XXXXXXXXXX',
                 pan: companyProfile?.pan || 'XXXXXXXXXX',
                 address: companyProfile?.address || 'N/A',
-                citAddress: 'Income Tax Office, TDS Section, Bangalore - 560001'
+                citAddress: companyProfile?.citAddress || 'Income Tax Office, TDS Section, Bangalore',
+                signatoryName: companyProfile?.signatoryName || 'Authorized Signatory',
+                signatoryFatherName: companyProfile?.signatoryFatherName || 'N/A',
+                signatoryDesignation: companyProfile?.signatoryDesignation || 'Manager',
+                signatoryPlace: companyProfile?.signatoryPlace || 'Bangalore'
             },
             financialYear: `${fyStartYear}-${fyEndYear.toString().slice(-2)}`,
             assessmentYear: `${fyEndYear}-${(fyEndYear + 1).toString().slice(-2)}`,
@@ -185,10 +215,10 @@ export class Form16Service {
             salary: {
                 basic: totals.basic,
                 hra: totals.hra,
-                specialAllowance: totals.allowances * 0.6,
+                specialAllowance: totals.allowances * 0.7,
                 lta: totals.allowances * 0.1,
                 medicalAllowance: totals.allowances * 0.1,
-                otherAllowances: totals.allowances * 0.2,
+                otherAllowances: totals.allowances * 0.1,
                 grossSalary: totals.gross
             },
             deductions: {
@@ -393,13 +423,13 @@ export class Form16Service {
             drawBox(40, currentY, 515, 100);
             doc.font('Helvetica-Bold').fontSize(9).text('Verification', 45, currentY + 5, { align: 'center' });
             doc.font('Helvetica').fontSize(8);
-            const verifiedText = `I, AUTHORIZED SIGNATORY, son/daughter of MR. EMPLOYER, working in the capacity of Manager (designation) do hereby certify that a sum of Rs. ${data.tax.tdsDeducted.toLocaleString('en-IN')} [INR ${data.tax.tdsDeducted.toLocaleString('en-IN')} only] has been deducted at source and paid to the credit of the Central Government. I further certify that the information given above is true and correct based on the books of account, documents and other available records.`;
+            const verifiedText = `I, ${data.employer.signatoryName}, son/daughter of ${data.employer.signatoryFatherName}, working in the capacity of ${data.employer.signatoryDesignation} do hereby certify that a sum of Rs. ${data.tax.tdsDeducted.toLocaleString('en-IN')} [INR ${data.tax.tdsDeducted.toLocaleString('en-IN')} only] has been deducted at source and paid to the credit of the Central Government. I further certify that the information given above is true and correct based on the books of account, documents and other available records.`;
             doc.text(verifiedText, 45, currentY + 20, { width: 505, align: 'justify', lineGap: 2 });
 
             currentY += 100;
             drawBox(40, currentY, 255, 40);
             drawBox(295, currentY, 260, 40);
-            doc.text(`Place: Bangalore`, 45, currentY + 10);
+            doc.text(`Place: ${data.employer.signatoryPlace}`, 45, currentY + 10);
             doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 45, currentY + 25);
             doc.text('Signature of person responsible for deduction of tax', 300, currentY + 15, { align: 'center' });
 
@@ -409,7 +439,7 @@ export class Form16Service {
             doc.fontSize(10).text('Details of Salary Paid and any other income and tax deducted', { align: 'center' });
             doc.moveDown();
 
-            // Part B reuse existing logic but with refreshed styling
+            // Part B reuse existing logic
             doc.fontSize(10).font('Helvetica-Bold').text('1. Gross Salary', 50);
             doc.moveDown(0.5);
             doc.font('Helvetica').fontSize(9);
@@ -448,7 +478,6 @@ export class Form16Service {
         });
     }
 
-
     /**
      * Get list of employees eligible for Form 16 for a financial year
      */
@@ -457,11 +486,10 @@ export class Form16Service {
         const fyStartYear = parseInt(startYear);
         const fyEndYear = fyStartYear + 1;
 
-        // Find employees who had TDS deducted in the financial year
-        const employeesWithTDS = await prisma.payroll.findMany({
+        // Find employees who had payroll in the financial year
+        const employeesWithPayroll = await prisma.payroll.findMany({
             where: {
                 tenantId,
-                // tdsDeduction: { gt: 0 }, // Allow all employees to be searchable
                 OR: [
                     { year: fyStartYear, month: { gte: 4, lte: 12 } },
                     { year: fyEndYear, month: { gte: 1, lte: 3 } }
@@ -484,7 +512,7 @@ export class Form16Service {
 
         // Calculate total TDS for each employee
         const result = [];
-        for (const record of employeesWithTDS) {
+        for (const record of employeesWithPayroll) {
             const totalTDS = await prisma.payroll.aggregate({
                 where: {
                     employeeId: record.employeeId,

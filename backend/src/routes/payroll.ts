@@ -781,4 +781,59 @@ function getCurrentFinancialYear(): string {
     }
 }
 
+// Get TDS Challans
+router.get('/form16/challans', authenticate, async (req, res) => {
+    const { financialYear } = req.query;
+    try {
+        const tenantId = (req as any).user.tenantId;
+        const challans = await prisma.tDSChallan.findMany({
+            where: {
+                tenantId,
+                financialYear: financialYear as string
+            },
+            orderBy: { quarter: 'asc' }
+        });
+        res.json(challans);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Upsert TDS Challan
+router.post('/form16/challans', authenticate, async (req, res) => {
+    const { financialYear, quarter, receiptNo, bsrCode, depositedOn, challanSerialNo, totalTaxAmount } = req.body;
+    try {
+        const tenantId = (req as any).user.tenantId;
+        const challan = await prisma.tDSChallan.upsert({
+            where: {
+                tenantId_financialYear_quarter: {
+                    tenantId,
+                    financialYear,
+                    quarter
+                }
+            },
+            update: {
+                receiptNo,
+                bsrCode,
+                depositedOn: depositedOn ? new Date(depositedOn) : null,
+                challanSerialNo,
+                totalTaxAmount
+            },
+            create: {
+                tenantId,
+                financialYear,
+                quarter,
+                receiptNo,
+                bsrCode,
+                depositedOn: depositedOn ? new Date(depositedOn) : null,
+                challanSerialNo,
+                totalTaxAmount
+            }
+        });
+        res.json(challan);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

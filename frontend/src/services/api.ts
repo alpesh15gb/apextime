@@ -213,6 +213,8 @@ export const payrollAPI = {
     api.get(`/payroll/form16/${employeeId}/download`, { params: { financialYear }, responseType: 'blob' }),
   downloadForm16Bulk: (employeeIds: string[], financialYear: string) =>
     api.post('/payroll/form16/bulk-download', { employeeIds, financialYear }, { responseType: 'blob' }),
+  getTDSChallans: (financialYear: string) => api.get('/payroll/form16/challans', { params: { financialYear } }),
+  upsertTDSChallan: (data: any) => api.post('/payroll/form16/challans', data),
 };
 
 export const reportsAPI = {

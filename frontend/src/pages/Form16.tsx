@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Users, Search, ChevronDown, Building2 } from 'lucide-react';
-import { payrollAPI, branchesAPI } from '../services/api';
+import {
+    FileText,
+    Download,
+    Users,
+    Search,
+    ChevronDown,
+    Building2,
+    CreditCard,
+    Save,
+    Plus,
+    Clock,
+    CheckCircle2,
+    AlertCircle
+} from 'lucide-react';
+import { payrollAPI } from '../services/api';
 
 interface Employee {
     id: string;
@@ -11,10 +24,15 @@ interface Employee {
     totalTDS: number;
 }
 
-interface Branch {
-    id: string;
-    name: string;
-    code: string;
+interface ChallengRecord {
+    id?: string;
+    quarter: number;
+    financialYear: string;
+    receiptNo: string;
+    bsrCode: string;
+    depositedOn: string;
+    challanSerialNo: string;
+    totalTaxAmount: number;
 }
 
 const Form16 = () => {
@@ -24,13 +42,18 @@ const Form16 = () => {
     const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [downloading, setDownloading] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'generation' | 'challans'>('generation');
 
-    // Generate financial year options (last 5 years)
+    // Challan Management State
+    const [challans, setChallans] = useState<ChallengRecord[]>([]);
+    const [savingChallan, setSavingChallan] = useState(false);
+
+    // Generate financial year options
     const fyOptions = [];
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const startFY = currentMonth >= 4 ? currentYear : currentYear - 1;
-    
+
     for (let i = 0; i < 5; i++) {
         const year = startFY - i;
         fyOptions.push(`${year}-${(year + 1).toString().slice(-2)}`);
@@ -45,6 +68,7 @@ const Form16 = () => {
     useEffect(() => {
         if (financialYear) {
             loadEligibleEmployees();
+            loadChallans();
         }
     }, [financialYear]);
 
@@ -61,6 +85,51 @@ const Form16 = () => {
         }
     };
 
+    const loadChallans = async () => {
+        try {
+            const res = await payrollAPI.getTDSChallans(financialYear);
+            // Ensure all 4 quarters are present
+            const existing = res.data || [];
+            const fullList: ChallengRecord[] = [1, 2, 3, 4].map(q => {
+                const found = existing.find((c: any) => c.quarter === q);
+                return found || {
+                    quarter: q,
+                    financialYear,
+                    receiptNo: '',
+                    bsrCode: '',
+                    depositedOn: '',
+                    challanSerialNo: '',
+                    totalTaxAmount: 0
+                };
+            });
+            setChallans(fullList);
+        } catch (error) {
+            console.error('Error loading challans:', error);
+        }
+    };
+
+    const handleSaveChallan = async (index: number) => {
+        setSavingChallan(true);
+        try {
+            const challan = challans[index];
+            await payrollAPI.upsertTDSChallan({
+                ...challan,
+                financialYear
+            });
+            alert(`Quarter ${challan.quarter} challan saved successfully!`);
+        } catch (error) {
+            alert('Failed to save challan record');
+        } finally {
+            setSavingChallan(false);
+        }
+    };
+
+    const handleChallanChange = (index: number, field: string, value: any) => {
+        const updated = [...challans];
+        updated[index] = { ...updated[index], [field]: value };
+        setChallans(updated);
+    };
+
     const handleDownloadSingle = async (employeeId: string) => {
         setDownloading(employeeId);
         try {
@@ -75,7 +144,7 @@ const Form16 = () => {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Error downloading Form 16:', error);
-            alert('Failed to download Form 16');
+            alert('Failed to download Form 16. Ensure Company Settings (Signatory/CIT Address) are filled.');
         } finally {
             setDownloading(null);
         }
@@ -86,7 +155,7 @@ const Form16 = () => {
             alert('Please select employees to download');
             return;
         }
-        
+
         setDownloading('bulk');
         try {
             const res = await payrollAPI.downloadForm16Bulk(selectedEmployees, financialYear);
@@ -105,22 +174,6 @@ const Form16 = () => {
         }
     };
 
-    const toggleSelectAll = () => {
-        if (selectedEmployees.length === filteredEmployees.length) {
-            setSelectedEmployees([]);
-        } else {
-            setSelectedEmployees(filteredEmployees.map(e => e.id));
-        }
-    };
-
-    const toggleEmployee = (id: string) => {
-        if (selectedEmployees.includes(id)) {
-            setSelectedEmployees(selectedEmployees.filter(e => e !== id));
-        } else {
-            setSelectedEmployees([...selectedEmployees, id]);
-        }
-    };
-
     const filteredEmployees = employees.filter(emp =>
         `${emp.firstName} ${emp.lastName} ${emp.employeeCode}`
             .toLowerCase()
@@ -128,168 +181,257 @@ const Form16 = () => {
     );
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="flex justify-between items-center mb-6">
+        <div className="max-w-6xl mx-auto space-y-8 pb-32">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Form 16 Generation</h1>
-                    <p className="text-sm text-gray-500">Generate and download Form 16 (TDS Certificate) for employees</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Form 16 Compliance</h1>
+                    <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-widest">TDS Certification & Challan Management</p>
+                </div>
+
+                <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
+                    <button
+                        onClick={() => setActiveTab('generation')}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'generation' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Generation
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('challans')}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'challans' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        TDS Challans
+                    </button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-lg shadow p-4 mb-6">
-                <div className="flex flex-wrap items-center gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Financial Year</label>
-                        <div className="relative">
-                            <select
-                                value={financialYear}
-                                onChange={(e) => setFinancialYear(e.target.value)}
-                                data-testid="select-financial-year"
-                                className="block w-48 border border-gray-300 rounded-md py-2 px-3 bg-white appearance-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                {fyOptions.map(fy => (
-                                    <option key={fy} value={fy}>FY {fy}</option>
-                                ))}
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
-                        </div>
+            {/* Global FY Selector */}
+            <div className="app-card p-6 flex items-center justify-between border-blue-100 bg-blue-50/30">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-100">
+                        <Building2 className="w-6 h-6 text-white" />
                     </div>
+                    <div>
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Active Financial Year</p>
+                        <select
+                            value={financialYear}
+                            onChange={(e) => setFinancialYear(e.target.value)}
+                            className="bg-transparent text-xl font-black text-gray-900 outline-none cursor-pointer"
+                        >
+                            {fyOptions.map(fy => (
+                                <option key={fy} value={fy}>FY {fy}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
 
-                    <div className="flex-1 min-w-[200px]">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Search Employee</label>
-                        <div className="relative">
-                            <Search size={16} className="absolute left-3 top-3 text-gray-400" />
+                {activeTab === 'generation' && (
+                    <button
+                        onClick={handleBulkDownload}
+                        disabled={selectedEmployees.length === 0 || downloading === 'bulk'}
+                        className="px-8 py-3 bg-gray-900 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-black shadow-xl shadow-gray-200 transition-all flex items-center gap-2 disabled:bg-gray-200"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span>Bulk Download ({selectedEmployees.length})</span>
+                    </button>
+                )}
+            </div>
+
+            {activeTab === 'generation' ? (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Search & Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 relative">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                             <input
                                 type="text"
-                                placeholder="Search by name or code..."
+                                placeholder="Search by name, employee code or PAN..."
+                                className="w-full pl-14 pr-6 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-900"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="block w-full border border-gray-300 rounded-md py-2 pl-10 pr-3"
                             />
                         </div>
-                    </div>
-
-                    <div className="flex items-end">
-                        <button
-                            onClick={handleBulkDownload}
-                            disabled={selectedEmployees.length === 0 || downloading === 'bulk'}
-                            data-testid="bulk-download-btn"
-                            className={`flex items-center px-4 py-2 rounded-md font-medium ${
-                                selectedEmployees.length > 0
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            }`}
-                        >
-                            <Download size={16} className="mr-2" />
-                            {downloading === 'bulk' ? 'Downloading...' : `Download Selected (${selectedEmployees.length})`}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Info Card */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="font-medium text-blue-800 mb-2">About Form 16</h3>
-                <p className="text-sm text-blue-700">
-                    Form 16 is a TDS certificate issued by employers to employees. It contains details of:
-                </p>
-                <ul className="text-sm text-blue-700 mt-2 list-disc list-inside">
-                    <li>Part A: Details of tax deducted and deposited quarterly</li>
-                    <li>Part B: Details of salary paid and tax computation</li>
-                </ul>
-                <p className="text-sm text-blue-700 mt-2">
-                    <strong>Note:</strong> Form 16 is generated for employees who had TDS deducted during the selected financial year.
-                </p>
-            </div>
-
-            {/* Employees Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <Users size={18} className="text-gray-500 mr-2" />
-                            <span className="font-medium text-gray-700">
-                                {loading ? 'Loading...' : `${filteredEmployees.length} Employees with TDS`}
-                            </span>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                            Total TDS: ₹{filteredEmployees.reduce((sum, e) => sum + (e.totalTDS || 0), 0).toLocaleString('en-IN')}
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">Total TDS Pooled</p>
+                                <p className="text-2xl font-black text-emerald-900 mt-1">₹{filteredEmployees.reduce((sum, e) => sum + e.totalTDS, 0).toLocaleString()}</p>
+                            </div>
+                            <CheckCircle2 className="w-8 h-8 text-emerald-200" />
                         </div>
                     </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-4 py-3 text-left">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
-                                        onChange={toggleSelectAll}
-                                        className="h-4 w-4 text-blue-600 rounded"
-                                    />
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">PAN</th>
-                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total TDS</th>
-                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                                        Loading employees...
-                                    </td>
-                                </tr>
-                            ) : filteredEmployees.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                                        <FileText size={48} className="mx-auto mb-4 text-gray-300" />
-                                        <p>No employees with TDS deduction found for FY {financialYear}</p>
-                                        <p className="text-sm mt-2">Process payroll with TDS deduction to generate Form 16</p>
-                                    </td>
-                                </tr>
-                            ) : filteredEmployees.map((emp) => (
-                                <tr key={emp.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3">
+                    {/* Table */}
+                    <div className="app-card overflow-hidden">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-50/50">
+                                    <th className="px-8 py-5 text-left">
                                         <input
                                             type="checkbox"
-                                            checked={selectedEmployees.includes(emp.id)}
-                                            onChange={() => toggleEmployee(emp.id)}
-                                            className="h-4 w-4 text-blue-600 rounded"
+                                            className="w-5 h-5 rounded-lg border-gray-200 text-blue-600 focus:ring-blue-500"
+                                            checked={selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
+                                            onChange={() => {
+                                                if (selectedEmployees.length === filteredEmployees.length) setSelectedEmployees([]);
+                                                else setSelectedEmployees(filteredEmployees.map(e => e.id));
+                                            }}
                                         />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="font-medium text-gray-900">{emp.firstName} {emp.lastName}</div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-gray-600">{emp.employeeCode}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-600 font-mono">
-                                        {emp.panNumber || 'Not Available'}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                                        ₹{(emp.totalTDS || 0).toLocaleString('en-IN')}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button
-                                            onClick={() => handleDownloadSingle(emp.id)}
-                                            disabled={downloading === emp.id}
-                                            data-testid={`download-form16-${emp.employeeCode}`}
-                                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-                                        >
-                                            <Download size={14} className="mr-1" />
-                                            {downloading === emp.id ? 'Downloading...' : 'Download'}
-                                        </button>
-                                    </td>
+                                    </th>
+                                    <th className="table-header">Employee Details</th>
+                                    <th className="table-header">PAN / Identifiers</th>
+                                    <th className="table-header text-right">TDS Deducted</th>
+                                    <th className="table-header text-center">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-20 text-center">
+                                            <Clock className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                                            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Aggregating Compliance Data...</p>
+                                        </td>
+                                    </tr>
+                                ) : filteredEmployees.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-32 text-center">
+                                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                <FileText className="w-10 h-10 text-gray-300" />
+                                            </div>
+                                            <h3 className="text-lg font-black text-gray-900">No Eligible Records Found</h3>
+                                            <p className="text-sm text-gray-400 mt-1">Ensure payroll has been processed with TDS for FY {financialYear}</p>
+                                        </td>
+                                    </tr>
+                                ) : filteredEmployees.map(emp => (
+                                    <tr key={emp.id} className="group hover:bg-blue-50/30 transition-all">
+                                        <td className="px-8 py-6">
+                                            <input
+                                                type="checkbox"
+                                                className="w-5 h-5 rounded-lg border-gray-200 text-blue-600 focus:ring-blue-500"
+                                                checked={selectedEmployees.includes(emp.id)}
+                                                onChange={() => {
+                                                    if (selectedEmployees.includes(emp.id)) setSelectedEmployees(selectedEmployees.filter(id => id !== emp.id));
+                                                    else setSelectedEmployees([...selectedEmployees, emp.id]);
+                                                }}
+                                            />
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <p className="text-sm font-black text-gray-900 leading-none">{emp.firstName} {emp.lastName}</p>
+                                            <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{emp.employeeCode}</p>
+                                        </td>
+                                        <td className="px-8 py-6 font-mono text-xs font-bold text-blue-600">
+                                            {emp.panNumber || <span className="text-red-300 italic">PAN MISSING</span>}
+                                        </td>
+                                        <td className="px-8 py-6 text-right">
+                                            <p className="text-sm font-black text-gray-900">₹{emp.totalTDS.toLocaleString()}</p>
+                                        </td>
+                                        <td className="px-8 py-6 text-center">
+                                            <button
+                                                onClick={() => handleDownloadSingle(emp.id)}
+                                                disabled={!!downloading}
+                                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 shadow-sm transition-all"
+                                            >
+                                                {downloading === emp.id ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                                <span>Download PDF</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Information Alert */}
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6 flex items-start gap-4">
+                        <div className="p-2 bg-amber-100 rounded-xl">
+                            <AlertCircle className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-black text-amber-900 uppercase tracking-widest">Crucial: TDS Challan Details</h4>
+                            <p className="text-xs text-amber-800/80 font-medium mt-1 leading-relaxed">
+                                These details are required for Part A of Form 16. Ensure BSR Code (7 digits) and Challan Serial No are accurately captured from your TDS return (TRACES) or bank challan receipts.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {challans.map((challan, index) => (
+                            <section key={index} className="app-card overflow-hidden">
+                                <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black">
+                                            Q{challan.quarter}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Quarter {challan.quarter} Challan</h3>
+                                            <p className="text-[10px] font-bold text-gray-400 leading-none mt-1">FY {financialYear}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleSaveChallan(index)}
+                                        disabled={savingChallan}
+                                        className="p-3 bg-white border border-gray-100 rounded-xl text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        <Save className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="p-8 space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Receipt Number</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-900"
+                                                value={challan.receiptNo}
+                                                onChange={(e) => handleChallanChange(index, 'receiptNo', e.target.value)}
+                                                placeholder="RECXXXXXXXX"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">BSR Code</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-900"
+                                                value={challan.bsrCode}
+                                                onChange={(e) => handleChallanChange(index, 'bsrCode', e.target.value)}
+                                                placeholder="7 Digit Code"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Deposit Date</label>
+                                            <input
+                                                type="date"
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-900"
+                                                value={challan.depositedOn ? new Date(challan.depositedOn).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => handleChallanChange(index, 'depositedOn', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Serial Number</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-gray-900"
+                                                value={challan.challanSerialNo}
+                                                onChange={(e) => handleChallanChange(index, 'challanSerialNo', e.target.value)}
+                                                placeholder="5 Digit Serial"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 space-y-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Tax Amount (Rs.)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-black text-lg text-blue-600"
+                                                value={challan.totalTaxAmount}
+                                                onChange={(e) => handleChallanChange(index, 'totalTaxAmount', parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

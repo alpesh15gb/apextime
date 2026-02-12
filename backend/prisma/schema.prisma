@@ -128,6 +128,8 @@ model Tenant {
   
   // Onboarding
   onboardingTasks          OnboardingTask[]
+
+  tdsChallans             TDSChallan[]
 }
 
 // --------------------------------------------------------
@@ -877,13 +879,38 @@ model CompanyProfile {
   pfCode         String?
   esiCode        String?
   tan            String?
+  citAddress     String? // Address of the CIT (TDS)
   
+  // Authorized Signatory for Form 16
+  signatoryName        String?
+  signatoryFatherName  String?
+  signatoryDesignation String?
+  signatoryPlace       String?
+
   // Bank Details
   bankName       String?
   accountNumber  String?
   ifscCode       String?
   
   updatedAt      DateTime @updatedAt
+}
+
+model TDSChallan {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  financialYear   String   // e.g. "2024-25"
+  quarter         Int      // 1, 2, 3, 4
+  receiptNo       String?
+  bsrCode         String?
+  depositedOn     DateTime?
+  challanSerialNo String?
+  totalTaxAmount  Float    @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, financialYear, quarter])
 }
 
 model FieldLog {
