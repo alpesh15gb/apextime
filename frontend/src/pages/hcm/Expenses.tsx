@@ -55,13 +55,23 @@ const ExpenseModal: React.FC<{
         description: ''
     });
 
+    const [file, setFile] = useState<File | null>(null);
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await payrollAdjustmentsAPI.createReimbursement(formData);
+            const formDataToSend = new FormData();
+            Object.entries(formData).forEach(([key, value]) => {
+                formDataToSend.append(key, value);
+            });
+            if (file) {
+                formDataToSend.append('file', file);
+            }
+
+            await payrollAdjustmentsAPI.createReimbursement(formDataToSend);
             onSuccess();
             onClose();
         } catch (error) {
@@ -164,24 +174,42 @@ const ExpenseModal: React.FC<{
                             className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
                             placeholder="What was this expense for?"
                         ></textarea>
-                    </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Receipt (PDF/Image)</label>
+                            <div className="flex items-center justify-center w-full">
+                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <ImageIcon className="w-8 h-8 mb-3 text-gray-400" />
+                                        <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                                        <p className="text-xs text-gray-400">PDF, PNG, JPG (MAX. 5MB)</p>
+                                        {file && <p className="mt-2 text-sm text-blue-600 font-bold">{file.name}</p>}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,application/pdf"
+                                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                    />
+                                </label>
+                            </div>
+                        </div>
 
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-bold shadow-lg shadow-blue-200"
-                        >
-                            {loading ? 'Submitting...' : 'Submit Request'}
-                        </button>
-                    </div>
+                        <div className="flex gap-3 pt-4">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-bold shadow-lg shadow-blue-200"
+                            >
+                                {loading ? 'Submitting...' : 'Submit Request'}
+                            </button>
+                        </div>
                 </form>
             </div>
         </div>
@@ -403,6 +431,17 @@ export const Expenses = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end items-center space-x-1">
+                                                {expense.attachment && (
+                                                    <a
+                                                        href={`${import.meta.env.VITE_APP_API_URL || ''}${expense.attachment}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="View Receipt"
+                                                    >
+                                                        <ImageIcon size={18} />
+                                                    </a>
+                                                )}
                                                 {user?.role !== 'employee' && expense.status === 'PENDING' && (
                                                     <>
                                                         <button
