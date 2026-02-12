@@ -122,4 +122,33 @@ export class SandboxService {
             throw new Error('Failed to check job status');
         }
     }
+
+    /**
+     * Verify PAN via TRACES (Only needs PAN, requires TRACES Credentials)
+     */
+    static async verifyPANWithTraces(pan: string, credentials: any) {
+        try {
+            const token = await this.getAccessToken();
+            const res = await axios.post(`${SANDBOX_BASE_URL}/compliance/traces/tds/pan/verify`,
+                {
+                    user_id: credentials.username,
+                    password: credentials.password,
+                    tan: credentials.tan,
+                    pan: pan,
+                    form_type: '24Q'
+                },
+                {
+                    headers: {
+                        'Authorization': token,
+                        'x-api-key': process.env.SANDBOX_API_KEY,
+                        'x-api-version': '1.0.0',
+                        'Content-Type': 'application/json'
+                    }
+                });
+            return res.data;
+        } catch (error: any) {
+            console.error('TRACES PAN Verify Error:', error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || 'TRACES PAN Verification failed');
+        }
+    }
 }

@@ -210,7 +210,7 @@ export const payrollAPI = {
   upsertTDSChallan: (data: any) => api.post('/payroll/form16/challans', data),
 
   // Sandbox Placeholders
-  verifyPAN: (pan: string) => api.post('/payroll/form16/verify-pan', { pan }),
+  verifyPAN: (pan: string, credentials?: any) => api.post('/payroll/form16/verify-pan', { pan, credentials }),
   syncTraces: (credentials: any) => api.post('/payroll/form16/sync-traces', credentials),
   getJobStatus: (jobId: string) => api.get(`/payroll/form16/job-status/${jobId}`),
 };

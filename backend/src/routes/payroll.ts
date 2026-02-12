@@ -675,9 +675,16 @@ import { SandboxService } from '../services/sandboxService';
 
 // Verify Employee PAN
 router.post('/form16/verify-pan', authenticate, async (req, res) => {
-    const { pan } = req.body;
+    const { pan, credentials } = req.body;
     try {
-        const result = await SandboxService.verifyPAN(pan);
+        let result;
+        // If TRACES credentials are provided, use the official bridge for deep verification
+        if (credentials && credentials.username && credentials.password) {
+            result = await SandboxService.verifyPANWithTraces(pan, credentials);
+        } else {
+            // Fallback to basic KYC (which requires DOB/Name in the body, so this might fail if basic)
+            result = await SandboxService.verifyPAN(pan);
+        }
         res.json(result);
     } catch (error: any) {
         res.status(500).json({ error: error.message });

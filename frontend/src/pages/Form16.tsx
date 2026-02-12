@@ -352,7 +352,7 @@ const Form16 = () => {
                                         const pan = (document.getElementById('quick-pan') as HTMLInputElement).value;
                                         if (!pan) return;
                                         try {
-                                            const res = await payrollAPI.verifyPAN(pan);
+                                            const res = await payrollAPI.verifyPAN(pan, credentials);
                                             // Handle different response formats
                                             const status = res.data.status || (res.data.code === 200 ? 'SUCCESS' : 'FAILED');
                                             if (status === 'SUCCESS' || res.data.data?.full_name) {
