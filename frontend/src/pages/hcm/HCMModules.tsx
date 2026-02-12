@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { HCMModulePage } from './HCMModulePage';
+import { Expenses } from './Expenses';
+
+export { Expenses };
 
 export const Recruitment: React.FC = () => {
     return <HCMModulePage title="Recruitment" items={[]} onAdd={() => alert('Add Job Opening')} />;
@@ -7,10 +10,6 @@ export const Recruitment: React.FC = () => {
 
 export const Performance: React.FC = () => {
     return <HCMModulePage title="Performance" items={[]} onAdd={() => alert('Add Goal')} />;
-};
-
-export const Expenses: React.FC = () => {
-    return <HCMModulePage title="Expenses" items={[]} onAdd={() => alert('Add Expense')} />;
 };
 
 export const Training: React.FC = () => {
