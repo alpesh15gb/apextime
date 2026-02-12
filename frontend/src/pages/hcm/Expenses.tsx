@@ -193,23 +193,24 @@ const ExpenseModal: React.FC<{
                                 </label>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="flex gap-3 pt-4">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-bold shadow-lg shadow-blue-200"
-                            >
-                                {loading ? 'Submitting...' : 'Submit Request'}
-                            </button>
-                        </div>
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-bold shadow-lg shadow-blue-200"
+                        >
+                            {loading ? 'Submitting...' : 'Submit Request'}
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

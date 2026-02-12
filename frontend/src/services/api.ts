@@ -291,7 +291,6 @@ export const assetsAPI = {
   assign: (id: string, data: any) => api.post(`/assets/${id}/assign`, data),
   return: (assignmentId: string, data: any) => api.post(`/assets/assignments/${assignmentId}/return`, data),
   createCategory: (data: any) => api.post('/assets/categories', data),
-  createCategory: (data: any) => api.post('/assets/categories', data),
   getCategories: () => api.get('/assets/categories'),
 };
 
@@ -312,8 +311,6 @@ export const schoolAPI = {
   createBatch: (data: any) => api.post('/school/batches', data),
 
   getStudents: (batchId?: string) => api.get('/school/students', { params: { batchId } }),
-  getAllStudents: () => api.get('/school/students'),
-  admitStudent: (data: any) => api.post('/school/students', data),
 
   getSubjects: (courseId?: string) => api.get('/school/subjects', { params: { courseId } }),
   createSubject: (data: any) => api.post('/school/subjects', data),
