@@ -30,21 +30,56 @@ export class AssetService {
     }
 
     // --- ASSET INVENTORY (Upgraded) ---
+    static async getDashboardSummary(tenantId: string) {
+        const [total, available, assigned, repair] = await Promise.all([
+            prisma.asset.count({ where: { tenantId } }),
+            prisma.asset.count({ where: { tenantId, status: 'AVAILABLE' } }),
+            prisma.asset.count({ where: { tenantId, status: 'ASSIGNED' } }),
+            prisma.asset.count({ where: { tenantId, status: 'REPAIR' } }),
+        ]);
+
+        const recentRequests = await prisma.assetRequest.count({
+            where: { tenantId, status: 'PENDING' }
+        });
+
+        return {
+            total,
+            available,
+            assigned,
+            repair,
+            pendingRequests: recentRequests
+        };
+    }
+
     static async getAssets(tenantId: string) {
         return prisma.asset.findMany({
             where: { tenantId },
             include: {
                 category: true,
                 vendor: true,
-                parentAsset: true,
-                subAssets: true,
-                maintenanceLogs: {
-                    orderBy: { startDate: 'desc' },
-                    take: 5
-                },
                 assignments: {
                     where: { status: 'ACTIVE' },
                     include: { employee: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    static async getAssetDetail(tenantId: string, assetId: string) {
+        return prisma.asset.findFirst({
+            where: { id: assetId, tenantId },
+            include: {
+                category: true,
+                vendor: true,
+                parentAsset: true,
+                subAssets: true,
+                maintenanceLogs: {
+                    orderBy: { startDate: 'desc' }
+                },
+                assignments: {
+                    include: { employee: true },
+                    orderBy: { assignedDate: 'desc' }
                 }
             }
         });
@@ -143,6 +178,18 @@ export class AssetService {
                 tenantId,
                 startDate: new Date(data.startDate)
             }
+        });
+    }
+
+    static async deleteAsset(tenantId: string, id: string) {
+        return prisma.asset.deleteMany({
+            where: { id, tenantId }
+        });
+    }
+
+    static async deleteCategory(tenantId: string, id: string) {
+        return prisma.assetCategory.deleteMany({
+            where: { id, tenantId }
         });
     }
 }

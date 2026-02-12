@@ -167,21 +167,18 @@ app.use('/api/onboarding', onboardingRoutes);
 
 
 
-// Health check
+// Health checks
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    version: '1.0.6-sn-in-url',
-    timestamp: new Date().toISOString()
+    version: '1.0.7-hardened',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
-app.get('/api/testing', (req, res) => {
-  res.send('DIRECT TEST WORKING');
-});
-
-app.get('/api/hik-test', (req, res) => {
-  res.send('TOP LEVEL HIK TEST WORKING');
+app.get('/api/ping', (req, res) => {
+  res.send('pong');
 });
 
 // Error handling
@@ -230,18 +227,50 @@ cron.schedule('0 2 * * *', async () => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+const shutdown = async (signal: string) => {
+  logger.info(`${signal} received, shutting down gracefully`);
+
+  // Set a timeout for forced shutdown
+  const forceShutdown = setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+
   server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(0);
+    try {
+      const { closeAllPools } = require('./config/database');
+      await closeAllPools();
+      await prisma.$disconnect();
+      logger.info('Closed all database connections');
+      clearTimeout(forceShutdown);
+      process.exit(0);
+    } catch (err) {
+      logger.error('Error during shutdown:', err);
+      process.exit(1);
+    }
   });
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Global Error Handlers (The Reliability Layer)
+process.on('uncaughtException', (err: Error) => {
+  logger.error('CRITICAL: Uncaught Exception!', {
+    error: err.message,
+    stack: err.stack,
+    timestamp: new Date().toISOString()
+  });
+  // Give logger time to write before crashing
+  setTimeout(() => process.exit(1), 1000);
 });
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  server.close(async () => {
-    await prisma.$disconnect();
-    process.exit(0);
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  logger.error('CRITICAL: Unhandled Rejection!', {
+    reason: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined,
+    timestamp: new Date().toISOString()
   });
+  // We don't necessarily exit here, but in production, it's often safer to restart
+  // if the app is in an unknown state.
 });

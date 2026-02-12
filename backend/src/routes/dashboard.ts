@@ -62,33 +62,40 @@ router.get('/stats', async (req, res) => {
     // REGULAR ADMIN/MANAGER DASHBOARD LOGIC (Tenant Scoped)
     // ------------------------------------------------------------------
 
-    // Use IST today for dashboard stats
+    // OPERATIONAL LOGIC: A "Work Day" starts at 05:00 AM.
+    // This aligns the dashboard with the biometric sync logic.
     const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const today = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()));
+    // Get IST time components properly
+    const istStr = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    const istDate = new Date(istStr);
+    const istHour = istDate.getHours();
 
-    const yesterday = new Date(today);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    // Calculate Logical Today (if before 5 AM, it's still "Yesterday")
+    let logicalToday = new Date(Date.UTC(istDate.getFullYear(), istDate.getMonth(), istDate.getDate()));
+    if (istHour < 5) {
+      logicalToday.setUTCDate(logicalToday.getUTCDate() - 1);
+    }
+
+    const logicalYesterday = new Date(logicalToday);
+    logicalYesterday.setUTCDate(logicalYesterday.getUTCDate() - 1);
 
     // Initialize defaults
     let totalEmployees = 0;
-    let activeEmployees = 0;
+    let activeEmployeesCount = 0;
     let totalDepartments = 0;
     let totalBranches = 0;
     let yesterdayAttendance = 0;
     let devicesCount = 0;
-    let todayStatus = { present: 0, absent: 0 };
+    let todayStatus = { present: 0, absent: 0, currentlyIn: 0 };
     let absentEmployees: any[] = [];
     let lateArrivals = 0;
     let lastSync = null;
     let pendingLeaves = 0;
 
     // Execute queries sequentially to prevent total failure
-    // Note: 'prisma' client here automatically scopes to tenantId via middleware/extensions
     try {
       totalEmployees = await prisma.employee.count();
-      activeEmployees = await prisma.employee.count({ where: { status: 'active' } });
+      activeEmployeesCount = await prisma.employee.count({ where: { status: 'active' } });
     } catch (e) { console.error('Employee count error', e); }
 
     try {
@@ -100,10 +107,7 @@ router.get('/stats', async (req, res) => {
     try {
       const yesterdayLogs = await prisma.attendanceLog.findMany({
         where: {
-          date: {
-            gte: yesterday,
-            lt: today
-          },
+          date: logicalYesterday,
           status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late', 'Shift Incomplete', 'shift incomplete'] },
           employee: { status: 'active' }
         },
@@ -114,28 +118,28 @@ router.get('/stats', async (req, res) => {
     } catch (e) { console.error('Yesterday att error', e); }
 
     try {
-      // Today's Status: Count unique ACTIVE employees who have a log for today
-      // First get today's attendance logs with Present/Late/Half Day status
-      // Include 'Shift Incomplete' as it means employee checked in but hasn't checked out yet
+      // 1. Get Today's attendance logs (Logical Day)
       const todayLogs = await prisma.attendanceLog.findMany({
         where: {
-          date: {
-            gte: today,
-            lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
-          },
+          date: logicalToday,
           status: { in: ['Present', 'present', 'Half Day', 'half day', 'Late', 'late', 'Shift Incomplete', 'shift incomplete'] },
           employee: { status: 'active' }
         },
-        select: { employeeId: true },
-        distinct: ['employeeId']
+        select: { employeeId: true, lastOut: true }
       });
 
-      const presentCount = todayLogs.length;
+      // 2. Logic for counts
+      const presentIds = new Set(todayLogs.map(l => l.employeeId));
+      const currentlyInCount = todayLogs.filter(l => !l.lastOut).length;
 
-      // Calculate Absent as Active - Present
-      const absentCount = Math.max(0, activeEmployees - presentCount);
+      const presentCount = presentIds.size;
+      const absentCount = Math.max(0, activeEmployeesCount - presentCount);
 
-      todayStatus = { present: presentCount, absent: absentCount };
+      todayStatus = {
+        present: presentCount,
+        absent: absentCount,
+        currentlyIn: currentlyInCount
+      };
     } catch (e) { console.error('Today status error', e); }
 
     try {
@@ -147,7 +151,7 @@ router.get('/stats', async (req, res) => {
     try {
       absentEmployees = await prisma.attendanceLog.findMany({
         where: {
-          date: today,
+          date: logicalToday,
           status: { in: ['Absent', 'absent'] },
           employee: { status: 'active' }
         },
@@ -159,7 +163,7 @@ router.get('/stats', async (req, res) => {
     try {
       lateArrivals = await prisma.attendanceLog.count({
         where: {
-          date: today,
+          date: logicalToday,
           lateArrival: { gt: 0 },
           employee: { status: 'active' }
         }
@@ -184,10 +188,10 @@ router.get('/stats', async (req, res) => {
 
         // Student Attendance Today
         const studentsPresent = await prisma.studentAttendance.count({
-          where: { date: { gte: today }, status: 'PRESENT' }
+          where: { date: logicalToday, status: 'PRESENT' }
         });
         const studentsAbsent = await prisma.studentAttendance.count({
-          where: { date: { gte: today }, status: 'ABSENT' }
+          where: { date: logicalToday, status: 'ABSENT' }
         });
 
         schoolStats = {
@@ -207,7 +211,7 @@ router.get('/stats', async (req, res) => {
       tenantType: tenant?.type,
       counts: {
         totalEmployees,
-        activeEmployees,
+        activeEmployees: activeEmployeesCount,
         totalDepartments,
         totalBranches,
         devicesCount,
@@ -217,9 +221,10 @@ router.get('/stats', async (req, res) => {
       today: {
         present: todayStatus.present,
         absent: todayStatus.absent,
+        currentlyIn: todayStatus.currentlyIn,
         absentEmployees,
         lateArrivals,
-        attendanceRate: activeEmployees > 0 ? Math.round((todayStatus.present / activeEmployees) * 100) : 0,
+        attendanceRate: activeEmployeesCount > 0 ? Math.round((todayStatus.present / activeEmployeesCount) * 100) : 0,
       },
       yesterdayAttendance,
       lastSync,
@@ -241,7 +246,7 @@ router.get('/recent-activity', async (req, res) => {
     // Recent check-ins
     const recentCheckins = await prisma.attendanceLog.findMany({
       where: {
-        date: { gte: today },
+        date: logicalToday,
         firstIn: { not: null },
       },
       include: {
@@ -260,7 +265,7 @@ router.get('/recent-activity', async (req, res) => {
     // Recent check-outs
     const recentCheckouts = await prisma.attendanceLog.findMany({
       where: {
-        date: { gte: today },
+        date: logicalToday,
         lastOut: { not: null },
       },
       include: {

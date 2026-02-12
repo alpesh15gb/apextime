@@ -349,10 +349,10 @@ export const Dashboard = () => {
           className="bg-[#111827] rounded-2xl p-6 text-white shadow-lg relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform active:scale-95"
         >
           <div className="relative z-10">
-            <h3 className="font-medium text-gray-400 mb-1">Today Attendance</h3>
+            <h3 className="font-medium text-gray-400 mb-1">Attendance (Today)</h3>
             <div className="flex items-end gap-2">
               <span className="text-4xl font-bold">{stats?.today?.present || 0}</span>
-              <span className="text-sm bg-gray-700 px-2 py-0.5 rounded text-gray-300 mb-1">-</span>
+              <span className="text-sm bg-blue-600/30 px-2 py-0.5 rounded text-blue-400 mb-1">In Office: {stats?.today?.currentlyIn || 0}</span>
             </div>
             <p className="text-gray-400 text-sm mt-4">
               Absent <span className="text-white font-bold ml-1">{stats?.today?.absent || 0}</span>

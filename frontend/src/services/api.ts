@@ -23,11 +23,28 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors
+// Response interceptor to handle errors and retries
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const { config, response } = error;
+
+    // Automatically retry 502, 503, and network errors (no response)
+    const isRetryable = !response || (response.status >= 502 && response.status <= 504);
+
+    if (isRetryable && config && !config._retry && (config._retryCount || 0) < 3) {
+      config._retry = true;
+      config._retryCount = (config._retryCount || 0) + 1;
+
+      // Exponential backoff: 800ms, 1600ms, 3200ms
+      const delay = Math.pow(2, config._retryCount) * 400;
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      console.warn(`[API] Retrying request (${config._retryCount}/3) after ${delay}ms...`);
+      return api(config);
+    }
+
+    if (response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -291,12 +308,19 @@ export const documentsAPI = {
 };
 
 export const assetsAPI = {
+  getSummary: () => api.get('/assets/summary'),
   getAll: () => api.get('/assets'),
+  getDetail: (id: string) => api.get(`/assets/${id}`),
   create: (data: any) => api.post('/assets', data),
   assign: (id: string, data: any) => api.post(`/assets/${id}/assign`, data),
   return: (assignmentId: string, data: any) => api.post(`/assets/assignments/${assignmentId}/return`, data),
+  addMaintenance: (id: string, data: any) => api.post(`/assets/${id}/maintenance`, data),
   createCategory: (data: any) => api.post('/assets/categories', data),
   getCategories: () => api.get('/assets/categories'),
+  getRequests: () => api.get('/assets/requests'),
+  updateRequestStatus: (id: string, data: any) => api.patch(`/assets/requests/${id}/status`, data),
+  deleteAsset: (id: string) => api.delete(`/assets/${id}`),
+  deleteCategory: (id: string) => api.delete(`/assets/categories/${id}`),
 };
 
 export const schoolAPI = {

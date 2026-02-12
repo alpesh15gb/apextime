@@ -5,12 +5,33 @@ import { prisma } from '../config/database';
 
 const router = Router();
 
-// --- ASSET INVENTORY ---
+// --- DASHBOARD & LIST ---
+router.get('/summary', authenticate, async (req, res) => {
+    try {
+        const tenantId = (req as any).user.tenantId;
+        const summary = await AssetService.getDashboardSummary(tenantId);
+        res.json(summary);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/', authenticate, async (req, res) => {
     try {
         const tenantId = (req as any).user.tenantId;
         const assets = await AssetService.getAssets(tenantId);
         res.json(assets);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/:id', authenticate, async (req, res) => {
+    try {
+        const tenantId = (req as any).user.tenantId;
+        const asset = await AssetService.getAssetDetail(tenantId, req.params.id);
+        if (!asset) return res.status(404).json({ error: 'Asset not found' });
+        res.json(asset);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
@@ -132,6 +153,26 @@ router.get('/categories', authenticate, async (req, res) => {
         const tenantId = (req as any).user.tenantId;
         const categories = await AssetService.getCategories(tenantId);
         res.json(categories);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/:id', authenticate, async (req, res) => {
+    try {
+        const tenantId = (req as any).user.tenantId;
+        await AssetService.deleteAsset(tenantId, req.params.id);
+        res.json({ message: 'Asset deleted' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/categories/:id', authenticate, async (req, res) => {
+    try {
+        const tenantId = (req as any).user.tenantId;
+        await AssetService.deleteCategory(tenantId, req.params.id);
+        res.json({ message: 'Category deleted' });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
