@@ -11,9 +11,13 @@ import {
     Smartphone,
     Download,
     Send,
-    LogOut
+    LogOut,
+    FileText,
+    ShieldCheck,
+    Printer,
+    AlertCircle
 } from 'lucide-react';
-import { leavesAPI, fieldLogsAPI } from '../services/api';
+import { leavesAPI, fieldLogsAPI, payrollAPI, documentsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,6 +32,12 @@ export const EmployeePortal = () => {
     const [showLeaveHistory, setShowLeaveHistory] = useState(false);
     const [myLeaves, setMyLeaves] = useState<any[]>([]);
     const [loadingLeaves, setLoadingLeaves] = useState(false);
+    const [showPayrolls, setShowPayrolls] = useState(false);
+    const [myPayrolls, setMyPayrolls] = useState<any[]>([]);
+    const [selectedPayroll, setSelectedPayroll] = useState<any>(null);
+    const [showDocuments, setShowDocuments] = useState(false);
+    const [myDocuments, setMyDocuments] = useState<any[]>([]);
+    const [loadingDocs, setLoadingDocs] = useState(false);
 
     const [punchData, setPunchData] = useState({
         location: '',
@@ -76,6 +86,23 @@ export const EmployeePortal = () => {
         } finally {
             setLoadingLeaves(false);
         }
+    };
+
+    const fetchMyPayrolls = async () => {
+        try {
+            const res = await payrollAPI.getMyPayrolls();
+            setMyPayrolls(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchMyDocuments = async () => {
+        if (!user?.employeeId) return;
+        try {
+            setLoadingDocs(true);
+            const res = await documentsAPI.list(user.employeeId);
+            setMyDocuments(res.data);
+        } catch (e) { console.error(e); }
+        finally { setLoadingDocs(false); }
     };
 
     const startCamera = async () => {
@@ -252,6 +279,28 @@ export const EmployeePortal = () => {
                         </div>
                     </div>
                 </button>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        onClick={() => { setShowPayrolls(true); fetchMyPayrolls(); }}
+                        className="bg-white p-6 rounded-[28px] border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-4 active:scale-95 transition-all text-gray-900 hover:border-blue-200"
+                    >
+                        <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                            <FileText className="w-8 h-8" />
+                        </div>
+                        <span className="font-black text-[10px] uppercase tracking-widest">My Payslips</span>
+                    </button>
+
+                    <button
+                        onClick={() => { setShowDocuments(true); fetchMyDocuments(); }}
+                        className="bg-white p-6 rounded-[28px] border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-4 active:scale-95 transition-all text-gray-900 hover:border-blue-200"
+                    >
+                        <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                            <ShieldCheck className="w-8 h-8" />
+                        </div>
+                        <span className="font-black text-[10px] uppercase tracking-widest">Documents</span>
+                    </button>
+                </div>
 
                 {/* Info Card */}
                 <div className="bg-emerald-50 rounded-[28px] p-6 border border-emerald-100 flex items-center gap-4">
@@ -477,8 +526,196 @@ export const EmployeePortal = () => {
                 </div>
             )}
 
+            {/* Payslips List Modal */}
+            {showPayrolls && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] animate-in fade-in duration-300">
+                    <div className="absolute inset-x-0 bottom-0 top-20 bg-white rounded-t-[48px] p-8 pt-12 animate-in slide-in-from-bottom duration-500 overflow-hidden flex flex-col">
+                        <div className="flex justify-between items-start mb-8 flex-shrink-0">
+                            <div>
+                                <h3 className="text-3xl font-black text-gray-900 tracking-tight leading-none">Monthly <br />Payslips</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-4">Verified Financial Records</p>
+                            </div>
+                            <button onClick={() => setShowPayrolls(false)} className="w-14 h-14 bg-gray-50 rounded-[20px] flex items-center justify-center text-gray-400">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-4 pb-20 no-scrollbar">
+                            {myPayrolls.length === 0 ? (
+                                <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">No finalized payslips found</div>
+                            ) : (
+                                myPayrolls.map((p: any) => (
+                                    <div key={p.id} className="bg-gray-50 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all" onClick={() => setSelectedPayroll(p)}>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm">
+                                                <FileText className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-gray-900">{new Date(p.year, p.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">₹{p.netSalary.toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-white rounded-xl text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Download className="w-5 h-5" />
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Documents List Modal */}
+            {showDocuments && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] animate-in fade-in duration-300">
+                    <div className="absolute inset-x-0 bottom-0 top-20 bg-white rounded-t-[48px] p-8 pt-12 animate-in slide-in-from-bottom duration-500 overflow-hidden flex flex-col">
+                        <div className="flex justify-between items-start mb-8 flex-shrink-0">
+                            <div>
+                                <h3 className="text-3xl font-black text-gray-900 tracking-tight leading-none">My <br />Documents</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-4">Official Certificates & Files</p>
+                            </div>
+                            <button onClick={() => setShowDocuments(false)} className="w-14 h-14 bg-gray-50 rounded-[20px] flex items-center justify-center text-gray-400">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-4 pb-20 no-scrollbar">
+                            {loadingDocs ? (
+                                <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase animate-pulse">Loading Documents...</div>
+                            ) : myDocuments.length === 0 ? (
+                                <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">No documents found</div>
+                            ) : (
+                                myDocuments.map((doc: any) => (
+                                    <a
+                                        key={doc.id}
+                                        href={`${import.meta.env.VITE_API_URL || ''}/uploads/${doc.url}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="bg-gray-50 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm">
+                                                <ShieldCheck className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-gray-900">{doc.name}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{doc.type}</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-white rounded-xl text-emerald-600">
+                                            <Download className="w-5 h-5" />
+                                        </div>
+                                    </a>
+                                ))
+                            )}
+
+                            {/* Form 16 Integration Alert if empty */}
+                            {myDocuments.length === 0 && (
+                                <div className="p-8 bg-blue-50 rounded-[32px] border border-blue-100">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="p-3 bg-blue-600 rounded-2xl text-white">
+                                            <AlertCircle className="w-6 h-6" />
+                                        </div>
+                                        <h4 className="text-sm font-black text-blue-900 uppercase tracking-widest leading-none">Tax Compliance</h4>
+                                    </div>
+                                    <p className="text-xs text-blue-800/70 font-bold leading-relaxed">
+                                        Your Form 16 (Part A & B) will appear here once processed by HR via TRACES.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Detailed Payslip View Modal */}
+            {selectedPayroll && (
+                <div className="fixed inset-0 bg-white z-[150] flex flex-col animate-in slide-in-from-bottom duration-500 overflow-y-auto no-scrollbar">
+                    <div className="p-8 flex justify-between items-center bg-white sticky top-0 border-b border-gray-100">
+                        <button onClick={() => setSelectedPayroll(null)} className="p-4 bg-gray-50 rounded-2xl text-gray-400">
+                            <X className="w-6 h-6" />
+                        </button>
+                        <h3 className="text-sm font-black uppercase tracking-[0.3em] text-gray-400">Payslip Details</h3>
+                        <button onClick={() => window.print()} className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
+                            <Printer className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    <div className="p-8 max-w-lg mx-auto w-full space-y-10 pb-20 print:p-0">
+                        {/* Summary Header */}
+                        <div className="text-center space-y-4">
+                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em]">Official Disbursement</p>
+                            <h2 className="text-4xl font-black text-gray-900">₹{selectedPayroll.netSalary.toLocaleString()}</h2>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                {new Date(selectedPayroll.year, selectedPayroll.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </p>
+                        </div>
+
+                        {/* Components List */}
+                        <div className="space-y-8">
+                            <section className="space-y-4">
+                                <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest border-b border-gray-50 pb-2">Earnings Breakdown</h4>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Basic Salary</span>
+                                        <span className="text-xs font-black text-gray-900 tracking-tight">₹{selectedPayroll.basicPaid.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">HRA Exemption</span>
+                                        <span className="text-xs font-black text-gray-900 tracking-tight">₹{selectedPayroll.hraPaid.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Allowances</span>
+                                        <span className="text-xs font-black text-gray-900 tracking-tight">₹{selectedPayroll.allowancesPaid.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4">
+                                <h4 className="text-[10px] font-black text-red-600 uppercase tracking-widest border-b border-gray-50 pb-2">Deductions Matrix</h4>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Provident Fund (PF)</span>
+                                        <span className="text-xs font-black text-red-600 tracking-tight">-₹{selectedPayroll.pfDeduction.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Professional Tax (PT)</span>
+                                        <span className="text-xs font-black text-red-600 tracking-tight">-₹{selectedPayroll.ptDeduction.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">TDS Compliance</span>
+                                        <span className="text-xs font-black text-red-600 tracking-tight">-₹{selectedPayroll.tdsDeduction.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="bg-gray-900 rounded-[32px] p-8 text-white">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Final Net Disbursement</p>
+                                        <p className="text-2xl font-black mt-1">₹{selectedPayroll.netSalary.toLocaleString()}</p>
+                                    </div>
+                                    <ShieldCheck className="w-10 h-10 text-blue-500 opacity-50" />
+                                </div>
+                                <p className="text-[10px] font-bold text-gray-400 italic">
+                                    Transferred to {selectedPayroll.employee.bankName || 'Registered Account'} — {selectedPayroll.employee.accountNumber?.slice(-4).padStart(selectedPayroll.employee.accountNumber.length, '*')}
+                                </p>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .mirror { transform: scaleX(-1); }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                @media print {
+                    body * { visibility: hidden; }
+                    .print\:block, .print\:block * { visibility: visible; }
+                    .print\:block { position: absolute; left: 0; top: 0; width: 100%; }
+                }
                 @media (max-width: 640px) {
                     .min-h-screen { max-width: 100%; border-radius: 0; }
                 }

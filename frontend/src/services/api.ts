@@ -213,6 +213,11 @@ export const payrollAPI = {
   verifyPAN: (pan: string, credentials?: any) => api.post('/payroll/form16/verify-pan', { pan, credentials }),
   syncTraces: (credentials: any) => api.post('/payroll/form16/sync-traces', credentials),
   getJobStatus: (jobId: string) => api.get(`/payroll/form16/job-status/${jobId}`),
+  downloadForm16PartB: (employeeId: string, financialYear: string) =>
+    api.get(`/payroll/form16/generate-unique/${employeeId}`, { params: { financialYear }, responseType: 'blob' }),
+  bulkRequestForm16: (financialYear: string) =>
+    api.get('/payroll/form16/bulk-download', { params: { financialYear } }),
+  getMyPayrolls: () => api.get('/payroll/my-payrolls'),
 };
 
 export const reportsAPI = {

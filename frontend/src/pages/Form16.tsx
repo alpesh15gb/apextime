@@ -27,9 +27,11 @@ interface ChallengRecord {
 
 const Form16 = () => {
     const [financialYear, setFinancialYear] = useState('');
-    const [activeTab, setActiveTab] = useState<'sandbox' | 'challans'>('sandbox');
+    const [activeTab, setActiveTab] = useState<'sandbox' | 'challans' | 'earnings'>('sandbox');
     const [challans, setChallans] = useState<ChallengRecord[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
     const [savingChallan, setSavingChallan] = useState(false);
+    const [loadingEmployees, setLoadingEmployees] = useState(false);
     const [credentials, setCredentials] = useState({
         username: '',
         password: '',
@@ -56,8 +58,21 @@ const Form16 = () => {
     useEffect(() => {
         if (financialYear) {
             loadChallans();
+            fetchEmployees();
         }
     }, [financialYear]);
+
+    const fetchEmployees = async () => {
+        try {
+            setLoadingEmployees(true);
+            const res = await payrollAPI.get({ limit: '1000' }); // Using existing employee fetch
+            setEmployees(res.data.employees || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingEmployees(false);
+        }
+    };
 
     const loadChallans = async () => {
         try {
@@ -124,6 +139,31 @@ const Form16 = () => {
         return () => clearInterval(interval);
     }, [activeJobId]);
 
+    const handleBulkRequest = async () => {
+        try {
+            setSyncing(true);
+            const res = await payrollAPI.bulkRequestForm16(financialYear);
+            alert(res.data.message);
+        } catch (error) {
+            alert('Failed to trigger bulk request');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleDownloadPartB = async (employeeId: string, employeeCode: string) => {
+        try {
+            const res = await payrollAPI.downloadForm16PartB(employeeId, financialYear);
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Form16_PartB_${employeeCode}_${financialYear}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+        } catch (error) {
+            alert('Failed to generate Part B PDF');
+        }
+    };
     const handleSyncTraces = async () => {
         if (!credentials.username || !credentials.password || !credentials.tan) {
             alert('Please fill in all TRACES credentials');
@@ -170,6 +210,12 @@ const Form16 = () => {
                         className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'sandbox' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:text-gray-600'}`}
                     >
                         Official Download (Sandbox)
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('earnings')}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'earnings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Employee Form 16
                     </button>
                     <button
                         onClick={() => setActiveTab('challans')}

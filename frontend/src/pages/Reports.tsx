@@ -91,6 +91,12 @@ export const Reports = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'student' && user?.tenantType !== 'SCHOOL') {
+      setActiveTab('daily');
+    }
+  }, [activeTab, user]);
+
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
@@ -290,11 +296,11 @@ export const Reports = () => {
     });
   };
 
-  const tabs: { key: TabType; label: string; icon: any }[] = [
+  const tabs = [
     { key: 'daily', label: 'Daily', icon: Calendar },
     { key: 'weekly', label: 'Weekly', icon: TrendingUp },
     { key: 'monthly', label: 'Monthly', icon: BarChart3 },
-    { key: 'student', label: 'Student Attendance', icon: Users },
+    ...(user?.tenantType === 'SCHOOL' ? [{ key: 'student' as const, label: 'Student Attendance', icon: Users }] : []),
   ];
 
   return (

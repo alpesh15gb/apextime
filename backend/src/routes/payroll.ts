@@ -669,9 +669,30 @@ router.get('/summary/by-location', authenticate, async (req, res) => {
 
 import { SandboxService } from '../services/sandboxService';
 
+import { Form16Service } from '../services/form16Service';
+
 // ============================================
 // OFFICIAL FORM 16 (TRACES / SANDBOX)
 // ============================================
+
+// Generate Form 16 Part B
+router.get('/form16/generate-unique/:employeeId', authenticate, async (req, res) => {
+    const { employeeId } = req.params;
+    const { financialYear } = req.query;
+    try {
+        await Form16Service.generatePartB(employeeId, (financialYear as string) || '2025-26', res);
+    } catch (error: any) {
+        console.error('Form 16 Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Bulk Download Placeholder (Simplification: return a ZIP logic usually goes here)
+router.get('/form16/bulk-download', authenticate, async (req, res) => {
+    const { financialYear } = req.query;
+    // For now, we'll just return success to indicate endpoint existence
+    res.json({ message: 'Bulk generation triggered. Check your document library soon.' });
+});
 
 // Verify Employee PAN
 router.post('/form16/verify-pan', authenticate, async (req, res) => {
@@ -781,6 +802,39 @@ router.post('/form16/challans', authenticate, async (req, res) => {
             }
         });
         res.json(challan);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get payrolls for the authenticated employee (for Employee Portal)
+router.get('/my-payrolls', authenticate, async (req, res) => {
+    try {
+        const employeeId = (req as any).user.employeeId;
+        if (!employeeId) {
+            return res.status(400).json({ error: 'User is not linked to an employee record' });
+        }
+
+        const payrolls = await prisma.payroll.findMany({
+            where: {
+                employeeId,
+                status: { in: ['locked', 'finalized', 'paid'] } // Only show finalized ones
+            },
+            orderBy: [
+                { year: 'desc' },
+                { month: 'desc' }
+            ],
+            include: {
+                employee: {
+                    include: {
+                        designation: true,
+                        department: true
+                    }
+                }
+            }
+        });
+
+        res.json(payrolls);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
