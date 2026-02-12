@@ -239,9 +239,14 @@ router.get('/stats', async (req, res) => {
 router.get('/recent-activity', async (req, res) => {
   try {
     const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const today = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()));
+    const istStr = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    const istDate = new Date(istStr);
+    const istHour = istDate.getHours();
+
+    let logicalToday = new Date(Date.UTC(istDate.getFullYear(), istDate.getMonth(), istDate.getDate()));
+    if (istHour < 5) {
+      logicalToday.setUTCDate(logicalToday.getUTCDate() - 1);
+    }
 
     // Recent check-ins
     const recentCheckins = await prisma.attendanceLog.findMany({
@@ -297,32 +302,37 @@ router.get('/chart-data', async (req, res) => {
     const days = 7;
     const data = [];
 
-    for (let i = days - 1; i >= 0; i--) {
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const date = new Date(now.getTime() + istOffset);
-      date.setUTCDate(date.getUTCDate() - i);
-      const targetDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const now = new Date();
+    const istStr = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    const istDate = new Date(istStr);
+    const istHour = istDate.getHours();
 
-      const nextDate = new Date(targetDate);
-      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    // Base logical today
+    let baseLogicalToday = new Date(Date.UTC(istDate.getFullYear(), istDate.getMonth(), istDate.getDate()));
+    if (istHour < 5) {
+      baseLogicalToday.setUTCDate(baseLogicalToday.getUTCDate() - 1);
+    }
+
+    for (let i = days - 1; i >= 0; i--) {
+      const targetDate = new Date(baseLogicalToday);
+      targetDate.setUTCDate(targetDate.getUTCDate() - i);
 
       const [present, absent, late] = await Promise.all([
         prisma.attendanceLog.count({
           where: {
-            date: { gte: targetDate, lt: nextDate },
+            date: targetDate,
             status: { in: ['Present', 'present', 'Half Day', 'half day', 'Shift Incomplete', 'shift incomplete'] },
           },
         }),
         prisma.attendanceLog.count({
           where: {
-            date: { gte: targetDate, lt: nextDate },
+            date: targetDate,
             status: { in: ['Absent', 'absent'] },
           },
         }),
         prisma.attendanceLog.count({
           where: {
-            date: { gte: targetDate, lt: nextDate },
+            date: targetDate,
             lateArrival: { gt: 0 },
           },
         }),
