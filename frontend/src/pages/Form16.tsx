@@ -353,9 +353,17 @@ const Form16 = () => {
                                         if (!pan) return;
                                         try {
                                             const res = await payrollAPI.verifyPAN(pan);
-                                            alert(`PAN Verified: ${res.data.full_name || 'Valid Record Found'}`);
-                                        } catch (e) {
-                                            alert('Invalid PAN or Verification Failed');
+                                            // Handle different response formats
+                                            const status = res.data.status || (res.data.code === 200 ? 'SUCCESS' : 'FAILED');
+                                            if (status === 'SUCCESS' || res.data.data?.full_name) {
+                                                const name = res.data.data?.full_name || res.data.full_name || 'Valid Record Found';
+                                                alert(`PAN Verified: ${name}`);
+                                            } else {
+                                                alert(`Verification Result: ${res.data.message || 'Inactive or Invalid PAN'}`);
+                                            }
+                                        } catch (e: any) {
+                                            const errorMsg = e.response?.data?.error || e.response?.data?.message || 'Invalid PAN or Verification Failed';
+                                            alert(`Error: ${errorMsg}`);
                                         }
                                     }}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase"

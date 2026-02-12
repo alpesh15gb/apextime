@@ -13,40 +13,62 @@ export class SandboxService {
         }
     };
 
+    private static cachedToken: string | null = null;
+    private static tokenExpiry: number = 0;
+
     /**
-     * Authenticate and get a dynamic access token (if required by Sandbox)
+     * Authenticate and get a dynamic access token (Cached for performance)
      */
     static async getAccessToken() {
+        // Reuse cached token if valid (Buffer of 1 minute)
+        if (this.cachedToken && Date.now() < this.tokenExpiry - 60000) {
+            return this.cachedToken;
+        }
+
         try {
             const res = await axios.post(`${SANDBOX_BASE_URL}/authenticate`, {}, {
                 headers: {
                     'x-api-key': process.env.SANDBOX_API_KEY,
-                    'x-api-secret': process.env.SANDBOX_API_SECRET
+                    'x-api-secret': process.env.SANDBOX_API_SECRET,
+                    'x-api-version': '1.0.0'
                 }
             });
-            return res.data.access_token;
+            this.cachedToken = res.data.access_token;
+            // Sandbox tokens usually last 24h, let's assume 23h to be safe
+            this.tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
+            return this.cachedToken;
         } catch (error: any) {
             console.error('Sandbox Auth Error:', error.response?.data || error.message);
-            throw new Error('Failed to authenticate with Sandbox');
+            throw new Error('Sandbox Authentication failed: ' + (error.response?.data?.message || 'Check API Keys'));
         }
     }
 
     /**
-     * Verify PAN details
+     * Verify PAN details (Official Sandbox JSON POST)
      */
     static async verifyPAN(pan: string) {
         try {
             const token = await this.getAccessToken();
-            const res = await axios.get(`${SANDBOX_BASE_URL}/kyc/pan/${pan}`, {
-                headers: {
-                    'Authorization': token,
-                    'x-api-key': process.env.SANDBOX_API_KEY
-                }
-            });
+            const res = await axios.post(`${SANDBOX_BASE_URL}/kyc/pan/verify`,
+                {
+                    pan: pan,
+                    consent: 'y',
+                    reason: 'Employee Verification'
+                },
+                {
+                    headers: {
+                        'Authorization': token,
+                        'x-api-key': process.env.SANDBOX_API_KEY,
+                        'x-api-version': '1.0.0',
+                        'Content-Type': 'application/json'
+                    }
+                });
             return res.data;
         } catch (error: any) {
             console.error('PAN Verification Error:', error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || 'PAN Verification failed');
+            // Return a more descriptive error if available
+            const details = error.response?.data?.message || error.response?.data?.error || 'PAN Verification failed';
+            throw new Error(details);
         }
     }
 
@@ -69,6 +91,7 @@ export class SandboxService {
                 headers: {
                     'Authorization': token,
                     'x-api-key': process.env.SANDBOX_API_KEY,
+                    'x-api-version': '1.0.0',
                     'Content-Type': 'application/json'
                 }
             });
@@ -89,7 +112,8 @@ export class SandboxService {
             const res = await axios.get(`${SANDBOX_BASE_URL}/compliance/traces/tds/certificate/job/${jobId}`, {
                 headers: {
                     'Authorization': token,
-                    'x-api-key': process.env.SANDBOX_API_KEY
+                    'x-api-key': process.env.SANDBOX_API_KEY,
+                    'x-api-version': '1.0.0'
                 }
             });
             return res.data;
