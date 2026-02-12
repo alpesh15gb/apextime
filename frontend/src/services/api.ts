@@ -205,16 +205,13 @@ export const payrollAPI = {
   createLocationRun: (data: any) => api.post('/payroll/runs/location', data),
   processLocationPayroll: (runId: string, data: any) => api.post(`/payroll/runs/${runId}/process-location`, data),
   getSummaryByLocation: (params: any) => api.get('/payroll/summary/by-location', { params }),
-  // Form 16
-  getForm16Eligible: (financialYear: string) => api.get('/payroll/form16/eligible', { params: { financialYear } }),
-  getForm16Data: (employeeId: string, financialYear: string) =>
-    api.get(`/payroll/form16/${employeeId}/data`, { params: { financialYear } }),
-  downloadForm16: (employeeId: string, financialYear: string) =>
-    api.get(`/payroll/form16/${employeeId}/download`, { params: { financialYear }, responseType: 'blob' }),
-  downloadForm16Bulk: (employeeIds: string[], financialYear: string) =>
-    api.post('/payroll/form16/bulk-download', { employeeIds, financialYear }, { responseType: 'blob' }),
+  // Official Form 16 (TRACES / Sandbox)
   getTDSChallans: (financialYear: string) => api.get('/payroll/form16/challans', { params: { financialYear } }),
   upsertTDSChallan: (data: any) => api.post('/payroll/form16/challans', data),
+
+  // Sandbox Placeholders
+  verifyPAN: (pan: string) => api.post('/payroll/form16/verify-pan', { pan }),
+  syncTraces: (credentials: any) => api.post('/payroll/form16/sync-traces', credentials),
 };
 
 export const reportsAPI = {

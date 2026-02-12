@@ -667,101 +667,33 @@ router.get('/summary/by-location', authenticate, async (req, res) => {
     }
 });
 
+import { SandboxService } from '../services/sandboxService';
+
 // ============================================
-// FORM 16 GENERATION
+// OFFICIAL FORM 16 (TRACES / SANDBOX)
 // ============================================
 
-import { Form16Service } from '../services/form16Service';
-
-// Get list of employees eligible for Form 16
-router.get('/form16/eligible', authenticate, async (req, res) => {
-    const { financialYear } = req.query;
-
+// Verify Employee PAN
+router.post('/form16/verify-pan', authenticate, async (req, res) => {
+    const { pan } = req.body;
     try {
-        const tenantId = (req as any).user.tenantId;
-        const fy = (financialYear as string) || getCurrentFinancialYear();
-
-        const employees = await Form16Service.getEligibleEmployees(tenantId, fy);
-        res.json({ financialYear: fy, employees });
+        const result = await SandboxService.verifyPAN(pan);
+        res.json(result);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get Form 16 data (JSON)
-router.get('/form16/:employeeId/data', authenticate, async (req, res) => {
-    const { employeeId } = req.params;
-    const { financialYear } = req.query;
-
+// Trigger TRACES Sync
+router.post('/form16/sync-traces', authenticate, async (req, res) => {
+    const { username, password, tan, financialYear, quarter } = req.body;
     try {
-        const fy = (financialYear as string) || getCurrentFinancialYear();
-        const data = await Form16Service.generateForm16Data(employeeId, fy);
-
-        if (!data) {
-            return res.status(404).json({ error: 'No payroll data found for this employee and financial year' });
-        }
-
-        res.json(data);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Download Form 16 PDF
-router.get('/form16/:employeeId/download', authenticate, async (req, res) => {
-    const { employeeId } = req.params;
-    const { financialYear } = req.query;
-
-    try {
-        const fy = (financialYear as string) || getCurrentFinancialYear();
-        const pdfBuffer = await Form16Service.generateForm16PDF(employeeId, fy);
-
-        // Get employee name for filename
-        const employee = await prisma.employee.findUnique({
-            where: { id: employeeId },
-            select: { firstName: true, lastName: true, employeeCode: true }
-        });
-
-        const filename = `Form16_${employee?.employeeCode || employeeId}_${fy}.pdf`;
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-        res.send(pdfBuffer);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Bulk download Form 16 (ZIP)
-router.post('/form16/bulk-download', authenticate, async (req, res) => {
-    const { employeeIds, financialYear } = req.body;
-
-    try {
-        const fy = financialYear || getCurrentFinancialYear();
-        const archiver = require('archiver');
-        const archive = archiver('zip', { zlib: { level: 9 } });
-
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=Form16_Bulk_${fy}.zip`);
-
-        archive.pipe(res);
-
-        for (const empId of employeeIds) {
-            try {
-                const pdfBuffer = await Form16Service.generateForm16PDF(empId, fy);
-                const employee = await prisma.employee.findUnique({
-                    where: { id: empId },
-                    select: { firstName: true, lastName: true, employeeCode: true }
-                });
-
-                const filename = `Form16_${employee?.employeeCode || empId}_${fy}.pdf`;
-                archive.append(pdfBuffer, { name: filename });
-            } catch (e) {
-                console.error(`Error generating Form 16 for ${empId}:`, e);
-            }
-        }
-
-        await archive.finalize();
+        const result = await SandboxService.requestForm16PartA(
+            { username, password, tan },
+            financialYear,
+            quarter || 'Q4'
+        );
+        res.json(result);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
